@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 use tempfile::TempDir;
-use veri_core::python_worker::PythonWorker;
+use crate::python_worker::PythonWorker;
 
 #[test]
 fn test_python_worker_creation() {

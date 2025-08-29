@@ -2,11 +2,11 @@ pub mod config;
 pub mod schemas;
 pub mod cache;
 pub mod python_worker;
+pub mod import_graph;
+pub mod planner;
 
 #[cfg(test)]
 mod schema_tests;
-#[cfg(test)]
-mod python_worker_tests;
 
 pub fn hello() -> &'static str {
     "veri-core: hello"

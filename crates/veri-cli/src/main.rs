@@ -10,6 +10,8 @@ use std::process;
 use veri_core::config::Config;
 use veri_core::cache::{CacheKey, compute_config_digest};
 use veri_core::python_worker::{PythonWorker, TestRunOptions};
+use veri_core::import_graph::ImportGraphBuilder;
+use veri_core::planner::{TestPlanner, PlannerConfig};
 
 fn main() {
     let exit_code = match run() {
@@ -187,17 +189,46 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
             }
         }
         
+        // Build import graph and dependency analysis
+        println!("🔍 Building import graph...");
+        let mut graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
+        let (imports_graph, revdeps_graph, module_map) = graph_builder.build_graphs()?;
+        
+        println!("✅ Built import graph with {} edges", imports_graph.edges.len());
+        if !imports_graph.dynamic_imports.is_empty() {
+            println!("⚠️  {} dynamic imports detected", imports_graph.dynamic_imports.len());
+        }
+        
         // If this was just collection (--all with no other action), we're done
         if cli.all && cli.paths.is_empty() && !should_run_tests(cli) {
             return Ok(ExitCode::Success);
         }
     }
     
-    // Load collected tests
+    // Load collected tests and graphs
     let tests_index = worker.collect_tests(&cli.paths)?;
     
-    // Determine which tests to run
-    let nodeids_to_run = select_tests_to_run(&tests_index, cli, config)?;
+    // Load or build graphs
+    let mut graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
+    let (imports_graph, revdeps_graph, module_map) = match graph_builder.load_cached_graphs()? {
+        Some(graphs) => graphs,
+        None => {
+            println!("🔍 Building import graph...");
+            let graphs = graph_builder.build_graphs()?;
+            println!("✅ Built import graph with {} edges", graphs.0.edges.len());
+            graphs
+        }
+    };
+    
+    // Determine which tests to run using impact analysis
+    let nodeids_to_run = select_tests_to_run(
+        &tests_index, 
+        &imports_graph,
+        &revdeps_graph,
+        &module_map,
+        cli, 
+        config
+    )?;
     
     if nodeids_to_run.is_empty() {
         println!("🎯 No tests selected to run");
@@ -240,11 +271,27 @@ fn should_run_tests(cli: &Cli) -> bool {
 
 fn select_tests_to_run(
     tests_index: &veri_core::python_worker::TestsIndex,
+    imports_graph: &veri_core::import_graph::ImportsGraph,
+    revdeps_graph: &veri_core::import_graph::ReverseDepsGraph,
+    module_map: &veri_core::import_graph::ModuleMap,
     cli: &Cli,
     _config: &Config,
 ) -> Result<Vec<String>> {
-    let mut selected = Vec::new();
+    // If --all is specified, run all tests
+    if cli.all {
+        return Ok(tests_index.tests.iter().map(|t| t.nodeid.clone()).collect());
+    }
     
+    // Create planner
+    let work_dir = std::env::current_dir()?;
+    let cache_dir = work_dir.join(".veri").join("cache");
+    let planner = TestPlanner::new(&work_dir, &cache_dir);
+    
+    // Determine changed files (for now, use a simple git diff approach)
+    let changed_files = get_changed_files()?;
+    
+    // If we have manual filters (keyword, marker, paths), apply them first
+    let mut selected = Vec::new();
     for test in &tests_index.tests {
         let mut include = true;
         
@@ -265,15 +312,105 @@ fn select_tests_to_run(
             });
         }
         
-        // TODO: Apply last-failed filter (needs failure tracking)
-        // TODO: Apply impact-aware selection (needs import graph analysis)
-        
         if include {
             selected.push(test.nodeid.clone());
         }
     }
     
-    Ok(selected)
+    // If we have manual filters, use those selections and skip impact analysis
+    if cli.keyword.is_some() || cli.marker.is_some() || !cli.paths.is_empty() {
+        return Ok(selected);
+    }
+    
+    // Use impact-aware planning if no manual filters
+    if changed_files.is_empty() {
+        // No changes detected, run nothing unless --last-failed or other flags
+        if cli.last_failed {
+            // TODO: Implement last-failed logic when we have failure tracking
+            println!("ℹ️  No last-failed tracking yet - running all tests");
+            return Ok(tests_index.tests.iter().map(|t| t.nodeid.clone()).collect());
+        } else {
+            println!("ℹ️  No changed files detected - use --all to run all tests");
+            return Ok(Vec::new());
+        }
+    }
+    
+    // Use the planner for impact analysis
+    let selection = planner.plan_test_selection(
+        &changed_files,
+        tests_index,
+        revdeps_graph,
+        module_map,
+        imports_graph,
+    )?;
+    
+    // Print selection summary
+    if selection.should_broaden {
+        println!("⚠️  Selection broadened: {}", selection.broaden_reason.as_deref().unwrap_or("Unknown"));
+    }
+    
+    // Print explanation if verbose
+    if cli.verbose > 0 || cli.explain {
+        println!("{}", planner.format_explain(&selection));
+    }
+    
+    Ok(selection.selected_nodeids)
+}
+
+/// Get changed files using git (simple implementation for Phase 4)
+fn get_changed_files() -> Result<Vec<String>> {
+    use std::process::Command;
+    
+    let work_dir = std::env::current_dir()?;
+    
+    // Get git root
+    let git_root_output = Command::new("git")
+        .args(&["rev-parse", "--show-toplevel"])
+        .current_dir(&work_dir)
+        .output();
+    
+    let git_root = match git_root_output {
+        Ok(output) if output.status.success() => {
+            std::path::PathBuf::from(String::from_utf8_lossy(&output.stdout).trim())
+        }
+        _ => return Ok(Vec::new()), // No git repo
+    };
+    
+    // Get changed files from git root
+    let output = Command::new("git")
+        .args(&["diff", "--name-only", "HEAD"])
+        .current_dir(&git_root)
+        .output();
+    
+    match output {
+        Ok(output) if output.status.success() => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let files: Vec<String> = stdout
+                .lines()
+                .filter(|line| !line.is_empty())
+                .filter(|line| line.ends_with(".py") || line.ends_with("conftest.py"))
+                .filter_map(|line| {
+                    let full_path = git_root.join(line);
+                    
+                    // Check if this file is under our current working directory
+                    if let Ok(relative_path) = full_path.strip_prefix(&work_dir) {
+                        Some(relative_path.to_string_lossy().replace('\\', "/"))
+                    } else if full_path == work_dir.join(std::path::Path::new(line).file_name()?) {
+                        // File is directly in working directory
+                        std::path::Path::new(line).file_name()
+                            .map(|name| name.to_string_lossy().to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            Ok(files)
+        }
+        _ => {
+            // Git not available or no repository - return empty
+            Ok(Vec::new())
+        }
+    }
 }
 
 fn init_logging(cli: &Cli) -> Result<()> {
@@ -329,23 +466,103 @@ fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
     println!("  Log level: {}", config.log_level());
     println!();
     
-    // Selection logic (placeholder)
+    // Import graph status
+    let work_dir = std::env::current_dir()?;
+    let cache_dir = work_dir.join(".veri").join("cache");
+    let graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
+    
+    println!("Import Graph Status:");
+    match graph_builder.load_cached_graphs()? {
+        Some((imports_graph, revdeps_graph, module_map)) => {
+            println!("  Status: Cached graphs available");
+            println!("  Modules: {}", module_map.modules.len());
+            println!("  Import edges: {}", imports_graph.edges.len());
+            println!("  Dynamic imports: {}", imports_graph.dynamic_imports.len());
+            println!("  Unresolved imports: {}", imports_graph.unresolved_imports.len());
+            
+            if !imports_graph.dynamic_imports.is_empty() {
+                println!("  ⚠️  Dynamic imports detected - may trigger broadening for safety");
+            }
+        }
+        None => {
+            println!("  Status: No cached graphs - will build on first run");
+        }
+    }
+    println!();
+    
+    // Selection logic with impact analysis
     if cli.all {
         println!("Selection: Running ALL tests (--all specified)");
     } else if cli.last_failed {
         println!("Selection: Running last failed tests");
-    } else if cli.keyword.is_some() || cli.marker.is_some() {
+    } else if cli.keyword.is_some() || cli.marker.is_some() || !cli.paths.is_empty() {
         if let Some(keyword) = &cli.keyword {
             println!("Selection: Keyword filter: '{}'", keyword);
         }
         if let Some(marker) = &cli.marker {
             println!("Selection: Marker filter: '{}'", marker);
         }
+        if !cli.paths.is_empty() {
+            println!("Selection: Path filter: {:?}", cli.paths);
+        }
     } else {
         println!("Selection: Impact-aware (based on changed files)");
-        println!("  Changed files: (none detected - would analyze git/fs)");
-        println!("  Impacted tests: (would compute from import graph)");
+        
+        // Show changed files
+        match get_changed_files() {
+            Ok(changed_files) => {
+                if changed_files.is_empty() {
+                    println!("  Changed files: None detected");
+                    println!("  Impacted tests: None (no tests will run)");
+                } else {
+                    println!("  Changed files:");
+                    for file in &changed_files {
+                        println!("    - {}", file);
+                    }
+                    
+                    // Try to show impact analysis if graphs are available
+                    if let Ok(Some((imports_graph, revdeps_graph, module_map))) = graph_builder.load_cached_graphs() {
+                        let worker = PythonWorker::new(&work_dir, &cache_dir);
+                        if worker.has_valid_cache() {
+                            if let Ok(tests_index) = worker.collect_tests(&[]) {
+                                let planner = TestPlanner::new(&work_dir, &cache_dir);
+                                if let Ok(selection) = planner.plan_test_selection(
+                                    &changed_files,
+                                    &tests_index,
+                                    &revdeps_graph,
+                                    &module_map,
+                                    &imports_graph,
+                                ) {
+                                    println!("  Impact Analysis:");
+                                    println!("    Selected tests: {} of {}", 
+                                        selection.selected_nodeids.len(), 
+                                        selection.total_tests);
+                                    if selection.should_broaden {
+                                        println!("    ⚠️  Broadened: {}", 
+                                            selection.broaden_reason.as_deref().unwrap_or("Unknown"));
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        println!("  Impacted tests: (will compute from import graph on first run)");
+                    }
+                }
+            }
+            Err(_) => {
+                println!("  Changed files: (git not available - will check filesystem)");
+            }
+        }
     }
+    
+    // Invalidation rules
+    println!();
+    println!("Invalidation Rules:");
+    println!("  1. Test file changed → run its tests");
+    println!("  2. Source file changed → run tests that import it (via reverse deps)");
+    println!("  3. conftest.py changed → run tests in that directory scope");
+    println!("  4. Dynamic import detected → broaden selection for safety");
+    println!("  5. Selection > 60% of total → run all tests");
     
     Ok(())
 }

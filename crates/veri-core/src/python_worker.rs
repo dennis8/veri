@@ -5,7 +5,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Output};
 use std::collections::HashMap;
 
@@ -221,6 +221,49 @@ impl PythonWorker {
             .context("Failed to run Python worker in pytest engine mode")?;
 
         Ok(output.status.code().unwrap_or(3))
+    }
+
+    /// Parse imports from Python files using AST analysis
+    pub fn parse_imports(&self, module_map: &crate::import_graph::ModuleMap) -> Result<crate::import_graph::ImportsGraph> {
+        // Save module map to a temporary file for the Python worker
+        let module_map_path = self.cache_dir.join("temp_module_map.json");
+        let module_map_json = serde_json::to_string_pretty(module_map)?;
+        std::fs::write(&module_map_path, module_map_json)?;
+
+        // Build command arguments
+        let args = vec![
+            "-m".to_string(),
+            "veri_worker".to_string(),
+            "parse-imports".to_string(),
+            "--work-dir".to_string(),
+            self.work_dir.to_string_lossy().to_string(),
+            "--cache-dir".to_string(),
+            self.cache_dir.to_string_lossy().to_string(),
+            "--module-map".to_string(),
+            module_map_path.to_string_lossy().to_string(),
+        ];
+
+        // Execute Python worker
+        let output = self.run_python_command(&args)
+            .context("Failed to run Python worker for import parsing")?;
+
+        // Clean up temporary file
+        let _ = std::fs::remove_file(module_map_path);
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!("Import parsing failed: {}", stderr));
+        }
+
+        // Load the generated imports.graph.json
+        let imports_graph_path = self.cache_dir.join("imports.graph.json");
+        let imports_data = std::fs::read_to_string(&imports_graph_path)
+            .context("Failed to read imports.graph.json")?;
+        
+        let imports_graph: crate::import_graph::ImportsGraph = serde_json::from_str(&imports_data)
+            .context("Failed to parse imports.graph.json")?;
+
+        Ok(imports_graph)
     }
 
     /// Check if tests.index.json exists and is recent

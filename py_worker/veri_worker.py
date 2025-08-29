@@ -1,20 +1,239 @@
 """
-veri Python worker - pytest compatibility shim
-Handles test collection and execution via pytest integration
+veri Python worker - pytest compatibility shim and AST import parser
+Handles test collection/execution via pytest integration and import analysis
 """
 
 import sys
 import json
 import argparse
 import subprocess
+import ast
+import os
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set, Tuple
 import pytest
 from _pytest.config import Config
 from _pytest.main import Session
 from _pytest.nodes import Item
 from _pytest.reports import TestReport
+
+
+class VeriASTParser:
+    """Handles AST-based import analysis for building import graphs"""
+    
+    def __init__(self, work_dir: Path, module_map: Dict[str, Any]):
+        self.work_dir = work_dir
+        self.module_map = module_map
+        self.builtin_modules = set(sys.builtin_module_names)
+        
+    def parse_imports_from_files(self) -> Dict[str, Any]:
+        """
+        Parse imports from all Python files and build imports graph
+        Returns import graph in imports.graph.json schema format
+        """
+        edges = []
+        dynamic_imports = []
+        unresolved_imports = []
+        
+        # Process each module in the module map
+        for file_path, module_info in self.module_map['modules'].items():
+            try:
+                full_path = self.work_dir / file_path
+                if full_path.exists() and full_path.suffix == '.py':
+                    file_edges, file_dynamic, file_unresolved = self._parse_file_imports(
+                        full_path, module_info['module_name']
+                    )
+                    edges.extend(file_edges)
+                    dynamic_imports.extend(file_dynamic)
+                    unresolved_imports.extend(file_unresolved)
+            except Exception as e:
+                print(f"Warning: Failed to parse imports from {file_path}: {e}", file=sys.stderr)
+        
+        return {
+            'version': '0.1.0',
+            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'edges': edges,
+            'dynamic_imports': dynamic_imports,
+            'unresolved_imports': unresolved_imports
+        }
+    
+    def _parse_file_imports(self, file_path: Path, from_module: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+        """Parse imports from a single Python file"""
+        edges = []
+        dynamic_imports = []
+        unresolved_imports = []
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            tree = ast.parse(content, filename=str(file_path))
+            
+            # Track conditional context (inside if/try/except blocks)
+            conditional_stack = []
+            
+            for node in ast.walk(tree):
+                # Track conditional blocks
+                if isinstance(node, (ast.If, ast.Try, ast.ExceptHandler, ast.With)):
+                    conditional_stack.append(node.lineno)
+                
+                # Parse import statements
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        edge, unresolved = self._process_import(
+                            from_module, alias.name, alias.asname, node.lineno, 
+                            'import', [], len(conditional_stack) > 0
+                        )
+                        if edge:
+                            edges.append(edge)
+                        elif unresolved:
+                            unresolved_imports.append(unresolved)
+                
+                elif isinstance(node, ast.ImportFrom):
+                    module_name = node.module or ""
+                    level = node.level
+                    
+                    # Handle relative imports
+                    if level > 0:
+                        resolved_module = self._resolve_relative_import(from_module, module_name, level)
+                        import_type = 'relative'
+                    else:
+                        resolved_module = module_name
+                        import_type = 'from'
+                    
+                    names = [alias.name for alias in node.names] if node.names else []
+                    
+                    edge, unresolved = self._process_import(
+                        from_module, resolved_module, None, node.lineno,
+                        import_type, names, len(conditional_stack) > 0
+                    )
+                    if edge:
+                        edges.append(edge)
+                    elif unresolved:
+                        unresolved_imports.append(unresolved)
+                
+                # Detect dynamic imports
+                elif isinstance(node, ast.Call):
+                    dynamic_import = self._detect_dynamic_import(from_module, node)
+                    if dynamic_import:
+                        dynamic_imports.append(dynamic_import)
+        
+        except SyntaxError as e:
+            print(f"Syntax error in {file_path}: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"Error parsing {file_path}: {e}", file=sys.stderr)
+        
+        return edges, dynamic_imports, unresolved_imports
+    
+    def _process_import(self, from_module: str, to_module: str, alias: Optional[str], 
+                       line: int, import_type: str, names: List[str], 
+                       is_conditional: bool) -> Tuple[Optional[Dict], Optional[Dict]]:
+        """Process a single import and return edge or unresolved import"""
+        
+        if not to_module:
+            return None, None
+        
+        # Check if this is a local module
+        if self._is_local_module(to_module):
+            return {
+                'from_module': from_module,
+                'to_module': to_module,
+                'import_type': import_type,
+                'line': line,
+                'names': names,
+                'alias': alias,
+                'is_conditional': is_conditional
+            }, None
+        else:
+            # Unresolved import (third-party or builtin)
+            return None, {
+                'from_module': from_module,
+                'import_name': to_module,
+                'line': line,
+                'is_third_party': not self._is_builtin_module(to_module),
+                'is_builtin': self._is_builtin_module(to_module)
+            }
+    
+    def _resolve_relative_import(self, from_module: str, module_name: str, level: int) -> str:
+        """Resolve relative import to absolute module name"""
+        module_parts = from_module.split('.')
+        
+        # Go up 'level' number of packages
+        if level > len(module_parts):
+            # Invalid relative import - treat as the module name itself
+            return module_name or from_module
+        
+        base_parts = module_parts[:-level] if level > 0 else module_parts
+        
+        if module_name:
+            return '.'.join(base_parts + [module_name])
+        else:
+            return '.'.join(base_parts)
+    
+    def _is_local_module(self, module_name: str) -> bool:
+        """Check if a module is local to this project"""
+        # Check if module is in our module map
+        for module_info in self.module_map['modules'].values():
+            if module_info['module_name'] == module_name:
+                return True
+        
+        # Check if it's a submodule of any local package
+        for module_info in self.module_map['modules'].values():
+            if module_name.startswith(module_info['module_name'] + '.'):
+                return True
+        
+        return False
+    
+    def _is_builtin_module(self, module_name: str) -> bool:
+        """Check if a module is a Python builtin"""
+        return module_name.split('.')[0] in self.builtin_modules
+    
+    def _detect_dynamic_import(self, from_module: str, node: ast.Call) -> Optional[Dict]:
+        """Detect dynamic import patterns"""
+        # Check for importlib.import_module
+        if (isinstance(node.func, ast.Attribute) and 
+            isinstance(node.func.value, ast.Name) and
+            node.func.value.id == 'importlib' and
+            node.func.attr == 'import_module'):
+            
+            argument = None
+            if node.args and isinstance(node.args[0], ast.Constant):
+                argument = str(node.args[0].value)
+            
+            return {
+                'from_module': from_module,
+                'line': node.lineno,
+                'function': 'importlib.import_module',
+                'argument': argument,
+                'reason': 'Dynamic module import via importlib.import_module'
+            }
+        
+        # Check for __import__
+        elif (isinstance(node.func, ast.Name) and node.func.id == '__import__'):
+            argument = None
+            if node.args and isinstance(node.args[0], ast.Constant):
+                argument = str(node.args[0].value)
+            
+            return {
+                'from_module': from_module,
+                'line': node.lineno,
+                'function': '__import__',
+                'argument': argument,
+                'reason': 'Dynamic module import via __import__'
+            }
+        
+        # Check for exec/eval with import-like patterns
+        elif isinstance(node.func, ast.Name) and node.func.id in ['exec', 'eval']:
+            return {
+                'from_module': from_module,
+                'line': node.lineno,
+                'function': node.func.id,
+                'argument': None,
+                'reason': f'Potential dynamic import via {node.func.id}'
+            }
+        
+        return None
 
 
 class VeriCollector:
@@ -253,8 +472,8 @@ class VeriExecutor:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='veri Python worker - pytest compatibility shim')
-    parser.add_argument('command', choices=['collect', 'run', 'pytest-engine'], 
+    parser = argparse.ArgumentParser(description='veri Python worker - pytest compatibility shim and AST parser')
+    parser.add_argument('command', choices=['collect', 'run', 'pytest-engine', 'parse-imports'], 
                        help='Command to execute')
     parser.add_argument('--work-dir', type=Path, default=Path.cwd(),
                        help='Working directory (default: current)')
@@ -280,6 +499,8 @@ def main():
                        help='Number of workers for parallel execution')
     parser.add_argument('--pytest-args', nargs='*', default=[],
                        help='Additional arguments to pass to pytest')
+    parser.add_argument('--module-map', type=Path,
+                       help='Path to module map JSON file (for parse-imports command)')
     
     args = parser.parse_args()
     
@@ -304,6 +525,37 @@ def main():
             if tests_data['collection_errors']:
                 print(f"Warning: {len(tests_data['collection_errors'])} collection errors")
                 return 2
+            
+            return 0
+        
+        elif args.command == 'parse-imports':
+            # Import parsing mode - generate imports.graph.json
+            if not args.module_map:
+                print("Error: --module-map is required for parse-imports command", file=sys.stderr)
+                return 4
+            
+            if not args.module_map.exists():
+                print(f"Error: Module map file not found: {args.module_map}", file=sys.stderr)
+                return 4
+            
+            # Load module map
+            with open(args.module_map, 'r') as f:
+                module_map = json.load(f)
+            
+            # Parse imports
+            parser_instance = VeriASTParser(args.work_dir, module_map)
+            imports_graph = parser_instance.parse_imports_from_files()
+            
+            # Save imports graph
+            imports_path = args.cache_dir / 'imports.graph.json'
+            args.cache_dir.mkdir(parents=True, exist_ok=True)
+            with open(imports_path, 'w') as f:
+                json.dump(imports_graph, f, indent=2)
+            
+            print(f"Parsed {len(imports_graph['edges'])} import edges")
+            print(f"Found {len(imports_graph['dynamic_imports'])} dynamic imports")
+            print(f"Found {len(imports_graph['unresolved_imports'])} unresolved imports")
+            print(f"Saved imports graph to {imports_path}")
             
             return 0
             

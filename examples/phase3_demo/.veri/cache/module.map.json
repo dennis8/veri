@@ -1,0 +1,39 @@
+{
+  "version": "0.1.0",
+  "generated_at": "2025-08-29T12:03:46.040927200+00:00",
+  "modules": {
+    "conftest.py": {
+      "module_name": "conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": null,
+      "relative_path": "conftest.py",
+      "digest": "7ace5556321eec9b80156a3f337f101629d8aa9a14c7e85cb1d048b81f1c97b0"
+    },
+    "test_calculator.py": {
+      "module_name": "test_calculator",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": null,
+      "relative_path": "test_calculator.py",
+      "digest": "bb4a7aa98d984f0c3200da0ecd87aaed43fea817b82a215e7532b5f0f58badb2"
+    },
+    "calculator.py": {
+      "module_name": "calculator",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": null,
+      "relative_path": "calculator.py",
+      "digest": "337ce8139bcca01d3ba503a5b1a836e3cd1b889b545e6c4299e75d296c7edb41"
+    },
+    "test_basic.py": {
+      "module_name": "test_basic",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": null,
+      "relative_path": "test_basic.py",
+      "digest": "f3b9270876e546c4dde54822110148a6fc281f8b5e0614cf260f0547791a69aa"
+    }
+  },
+  "packages": []
+}
