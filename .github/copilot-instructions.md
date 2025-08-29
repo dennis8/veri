@@ -1,59 +1,74 @@
-## Quick orientation
+## Quick orientation (Phase 0 - Rust/Python Hybrid)
 
-This repository provides a small `veri` package (entry point `veri:main`) and a large vendored copy of the pytest test-suite under the `pytest/` folder. An AI agent should focus on two areas first:
+This is a **hybrid Rust/Python monorepo** implementing the veri test runner. Focus areas:
 
-- the root package: `src/veri` and `pyproject.toml` (packaging metadata and entry point)
-- the vendored pytest subtree: `pytest/` (extensive examples, tests, internal APIs under `pytest/src/_pytest`)
+- **Rust workspace**: `crates/veri-core` (planner/scheduler) + `crates/veri-cli` (CLI binary)
+- **Python worker**: `py_worker/` (pytest shim for test execution)
+- **Infrastructure**: `schemas/` (JSON contracts), `ci/` (GitHub Actions), `docs/` (implementation plan)
+- **Reference pytest**: `pytest/` (vendored, read-only examples and test patterns)
 
-Keep guidance short and actionable: reference these files rather than giving generic Python advice.
+Keep changes focused on the Rust crates and Python worker; treat `pytest/` as documentation only.
 
-## Big-picture architecture (what to know)
+## Architecture (Phase 0 status)
 
-- Root package: `src/veri/__init__.py` contains the package entrypoint `main()` (installed as `veri = "veri:main"` in `pyproject.toml`). It's intentionally minimal in this snapshot.
-- Build system: the project uses PEP 517/518 with a custom build-backend `uv_build` (see `pyproject.toml`). Before changing packaging, inspect `pyproject.toml` rather than assuming setuptools or poetry.
-- Vendored pytest subtree: `pytest/` is a self-contained test/documentation ecosystem. It contains its own `pyproject.toml`, `tox.ini`, `scripts/`, `doc/` and a large `testing/` folder. Many project examples and behaviours are implemented and tested here — treat it as a canonical source of patterns.
+- **Rust CLI**: `crates/veri-cli/src/main.rs` - placeholder binary (will become full CLI in Phase 1)
+- **Rust Core**: `crates/veri-core/src/lib.rs` - core logic library (planning/scheduling/caching)
+- **Python Worker**: `py_worker/veri_worker.py` - pytest compatibility shim (will execute tests)
+- **Workspace**: `Cargo.toml` - Rust workspace config with shared metadata
+- **Build System**: `justfile`/`Makefile` - cross-platform build automation
+- **CI**: `.github/workflows/` + `ci/github-actions.yml` - multi-platform validation
 
-## Developer workflows and quick commands (uv-first)
+## Developer workflows (Phase 0)
 
-- Tooling & install: this repository expects `uv` as the tool/package manager. Use `uv` to install CLI tools and to materialize project dependencies from `uv.lock` / `pyproject.toml`.
-## Quick orientation
-
-This repo contains a tiny root package `src/veri` (entry point `veri:main`) and a vendored copy of pytest under `pytest/` used as a read-only reference and testbed.
-
-Keep changes scoped to `src/veri` and adjacent integration tests; treat `pytest/` as documentation/examples only (do not edit).
-
-## Essentials
-
-- Entry point: `veri = "veri:main"` in `pyproject.toml`.
-- Build backend: `uv_build` (see `[build-system]` in `pyproject.toml`).
-- Python requirement: >= 3.13 (root `pyproject.toml`).
-- Package manager: prefer `uv` and `uv.lock` for reproducible installs.
-
-## Quickstart (uv-first, PowerShell)
+**Primary toolchain**: Rust (`cargo`) + Python (`uv`) + build automation (`just` or `make`)
 
 ```powershell
-pipx install uv
-uv tool install veri
-uv sync --frozen
-veri        # impacted tests by default
-veri -w     # watch
-veri -a     # run all
-veri split --ci 4 > shards.json
-veri shard --ci 1 --manifest shards.json
+# Setup (one-time)
+just setup     # installs uv, ruff, mypy, maturin, cargo-nextest
+# OR: make setup
+
+# Daily development
+just check     # format + lint + build + test everything
+# OR: make check
+
+# Individual commands
+just dev       # cargo build --workspace
+just test      # cargo test --workspace  
+just fmt       # cargo fmt --all
+just lint      # cargo clippy --workspace --all-targets
 ```
 
-## Where to look (fast)
+## Where to look (Phase 0)
 
-- `pyproject.toml` — packaging, entry points, build-backend
-- `uv.lock` — canonical lock used by CI (`uv sync --frozen`)
-- `src/veri/__init__.py` — current entrypoint
-- `pytest/` — vendored reference (read-only)
+- **`Cargo.toml`** — workspace config, shared metadata
+- **`crates/veri-cli/Cargo.toml`** — CLI binary dependencies
+- **`crates/veri-core/Cargo.toml`** — core library dependencies  
+- **`py_worker/pyproject.toml`** — Python worker packaging
+- **`justfile`** / **`Makefile`** — build commands
+- **`ci/github-actions.yml`** — CI template
+- **`docs/IMPLEMENTATION_PLAN.md`** — phase-by-phase roadmap
+- **`docs/BRANDING.md`** — project identity (⚡ lightning emoji, colors)
 
-## Editing guidance (short)
+## Editing guidance (Phase 0)
 
-- Don't edit `pytest/`. Add new integration tests under `src/veri` or a new top-level `testing/`/`pytest-integration/` folder and explain in the PR.
-- For CLI / public API changes: update `pyproject.toml` entry points and add a small runnable example or test; run `uv sync --frozen` then `veri` locally to validate.
-- When changing packaging or deps: update `pyproject.toml` and regenerate `uv.lock` via your `uv` workflow; CI should run `uv sync --frozen`.
+- **Rust changes**: Edit `crates/veri-*/src/` files, run `just check` to validate
+- **Python worker**: Edit `py_worker/veri_worker.py`, ensure it stays pytest-compatible
+- **Don't edit `pytest/`** - it's a vendored reference for patterns/examples
+- **Build/CI changes**: Update `justfile`/`Makefile` and `ci/github-actions.yml`
+- **New dependencies**: Add to appropriate `Cargo.toml` or `py_worker/pyproject.toml`
+- **Always run `just check`** before committing to ensure format/lint/build/test pass
+## Phase 0 Verification Commands
 
-If you'd like this shortened further (20 lines) or want a tiny PR checklist added, tell me which bits to trim or include.
+```powershell
+# Verify Phase 0 DoD (Definition of Done)
+cargo --version                    # ✅ Rust toolchain available
+cargo build --workspace           # ✅ Workspace builds successfully  
+cargo test --workspace            # ✅ All tests pass
+just check                        # ✅ Format, lint, build, test pass
+# OR: make check
+
+# CI validation (locally)
+cargo fmt --all -- --check        # ✅ Code is formatted
+cargo clippy --workspace --all-targets -- -D warnings  # ✅ No lint warnings
+
 

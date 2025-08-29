@@ -1,3 +1,5 @@
+pub mod config;
+
 pub fn hello() -> &'static str {
     "veri-core: hello"
 }
