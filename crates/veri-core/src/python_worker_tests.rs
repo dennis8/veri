@@ -17,6 +17,3 @@ fn test_python_worker_creation() {
     assert_eq!(worker.markers_index_path(), cache_dir.join("markers.index.json"));
     assert!(!worker.has_valid_cache()); // No cache files exist yet
 }
-
-// Note: Full integration tests require Python environment setup
-// These will be added in the verification phase

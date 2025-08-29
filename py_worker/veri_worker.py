@@ -3,31 +3,36 @@ veri Python worker - pytest compatibility shim and AST import parser
 Handles test collection/execution via pytest integration and import analysis
 """
 
-import sys
-import json
 import argparse
-import subprocess
 import ast
-import os
+import json
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Set, Tuple
+from typing import Any
+
 import pytest
-from _pytest.config import Config
-from _pytest.main import Session
 from _pytest.nodes import Item
-from _pytest.reports import TestReport
 
 
 class VeriASTParser:
     """Handles AST-based import analysis for building import graphs"""
-    
-    def __init__(self, work_dir: Path, module_map: Dict[str, Any]):
+
+    def __init__(self, work_dir: Path, module_map: dict[str, Any]) -> None:
         self.work_dir = work_dir
         self.module_map = module_map
         self.builtin_modules = set(sys.builtin_module_names)
-        
-    def parse_imports_from_files(self) -> Dict[str, Any]:
+        # Add common standard library modules
+        self.stdlib_modules = self.builtin_modules | {
+            'os', 'sys', 'math', 'time', 'datetime', 'json', 'urllib', 'http',
+            'threading', 'multiprocessing', 'subprocess', 'pathlib', 'shutil',
+            'typing', 'collections', 'itertools', 'functools', 'operator',
+            'logging', 're', 'ast', 'inspect', 'importlib', 'pkgutil',
+            'unittest', 'pytest', 'argparse', 'configparser', 'sqlite3',
+            'email', 'xml', 'html', 'csv', 'gzip', 'zipfile', 'tarfile'
+        }
+
+    def parse_imports_from_files(self) -> dict[str, Any]:
         """
         Parse imports from all Python files and build imports graph
         Returns import graph in imports.graph.json schema format
@@ -35,7 +40,7 @@ class VeriASTParser:
         edges = []
         dynamic_imports = []
         unresolved_imports = []
-        
+
         # Process each module in the module map
         for file_path, module_info in self.module_map['modules'].items():
             try:
@@ -49,51 +54,51 @@ class VeriASTParser:
                     unresolved_imports.extend(file_unresolved)
             except Exception as e:
                 print(f"Warning: Failed to parse imports from {file_path}: {e}", file=sys.stderr)
-        
+
         return {
             'version': '0.1.0',
-            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'generated_at': datetime.now(UTC).isoformat() + 'Z',
             'edges': edges,
             'dynamic_imports': dynamic_imports,
             'unresolved_imports': unresolved_imports
         }
-    
-    def _parse_file_imports(self, file_path: Path, from_module: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+
+    def _parse_file_imports(self, file_path: Path, from_module: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         """Parse imports from a single Python file"""
         edges = []
         dynamic_imports = []
         unresolved_imports = []
-        
+
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 content = f.read()
-            
+
             tree = ast.parse(content, filename=str(file_path))
-            
+
             # Track conditional context (inside if/try/except blocks)
             conditional_stack = []
-            
+
             for node in ast.walk(tree):
                 # Track conditional blocks
-                if isinstance(node, (ast.If, ast.Try, ast.ExceptHandler, ast.With)):
+                if isinstance(node, ast.If | ast.Try | ast.ExceptHandler | ast.With):
                     conditional_stack.append(node.lineno)
-                
+
                 # Parse import statements
                 if isinstance(node, ast.Import):
                     for alias in node.names:
                         edge, unresolved = self._process_import(
-                            from_module, alias.name, alias.asname, node.lineno, 
+                            from_module, alias.name, alias.asname, node.lineno,
                             'import', [], len(conditional_stack) > 0
                         )
                         if edge:
                             edges.append(edge)
                         elif unresolved:
                             unresolved_imports.append(unresolved)
-                
+
                 elif isinstance(node, ast.ImportFrom):
                     module_name = node.module or ""
                     level = node.level
-                    
+
                     # Handle relative imports
                     if level > 0:
                         resolved_module = self._resolve_relative_import(from_module, module_name, level)
@@ -101,9 +106,9 @@ class VeriASTParser:
                     else:
                         resolved_module = module_name
                         import_type = 'from'
-                    
+
                     names = [alias.name for alias in node.names] if node.names else []
-                    
+
                     edge, unresolved = self._process_import(
                         from_module, resolved_module, None, node.lineno,
                         import_type, names, len(conditional_stack) > 0
@@ -112,28 +117,28 @@ class VeriASTParser:
                         edges.append(edge)
                     elif unresolved:
                         unresolved_imports.append(unresolved)
-                
+
                 # Detect dynamic imports
                 elif isinstance(node, ast.Call):
                     dynamic_import = self._detect_dynamic_import(from_module, node)
                     if dynamic_import:
                         dynamic_imports.append(dynamic_import)
-        
+
         except SyntaxError as e:
             print(f"Syntax error in {file_path}: {e}", file=sys.stderr)
         except Exception as e:
             print(f"Error parsing {file_path}: {e}", file=sys.stderr)
-        
+
         return edges, dynamic_imports, unresolved_imports
-    
-    def _process_import(self, from_module: str, to_module: str, alias: Optional[str], 
-                       line: int, import_type: str, names: List[str], 
-                       is_conditional: bool) -> Tuple[Optional[Dict], Optional[Dict]]:
+
+    def _process_import(self, from_module: str, to_module: str, alias: str | None,
+                       line: int, import_type: str, names: list[str],
+                       is_conditional: bool) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         """Process a single import and return edge or unresolved import"""
-        
+
         if not to_module:
             return None, None
-        
+
         # Check if this is a local module
         if self._is_local_module(to_module):
             return {
@@ -154,53 +159,53 @@ class VeriASTParser:
                 'is_third_party': not self._is_builtin_module(to_module),
                 'is_builtin': self._is_builtin_module(to_module)
             }
-    
+
     def _resolve_relative_import(self, from_module: str, module_name: str, level: int) -> str:
         """Resolve relative import to absolute module name"""
         module_parts = from_module.split('.')
-        
+
         # Go up 'level' number of packages
         if level > len(module_parts):
             # Invalid relative import - treat as the module name itself
             return module_name or from_module
-        
+
         base_parts = module_parts[:-level] if level > 0 else module_parts
-        
+
         if module_name:
             return '.'.join(base_parts + [module_name])
         else:
             return '.'.join(base_parts)
-    
+
     def _is_local_module(self, module_name: str) -> bool:
         """Check if a module is local to this project"""
         # Check if module is in our module map
         for module_info in self.module_map['modules'].values():
             if module_info['module_name'] == module_name:
                 return True
-        
+
         # Check if it's a submodule of any local package
         for module_info in self.module_map['modules'].values():
             if module_name.startswith(module_info['module_name'] + '.'):
                 return True
-        
+
         return False
-    
+
     def _is_builtin_module(self, module_name: str) -> bool:
-        """Check if a module is a Python builtin"""
-        return module_name.split('.')[0] in self.builtin_modules
-    
-    def _detect_dynamic_import(self, from_module: str, node: ast.Call) -> Optional[Dict]:
+        """Check if a module is a Python builtin or standard library module"""
+        return module_name.split('.')[0] in self.stdlib_modules
+
+    def _detect_dynamic_import(self, from_module: str, node: ast.Call) -> dict[str, Any] | None:
         """Detect dynamic import patterns"""
         # Check for importlib.import_module
-        if (isinstance(node.func, ast.Attribute) and 
+        if (isinstance(node.func, ast.Attribute) and
             isinstance(node.func.value, ast.Name) and
             node.func.value.id == 'importlib' and
             node.func.attr == 'import_module'):
-            
+
             argument = None
             if node.args and isinstance(node.args[0], ast.Constant):
                 argument = str(node.args[0].value)
-            
+
             return {
                 'from_module': from_module,
                 'line': node.lineno,
@@ -208,13 +213,13 @@ class VeriASTParser:
                 'argument': argument,
                 'reason': 'Dynamic module import via importlib.import_module'
             }
-        
+
         # Check for __import__
         elif (isinstance(node.func, ast.Name) and node.func.id == '__import__'):
             argument = None
             if node.args and isinstance(node.args[0], ast.Constant):
                 argument = str(node.args[0].value)
-            
+
             return {
                 'from_module': from_module,
                 'line': node.lineno,
@@ -222,7 +227,7 @@ class VeriASTParser:
                 'argument': argument,
                 'reason': 'Dynamic module import via __import__'
             }
-        
+
         # Check for exec/eval with import-like patterns
         elif isinstance(node.func, ast.Name) and node.func.id in ['exec', 'eval']:
             return {
@@ -232,19 +237,19 @@ class VeriASTParser:
                 'argument': None,
                 'reason': f'Potential dynamic import via {node.func.id}'
             }
-        
+
         return None
 
 
 class VeriCollector:
     """Handles pytest collection and metadata extraction"""
-    
-    def __init__(self, work_dir: Path, cache_dir: Path):
+
+    def __init__(self, work_dir: Path, cache_dir: Path) -> None:
         self.work_dir = work_dir
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-    
-    def collect_tests(self, paths: List[str] = None) -> Dict[str, Any]:
+
+    def collect_tests(self, paths: list[str] | None = None) -> dict[str, Any]:
         """
         Use pytest to collect tests and extract metadata
         Returns collected test information in tests.index schema format
@@ -253,15 +258,15 @@ class VeriCollector:
         args = ['--collect-only', '--quiet']
         if paths:
             args.extend(paths)
-        
+
         # Capture pytest collection output
         collected_items = []
         collection_errors = []
-        
+
         class CollectionPlugin:
             def pytest_collection_modifyitems(self, session, config, items):
                 collected_items.extend(items)
-            
+
             def pytest_collectreport(self, report):
                 if report.failed:
                     collection_errors.append({
@@ -270,31 +275,37 @@ class VeriCollector:
                         'error_type': type(report.longrepr).__name__ if hasattr(report, 'longrepr') else 'CollectionError',
                         'message': str(report.longrepr) if hasattr(report, 'longrepr') else 'Unknown collection error'
                     })
-        
-        # Run pytest collection
+
+        # Run pytest collection from the correct working directory
+        import os
         plugin = CollectionPlugin()
-        pytest.main(args, plugins=[plugin])
-        
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(self.work_dir)
+            pytest.main(args, plugins=[plugin])
+        finally:
+            os.chdir(original_cwd)
+
         # Extract test metadata
         tests = []
         for item in collected_items:
             test_info = self._extract_test_info(item)
             if test_info:
                 tests.append(test_info)
-        
+
         # Build index structure
         index_data = {
             'version': '0.1.0',
-            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'generated_at': datetime.now(UTC).isoformat() + 'Z',
             'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             'pytest_version': pytest.__version__,
             'tests': tests,
             'collection_errors': collection_errors
         }
-        
+
         return index_data
-    
-    def _extract_test_info(self, item: Item) -> Optional[Dict[str, Any]]:
+
+    def _extract_test_info(self, item: Item) -> dict[str, Any] | None:
         """Extract test metadata from pytest Item"""
         try:
             # Get file path relative to work directory - handle both old and new pytest versions
@@ -307,25 +318,25 @@ class VeriCollector:
             else:
                 # Fallback
                 file_path = Path(item.nodeid.split('::')[0])
-            
+
             # Ensure work_dir is absolute for proper relative path calculation
             work_dir_abs = Path(self.work_dir).resolve()
             file_path_abs = file_path.resolve()
-            
+
             try:
                 rel_path = file_path_abs.relative_to(work_dir_abs)
             except ValueError:
                 # If we can't make it relative, try using the nodeid file part
                 rel_path = Path(item.nodeid.split('::')[0])
-            
+
             # Extract markers
             markers = [mark.name for mark in item.iter_markers()]
-            
+
             # Extract fixtures (from function signature)
             fixtures = []
             if hasattr(item, 'fixturenames'):
                 fixtures = list(item.fixturenames)
-            
+
             # Extract parametrization info if present
             parametrize = None
             if hasattr(item, 'callspec'):
@@ -333,20 +344,22 @@ class VeriCollector:
                     'params': list(item.callspec.params.keys()) if hasattr(item.callspec, 'params') else [],
                     'ids': [item.callspec.id] if hasattr(item.callspec, 'id') else []
                 }
-            
+
             # Parse nodeid parts
             nodeid_parts = item.nodeid.split('::')
-            file_part = nodeid_parts[0]
             function_part = nodeid_parts[-1]
             class_part = nodeid_parts[1] if len(nodeid_parts) > 2 else None
-            
+
             # Extract module path
             module_path = str(rel_path).replace('/', '.').replace('\\', '.').replace('.py', '')
-            
+
+            # Normalize path to use forward slashes consistently
+            normalized_path = str(rel_path).replace('\\', '/')
+
             return {
                 'nodeid': item.nodeid,
-                'path': str(rel_path),
-                'line': item.location[1] + 1 if item.location else 1,  # pytest uses 0-based lines
+                'path': normalized_path,
+                'line': (item.location[1] + 1) if (item.location and item.location[1] is not None) else 1,  # pytest uses 0-based lines
                 'function': function_part.split('[')[0],  # Remove parametrization suffix
                 'class': class_part,
                 'module': module_path,
@@ -357,20 +370,20 @@ class VeriCollector:
         except Exception as e:
             print(f"Warning: Failed to extract info for {item.nodeid}: {e}", file=sys.stderr)
             return None
-    
-    def collect_markers(self, tests_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def collect_markers(self, tests_data: dict[str, Any]) -> dict[str, Any]:
         """
         Extract marker information from collected tests
         Returns marker index in markers.index schema format
         """
         markers_info = {}
         test_markers = {}
-        
+
         # Analyze markers from tests
         for test in tests_data['tests']:
             nodeid = test['nodeid']
             test_markers[nodeid] = test['markers']
-            
+
             for marker_name in test['markers']:
                 if marker_name not in markers_info:
                     markers_info[marker_name] = {
@@ -382,18 +395,18 @@ class VeriCollector:
                         'common_args': []
                     }
                 markers_info[marker_name]['usage_count'] += 1
-        
+
         # Build markers index
         markers_data = {
             'version': '0.1.0',
-            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'generated_at': datetime.now(UTC).isoformat() + 'Z',
             'markers': markers_info,
             'test_markers': test_markers
         }
-        
+
         return markers_data
-    
-    def save_index(self, data: Dict[str, Any], filename: str):
+
+    def save_index(self, data: dict[str, Any], filename: str) -> None:
         """Save index data to cache directory"""
         index_path = self.cache_dir / filename
         with open(index_path, 'w') as f:
@@ -403,20 +416,24 @@ class VeriCollector:
 
 class VeriExecutor:
     """Handles test execution via pytest"""
-    
-    def __init__(self, work_dir: Path):
+
+    def __init__(self, work_dir: Path) -> None:
         self.work_dir = work_dir
-    
-    def run_tests(self, nodeids: List[str], **kwargs) -> int:
+
+    def run_tests(self, nodeids: list[str], **kwargs: Any) -> int:
         """
         Execute specific tests by nodeid
         Returns pytest exit code
         """
+        # Early return for empty nodeids - nothing to run
+        if not nodeids:
+            return 0
+
         args = []
-        
+
         # Add nodeids to run
         args.extend(nodeids)
-        
+
         # Add common pytest args based on kwargs
         if kwargs.get('verbose'):
             args.append('-v')
@@ -433,28 +450,34 @@ class VeriExecutor:
         if workers := kwargs.get('workers'):
             if workers != '1':
                 args.extend(['-n', str(workers)])
-        
-        # Run pytest
-        return pytest.main(args)
-    
-    def run_pytest_engine(self, original_args: List[str]) -> int:
+
+        # Run pytest from the correct working directory
+        import os
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(self.work_dir)
+            return pytest.main(args)
+        finally:
+            os.chdir(original_cwd)
+
+    def run_pytest_engine(self, original_args: list[str]) -> int:
         """
         Hand off completely to pytest (--engine pytest mode)
         """
         # Filter out veri-specific args and pass the rest to pytest
         pytest_args = []
         skip_next = False
-        
+
         for i, arg in enumerate(original_args):
             if skip_next:
                 skip_next = False
                 continue
-                
+
             if arg in ['--engine', '--explain']:
                 if arg == '--engine' and i + 1 < len(original_args):
                     skip_next = True
                 continue
-            
+
             # Convert veri args to pytest equivalents
             if arg == '--workers':
                 if i + 1 < len(original_args) and original_args[i + 1] != '1':
@@ -467,13 +490,20 @@ class VeriExecutor:
                 continue
             else:
                 pytest_args.append(arg)
-        
-        return pytest.main(pytest_args)
+
+        # Run pytest from the correct working directory
+        import os
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(self.work_dir)
+            return pytest.main(pytest_args)
+        finally:
+            os.chdir(original_cwd)
 
 
 def main():
     parser = argparse.ArgumentParser(description='veri Python worker - pytest compatibility shim and AST parser')
-    parser.add_argument('command', choices=['collect', 'run', 'pytest-engine', 'parse-imports'], 
+    parser.add_argument('command', choices=['collect', 'run', 'pytest-engine', 'parse-imports'],
                        help='Command to execute')
     parser.add_argument('--work-dir', type=Path, default=Path.cwd(),
                        help='Working directory (default: current)')
@@ -501,76 +531,76 @@ def main():
                        help='Additional arguments to pass to pytest')
     parser.add_argument('--module-map', type=Path,
                        help='Path to module map JSON file (for parse-imports command)')
-    
+
     args = parser.parse_args()
-    
+
     try:
         if args.command == 'collect':
             # Collection mode - generate tests.index and markers.index
             collector = VeriCollector(args.work_dir, args.cache_dir)
-            
+
             print(f"Collecting tests from {args.work_dir}")
             if args.paths:
                 print(f"Paths: {args.paths}")
-            
+
             # Collect tests
             tests_data = collector.collect_tests(args.paths if args.paths else None)
             collector.save_index(tests_data, 'tests.index.json')
-            
+
             # Collect markers
             markers_data = collector.collect_markers(tests_data)
             collector.save_index(markers_data, 'markers.index.json')
-            
+
             print(f"Collected {len(tests_data['tests'])} tests")
             if tests_data['collection_errors']:
                 print(f"Warning: {len(tests_data['collection_errors'])} collection errors")
                 return 2
-            
+
             return 0
-        
+
         elif args.command == 'parse-imports':
             # Import parsing mode - generate imports.graph.json
             if not args.module_map:
                 print("Error: --module-map is required for parse-imports command", file=sys.stderr)
                 return 4
-            
+
             if not args.module_map.exists():
                 print(f"Error: Module map file not found: {args.module_map}", file=sys.stderr)
                 return 4
-            
+
             # Load module map
-            with open(args.module_map, 'r') as f:
+            with open(args.module_map) as f:
                 module_map = json.load(f)
-            
+
             # Parse imports
             parser_instance = VeriASTParser(args.work_dir, module_map)
             imports_graph = parser_instance.parse_imports_from_files()
-            
+
             # Save imports graph
             imports_path = args.cache_dir / 'imports.graph.json'
             args.cache_dir.mkdir(parents=True, exist_ok=True)
             with open(imports_path, 'w') as f:
                 json.dump(imports_graph, f, indent=2)
-            
+
             print(f"Parsed {len(imports_graph['edges'])} import edges")
             print(f"Found {len(imports_graph['dynamic_imports'])} dynamic imports")
             print(f"Found {len(imports_graph['unresolved_imports'])} unresolved imports")
             print(f"Saved imports graph to {imports_path}")
-            
+
             return 0
-            
+
         elif args.command == 'run':
             # Execution mode - run specific nodeids
             if not args.nodeids:
                 print("Error: No nodeids specified for run command", file=sys.stderr)
                 return 4
-            
+
             executor = VeriExecutor(args.work_dir)
-            
+
             print(f"Running {len(args.nodeids)} tests")
             if args.verbose:
                 print(f"Nodeids: {args.nodeids}")
-            
+
             exit_code = executor.run_tests(
                 args.nodeids,
                 verbose=args.verbose,
@@ -581,24 +611,24 @@ def main():
                 junit_xml=args.junit_xml,
                 workers=args.workers
             )
-            
+
             return exit_code
-            
+
         elif args.command == 'pytest-engine':
             # pytest engine mode - complete handoff
             executor = VeriExecutor(args.work_dir)
             pytest_args = args.pytest_args + args.paths
-            
+
             print("Handing off to pytest engine")
             if args.verbose:
                 print(f"pytest args: {pytest_args}")
-            
+
             return executor.run_pytest_engine(pytest_args)
-            
+
         else:
             print(f"Unknown command: {args.command}", file=sys.stderr)
             return 4
-            
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 3

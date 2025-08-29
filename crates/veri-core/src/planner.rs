@@ -43,6 +43,20 @@ pub struct PlannerConfig {
     pub enable_conftest_scope: bool,
 }
 
+impl PlannerConfig {
+    /// Validate configuration values
+    pub fn validate(&self) -> Result<()> {
+        if self.broaden_threshold < 0.0 || self.broaden_threshold > 1.0 {
+            return Err(anyhow::anyhow!(
+                "broaden_threshold must be between 0.0 and 1.0 (fraction), got {}. \
+                 Use 0.6 for 60%, not 60.", 
+                self.broaden_threshold
+            ));
+        }
+        Ok(())
+    }
+}
+
 impl Default for PlannerConfig {
     fn default() -> Self {
         Self {
@@ -71,12 +85,13 @@ impl TestPlanner {
     }
 
     /// Create with custom configuration
-    pub fn with_config(work_dir: impl Into<PathBuf>, cache_dir: impl Into<PathBuf>, config: PlannerConfig) -> Self {
-        Self {
+    pub fn with_config(work_dir: impl Into<PathBuf>, cache_dir: impl Into<PathBuf>, config: PlannerConfig) -> Result<Self> {
+        config.validate()?;
+        Ok(Self {
             work_dir: work_dir.into(),
             cache_dir: cache_dir.into(),
             config,
-        }
+        })
     }
 
     /// Plan test selection based on changed files
