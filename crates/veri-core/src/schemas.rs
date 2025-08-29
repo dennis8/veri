@@ -411,6 +411,67 @@ impl TestTimings {
     pub fn from_json(json: &str) -> Result<Self> {
         Ok(serde_json::from_str(json)?)
     }
+    
+    /// Load from cache directory
+    pub fn load_from_cache(cache_dir: &std::path::Path) -> Result<Self> {
+        let timings_path = cache_dir.join("timings.json");
+        if !timings_path.exists() {
+            return Err(anyhow::anyhow!("Timings file not found"));
+        }
+        
+        let content = std::fs::read_to_string(&timings_path)?;
+        Self::from_json(&content)
+    }
+}
+
+/// Type alias for compatibility with scheduler
+pub type TimingsData = TestTimings;
+
+/// Individual timing entry for compatibility
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimingEntry {
+    pub nodeid: String,
+    pub duration_ms: u64,
+    pub outcome: String,
+    pub stability_score: Option<f64>,
+}
+
+impl TimingsData {
+    /// Get timing entries in a format compatible with the scheduler
+    pub fn timings(&self) -> Vec<TimingEntry> {
+        let mut entries = Vec::new();
+        
+        // Convert from aggregated timings
+        for (nodeid, timing) in &self.aggregated_timings {
+            entries.push(TimingEntry {
+                nodeid: nodeid.clone(),
+                duration_ms: (timing.avg_duration * 1000.0) as u64,
+                outcome: "passed".to_string(), // Default assumption
+                stability_score: Some(timing.stability),
+            });
+        }
+        
+        // If no aggregated timings, try to use the most recent run
+        if entries.is_empty() && !self.runs.is_empty() {
+            if let Some(last_run) = self.runs.last() {
+                for (nodeid, timing) in &last_run.test_timings {
+                    entries.push(TimingEntry {
+                        nodeid: nodeid.clone(),
+                        duration_ms: (timing.total_duration * 1000.0) as u64,
+                        outcome: match timing.outcome {
+                            TestOutcome::Passed => "passed".to_string(),
+                            TestOutcome::Failed => "failed".to_string(),
+                            TestOutcome::Skipped => "skipped".to_string(),
+                            TestOutcome::Error => "error".to_string(),
+                        },
+                        stability_score: None,
+                    });
+                }
+            }
+        }
+        
+        entries
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

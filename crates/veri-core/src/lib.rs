@@ -4,6 +4,8 @@ pub mod cache;
 pub mod python_worker;
 pub mod import_graph;
 pub mod planner;
+pub mod scheduler;
+pub mod worker_pool;
 
 #[cfg(test)]
 mod schema_tests;

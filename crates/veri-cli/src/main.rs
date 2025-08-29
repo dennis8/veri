@@ -12,6 +12,8 @@ use veri_core::cache::{CacheKey, compute_config_digest};
 use veri_core::python_worker::{PythonWorker, TestRunOptions};
 use veri_core::import_graph::ImportGraphBuilder;
 use veri_core::planner::{TestPlanner, PlannerConfig};
+use veri_core::scheduler::{TestScheduler, SchedulerConfig, SchedulingStrategy};
+use veri_core::worker_pool::{WorkerPool, WorkerPoolConfig};
 
 fn main() {
     let exit_code = match run() {
@@ -237,6 +239,9 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     
     println!("🎯 Running {} selected tests", nodeids_to_run.len());
     
+    // Parse worker count
+    let worker_count = parse_worker_count(&cli.workers)?;
+    
     // Configure test run options
     let run_options = TestRunOptions {
         verbose: cli.verbose > 0,
@@ -245,18 +250,31 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
         exitfirst: cli.exitfirst,
         maxfail: cli.maxfail,
         junit_xml: cli.junit_xml.clone(),
-        workers: cli.workers.clone(),
+        workers: Some("1".to_string()), // Each worker handles their batch sequentially
     };
     
-    // Execute tests
-    let exit_code = worker.run_tests(&nodeids_to_run, &run_options)?;
-    
-    match exit_code {
-        0 => Ok(ExitCode::Success),
-        1 => Ok(ExitCode::TestFailure),
-        2 => Ok(ExitCode::Interrupted),
-        4 => Ok(ExitCode::UsageError),
-        _ => Ok(ExitCode::InternalError),
+    // Execute tests using scheduler and worker pool if we have multiple workers
+    if worker_count == 1 || nodeids_to_run.len() == 1 {
+        // Single worker execution - use direct approach
+        let exit_code = worker.run_tests(&nodeids_to_run, &run_options)?;
+        match exit_code {
+            0 => Ok(ExitCode::Success),
+            1 => Ok(ExitCode::TestFailure),
+            2 => Ok(ExitCode::Interrupted),
+            4 => Ok(ExitCode::UsageError),
+            _ => Ok(ExitCode::InternalError),
+        }
+    } else {
+        // Multi-worker execution - use scheduler and worker pool
+        execute_tests_parallel(
+            &nodeids_to_run,
+            &tests_index,
+            worker_count,
+            &run_options,
+            &work_dir,
+            &cache_dir,
+            cli.verbose > 0,
+        )
     }
 }
 
@@ -410,6 +428,159 @@ fn get_changed_files() -> Result<Vec<String>> {
             // Git not available or no repository - return empty
             Ok(Vec::new())
         }
+    }
+}
+
+/// Parse worker count from string
+fn parse_worker_count(workers: &Option<String>) -> Result<usize> {
+    match workers {
+        Some(w) => {
+            if w == "auto" {
+                Ok(num_cpus::get().max(1))
+            } else {
+                w.parse::<usize>()
+                    .map_err(|_| anyhow::anyhow!("Invalid worker count: {}", w))
+                    .and_then(|n| {
+                        if n == 0 {
+                            Err(anyhow::anyhow!("Worker count must be > 0"))
+                        } else {
+                            Ok(n)
+                        }
+                    })
+            }
+        }
+        None => Ok(num_cpus::get().max(1)),
+    }
+}
+
+/// Execute tests in parallel using scheduler and worker pool
+fn execute_tests_parallel(
+    nodeids: &[String],
+    tests_index: &veri_core::python_worker::TestsIndex,
+    worker_count: usize,
+    run_options: &TestRunOptions,
+    work_dir: &std::path::Path,
+    cache_dir: &std::path::Path,
+    verbose: bool,
+) -> Result<ExitCode> {
+    use std::time::Instant;
+    
+    println!("⚡ Scheduling tests across {} workers", worker_count);
+    
+    // Configure scheduler
+    let scheduler_config = SchedulerConfig {
+        strategy: SchedulingStrategy::Balanced,
+        worker_count,
+        enable_long_pole_detection: true,
+        long_pole_threshold_ms: 5000,
+        enable_fail_first: true,
+        max_batch_duration_ms: 30000,
+    };
+    
+    // Create scheduler and load timing data
+    let mut scheduler = TestScheduler::new(scheduler_config);
+    
+    // Try to load historical timings
+    if let Ok(timings_data) = veri_core::schemas::TimingsData::load_from_cache(cache_dir) {
+        if let Err(e) = scheduler.load_timings(&timings_data) {
+            if verbose {
+                println!("⚠️  Could not load timing data: {}", e);
+            }
+        } else if verbose {
+            println!("📊 Loaded historical timing data");
+        }
+    }
+    
+    // Schedule tests into batches
+    let batches = scheduler.schedule_tests(nodeids, tests_index)?;
+    
+    if batches.is_empty() {
+        return Ok(ExitCode::Success);
+    }
+    
+    // Show scheduling information
+    let stats = scheduler.get_scheduling_stats(&batches);
+    if verbose {
+        println!("{}", scheduler.format_explain(&batches, &stats));
+    } else {
+        println!("📋 Scheduled {} tests across {} workers", stats.total_tests, stats.total_workers);
+        println!("⏱️  Estimated duration: {:.1}s (load balance: {:.1}%)", 
+            stats.total_estimated_duration_ms as f64 / 1000.0,
+            stats.load_balance_ratio * 100.0);
+    }
+    
+    // Configure worker pool
+    let pool_config = WorkerPoolConfig {
+        worker_count,
+        startup_timeout: std::time::Duration::from_secs(30),
+        execution_timeout: std::time::Duration::from_secs(300),
+        max_idle_time: std::time::Duration::from_secs(600),
+        enable_recycling: true,
+        work_dir: work_dir.to_path_buf(),
+        cache_dir: cache_dir.to_path_buf(),
+    };
+    
+    // Create and start worker pool
+    let mut worker_pool = WorkerPool::new(pool_config);
+    worker_pool.start()?;
+    
+    // Submit batches to worker pool
+    let start_time = Instant::now();
+    for (i, batch) in batches.iter().enumerate() {
+        let batch_id = format!("batch_{}", i);
+        worker_pool.submit_batch(batch_id, batch.clone(), run_options.clone())?;
+    }
+    
+    println!("🚀 Executing tests...");
+    
+    // Wait for completion
+    let results = worker_pool.wait_for_completion(Some(std::time::Duration::from_secs(600)))?;
+    let total_duration = start_time.elapsed();
+    
+    // Process results
+    let mut total_exit_code = 0;
+    let mut failed_batches = 0;
+    let mut total_tests_run = 0;
+    
+    for result in &results {
+        total_tests_run += result.nodeids.len();
+        
+        if result.exit_code != 0 {
+            failed_batches += 1;
+            if total_exit_code == 0 {
+                total_exit_code = result.exit_code;
+            }
+        }
+        
+        if verbose {
+            println!("Worker {} completed {} tests in {:.1}s (exit: {})",
+                result.worker_id,
+                result.nodeids.len(),
+                result.duration.as_secs_f64(),
+                result.exit_code);
+        }
+    }
+    
+    // Summary
+    println!("✅ Completed {} tests in {:.1}s using {} workers",
+        total_tests_run,
+        total_duration.as_secs_f64(),
+        worker_count);
+    
+    if failed_batches > 0 {
+        println!("❌ {} of {} worker batches reported failures", failed_batches, results.len());
+    }
+    
+    // Shutdown worker pool
+    worker_pool.shutdown()?;
+    
+    // Return appropriate exit code
+    match total_exit_code {
+        0 => Ok(ExitCode::Success),
+        1 => Ok(ExitCode::TestFailure),
+        2 => Ok(ExitCode::Interrupted),
+        4 => Ok(ExitCode::UsageError),
+        _ => Ok(ExitCode::InternalError),
     }
 }
 

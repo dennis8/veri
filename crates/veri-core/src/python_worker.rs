@@ -346,7 +346,7 @@ impl PythonWorker {
 }
 
 /// Options for test execution
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TestRunOptions {
     pub verbose: bool,
     pub quiet: bool,
