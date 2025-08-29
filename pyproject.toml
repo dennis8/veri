@@ -1,0 +1,17 @@
+[project]
+name = "veri"
+version = "0.1.0"
+description = "Modern Python Testing Framework"
+readme = "README.md"
+authors = [
+    { name = "dennis-albers", email = "Dennis.Albers@ortec-finance.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+veri = "veri:main"
+
+[build-system]
+requires = ["uv_build>=0.8.4,<0.9.0"]
+build-backend = "uv_build"

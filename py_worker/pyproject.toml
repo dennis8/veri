@@ -1,0 +1,8 @@
+[project]
+name = "veri-py-worker"
+version = "0.0.1"
+description = "Python pytest shim for veri (placeholder)"
+requires-python = ">=3.11"
+
+[tool.poetry.scripts]
+veri_py_worker = "veri_worker:main"

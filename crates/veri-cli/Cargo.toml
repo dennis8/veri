@@ -1,0 +1,7 @@
+[package]
+name = "veri-cli"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+veri-core = { path = "../veri-core" }
