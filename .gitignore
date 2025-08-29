@@ -19,6 +19,7 @@ target/
 
 # Python tmp files
 __pycache__
+.pytest_cache
 
 # Maturin builds, and other native editable builds
 *.so
