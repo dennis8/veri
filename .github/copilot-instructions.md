@@ -1,74 +1,94 @@
-## Quick orientation (Phase 0 - Rust/Python Hybrid)
+## Quick orientation - veri test runner (Phase 3 Complete)
 
-This is a **hybrid Rust/Python monorepo** implementing the veri test runner. Focus areas:
+**Hybrid Rust/Python monorepo** implementing the veri test runner:
+- **Rust workspace**: `crates/veri-core` (planner/scheduler) + `crates/veri-cli` (CLI binary)  
+- **Python worker**: `py_worker/` (pytest shim) - **ALWAYS USE UV**
+- **Infrastructure**: `schemas/` (JSON contracts), `docs/` (implementation plan)
+- **Reference**: `pytest/` (vendored, read-only examples)
 
-- **Rust workspace**: `crates/veri-core` (planner/scheduler) + `crates/veri-cli` (CLI binary)
-- **Python worker**: `py_worker/` (pytest shim for test execution)
-- **Infrastructure**: `schemas/` (JSON contracts), `ci/` (GitHub Actions), `docs/` (implementation plan)
-- **Reference pytest**: `pytest/` (vendored, read-only examples and test patterns)
+Keep changes focused on Rust crates and Python worker; treat `pytest/` as documentation only.
 
-Keep changes focused on the Rust crates and Python worker; treat `pytest/` as documentation only.
+## Architecture
 
-## Architecture (Phase 0 status)
+- **CLI**: `crates/veri-cli/src/main.rs` - full CLI with engine selection and test filtering
+- **Core**: `crates/veri-core/src/lib.rs` - core logic with Python worker integration
+- **Worker**: `py_worker/veri_worker.py` - pytest compatibility layer
+- **Build**: `justfile`/`Makefile` - cross-platform automation
 
-- **Rust CLI**: `crates/veri-cli/src/main.rs` - placeholder binary (will become full CLI in Phase 1)
-- **Rust Core**: `crates/veri-core/src/lib.rs` - core logic library (planning/scheduling/caching)
-- **Python Worker**: `py_worker/veri_worker.py` - pytest compatibility shim (will execute tests)
-- **Workspace**: `Cargo.toml` - Rust workspace config with shared metadata
-- **Build System**: `justfile`/`Makefile` - cross-platform build automation
-- **CI**: `.github/workflows/` + `ci/github-actions.yml` - multi-platform validation
+## Critical: UV Usage ⚡
 
-## Developer workflows (Phase 0)
+**NEVER USE PIP OR DIRECT PYTHON CALLS - ALWAYS USE UV**
 
-**Primary toolchain**: Rust (`cargo`) + Python (`uv`) + build automation (`just` or `make`)
+```powershell
+# Dependencies
+cd py_worker && uv sync              # Install dependencies  
+cd py_worker && uv add package-name  # Add new dependency
+
+# Execution  
+uv run --project py_worker -m veri_worker collect --work-dir .
+uv run --project py_worker pytest
+cd py_worker && uv run mypy veri_worker.py
+```
+
+**In Rust code - use UV subprocess calls:**
+```rust
+// ✅ CORRECT
+let mut cmd = Command::new("uv");
+cmd.arg("run").arg("--project").arg(&py_worker_path);
+
+// ❌ WRONG  
+let mut cmd = Command::new("python");  // DON'T DO THIS
+```
+
+## Developer workflows
 
 ```powershell
 # Setup (one-time)
-just setup     # installs uv, ruff, mypy, maturin, cargo-nextest
-# OR: make setup
+just setup     # installs uv, ruff, mypy, cargo-nextest
 
 # Daily development
-just check     # format + lint + build + test everything
-# OR: make check
+just check     # format + lint + build + test everything  
 
 # Individual commands
 just dev       # cargo build --workspace
-just test      # cargo test --workspace  
-just fmt       # cargo fmt --all
+just test      # cargo test --workspace
+just fmt       # cargo fmt --all  
 just lint      # cargo clippy --workspace --all-targets
 ```
 
-## Where to look (Phase 0)
+## Key files
 
-- **`Cargo.toml`** — workspace config, shared metadata
-- **`crates/veri-cli/Cargo.toml`** — CLI binary dependencies
-- **`crates/veri-core/Cargo.toml`** — core library dependencies  
-- **`py_worker/pyproject.toml`** — Python worker packaging
-- **`justfile`** / **`Makefile`** — build commands
-- **`ci/github-actions.yml`** — CI template
-- **`docs/IMPLEMENTATION_PLAN.md`** — phase-by-phase roadmap
-- **`docs/BRANDING.md`** — project identity (⚡ lightning emoji, colors)
+- **`crates/veri-cli/src/main.rs`** — CLI with engine selection, filtering
+- **`crates/veri-core/src/python_worker.rs`** — Python subprocess management  
+- **`py_worker/veri_worker.py`** — pytest compatibility layer
+- **`py_worker/pyproject.toml`** — Python dependencies (uv managed)
+- **`examples/phase3_demo/`** — working demo for testing
+- **`docs/PHASE_3_SUMMARY.md`** — implementation summary
 
-## Editing guidance (Phase 0)
+## Editing guidance
 
-- **Rust changes**: Edit `crates/veri-*/src/` files, run `just check` to validate
-- **Python worker**: Edit `py_worker/veri_worker.py`, ensure it stays pytest-compatible
-- **Don't edit `pytest/`** - it's a vendored reference for patterns/examples
-- **Build/CI changes**: Update `justfile`/`Makefile` and `ci/github-actions.yml`
-- **New dependencies**: Add to appropriate `Cargo.toml` or `py_worker/pyproject.toml`
-- **Always run `just check`** before committing to ensure format/lint/build/test pass
-## Phase 0 Verification Commands
+- **Rust**: Edit `crates/veri-*/src/`, run `just check` to validate
+- **Python**: Edit `py_worker/veri_worker.py`, test with `uv run`
+- **Dependencies**: Use `uv add package-name` (never pip)
+- **Testing**: Use `examples/phase3_demo/` for integration tests
+- **Don't edit `pytest/`** - vendored reference only
+- **Always run `just check`** before committing
+
+## Verification (Phase 3)
 
 ```powershell
-# Verify Phase 0 DoD (Definition of Done)
-cargo --version                    # ✅ Rust toolchain available
-cargo build --workspace           # ✅ Workspace builds successfully  
-cargo test --workspace            # ✅ All tests pass
-just check                        # ✅ Format, lint, build, test pass
-# OR: make check
+cd examples/phase3_demo
+../../target/debug/veri-cli.exe --all           # ✅ Collect 18 tests
+../../target/debug/veri-cli.exe -k addition     # ✅ Filter 6 tests
+../../target/debug/veri-cli.exe --engine pytest # ✅ Hand off to pytest
+../../target/debug/veri-cli.exe --explain       # ✅ Show cache keys
 
-# CI validation (locally)
-cargo fmt --all -- --check        # ✅ Code is formatted
-cargo clippy --workspace --all-targets -- -D warnings  # ✅ No lint warnings
+# Verify cache files
+ls .veri/cache/tests.index.json    # ✅ Test metadata
+ls .veri/cache/markers.index.json  # ✅ Marker data
 
+# Direct worker testing
+cd ../../
+uv run --project py_worker -m veri_worker collect --work-dir examples/phase3_demo
+```
 

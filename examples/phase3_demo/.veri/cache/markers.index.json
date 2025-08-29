@@ -1,0 +1,78 @@
+{
+  "version": "0.1.0",
+  "generated_at": "2025-08-29T11:42:38.933374Z",
+  "markers": {
+    "slow": {
+      "name": "slow",
+      "description": null,
+      "registered": false,
+      "usage_count": 2,
+      "first_seen": "test_basic.py",
+      "common_args": []
+    },
+    "edge_case": {
+      "name": "edge_case",
+      "description": null,
+      "registered": false,
+      "usage_count": 1,
+      "first_seen": "test_basic.py",
+      "common_args": []
+    },
+    "parametrize": {
+      "name": "parametrize",
+      "description": null,
+      "registered": false,
+      "usage_count": 11,
+      "first_seen": "test_calculator.py",
+      "common_args": []
+    }
+  },
+  "test_markers": {
+    "examples/phase3_demo/test_basic.py::test_addition": [],
+    "examples/phase3_demo/test_basic.py::test_subtraction": [],
+    "examples/phase3_demo/test_basic.py::test_large_numbers": [
+      "slow"
+    ],
+    "examples/phase3_demo/test_basic.py::test_negative_numbers": [
+      "edge_case"
+    ],
+    "examples/phase3_demo/test_basic.py::TestCalculatorClass::test_class_addition": [],
+    "examples/phase3_demo/test_basic.py::TestCalculatorClass::test_class_complex": [
+      "slow"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_addition_parametrized[2-3-5]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_addition_parametrized[0-0-0]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_addition_parametrized[-1-1-0]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_addition_parametrized[100-200-300]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[2-3-6]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[5-4-20]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[0-100-0]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[-2-3--6]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_division_parametrized[6-2-3.0]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_division_parametrized[10-5-2.0]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_division_parametrized[7-2-3.5]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_division_by_zero": []
+  }
+}

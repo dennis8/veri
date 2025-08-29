@@ -4,11 +4,12 @@ mod cli_tests;
 
 use anyhow::Result;
 use clap::Parser;
-use cli::{Cli, Commands, ExitCode};
+use cli::{Cli, Commands, ExitCode, Engine};
 use log::info;
 use std::process;
 use veri_core::config::Config;
 use veri_core::cache::{CacheKey, compute_config_digest};
+use veri_core::python_worker::{PythonWorker, TestRunOptions};
 
 fn main() {
     let exit_code = match run() {
@@ -61,13 +62,218 @@ fn run() -> Result<ExitCode> {
     // Print configuration in explain mode
     if cli.explain {
         print_explanation(&cli, &config)?;
+        if cli.engine == Engine::Pytest {
+            println!("Note: Using --engine pytest - no impact analysis will be performed");
+        }
+        return Ok(ExitCode::Success);
     }
     
-    // For now, just print what we would do (Phase 1 - no business logic yet)
-    print_planned_execution(&cli, &config)?;
+    // Handle engine selection
+    match cli.engine {
+        Engine::Pytest => {
+            // Complete handoff to pytest
+            run_pytest_engine(&cli, &config)
+        }
+        Engine::Veri => {
+            // Use veri's fast engine with pytest compatibility layer
+            run_veri_engine(&cli, &config)
+        }
+    }
+}
+
+fn run_pytest_engine(cli: &Cli, _config: &Config) -> Result<ExitCode> {
+    println!("🔄 Using pytest engine for compatibility");
     
-    // Return success for now (Phase 1)
-    Ok(ExitCode::Success)
+    // Create Python worker
+    let work_dir = std::env::current_dir()?;
+    let worker = PythonWorker::new(&work_dir, work_dir.join(".veri").join("cache"));
+    
+    // Build pytest arguments from CLI
+    let mut pytest_args = Vec::new();
+    
+    // Add basic flags
+    if cli.verbose > 0 {
+        for _ in 0..cli.verbose {
+            pytest_args.push("-v".to_string());
+        }
+    }
+    if cli.quiet {
+        pytest_args.push("-q".to_string());
+    }
+    if cli.no_capture {
+        pytest_args.push("-s".to_string());
+    }
+    if cli.exitfirst {
+        pytest_args.push("-x".to_string());
+    }
+    if let Some(maxfail) = cli.maxfail {
+        pytest_args.push("--maxfail".to_string());
+        pytest_args.push(maxfail.to_string());
+    }
+    
+    // Add filters
+    if let Some(keyword) = &cli.keyword {
+        pytest_args.push("-k".to_string());
+        pytest_args.push(keyword.clone());
+    }
+    if let Some(marker) = &cli.marker {
+        pytest_args.push("-m".to_string());
+        pytest_args.push(marker.clone());
+    }
+    
+    // Add output options
+    if let Some(junit_xml) = &cli.junit_xml {
+        pytest_args.push("--junit-xml".to_string());
+        pytest_args.push(junit_xml.to_string_lossy().to_string());
+    }
+    
+    // Add parallel workers
+    if let Some(workers) = &cli.workers {
+        if workers != "1" {
+            pytest_args.push("-n".to_string());
+            pytest_args.push(workers.clone());
+        }
+    }
+    
+    // Add paths
+    pytest_args.extend(cli.paths.clone());
+    
+    // If no paths and not --all, run current directory
+    if pytest_args.is_empty() && !cli.all {
+        pytest_args.push(".".to_string());
+    }
+    
+    // Execute via Python worker
+    let exit_code = worker.run_pytest_engine(&pytest_args)?;
+    
+    match exit_code {
+        0 => Ok(ExitCode::Success),
+        1 => Ok(ExitCode::TestFailure),
+        2 => Ok(ExitCode::Interrupted),
+        4 => Ok(ExitCode::UsageError),
+        _ => Ok(ExitCode::InternalError),
+    }
+}
+
+fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
+    println!("🚀 Using veri engine for maximum speed");
+    
+    let work_dir = std::env::current_dir()?;
+    let cache_dir = work_dir.join(".veri").join("cache");
+    let worker = PythonWorker::new(&work_dir, &cache_dir);
+    
+    // Check if we need to collect tests (first run or --all)
+    let needs_collection = cli.all || !worker.has_valid_cache();
+    
+    if needs_collection {
+        println!("📋 Collecting tests...");
+        
+        // Determine paths to collect
+        let collection_paths = if !cli.paths.is_empty() {
+            cli.paths.clone()
+        } else {
+            vec![] // Empty means collect all
+        };
+        
+        // Collect tests
+        let tests_index = worker.collect_tests(&collection_paths)?;
+        
+        println!("✅ Collected {} tests", tests_index.tests.len());
+        
+        if !tests_index.collection_errors.is_empty() {
+            println!("⚠️  {} collection errors encountered", tests_index.collection_errors.len());
+            for error in &tests_index.collection_errors {
+                eprintln!("  {}: {}", error.path, error.message);
+            }
+        }
+        
+        // If this was just collection (--all with no other action), we're done
+        if cli.all && cli.paths.is_empty() && !should_run_tests(cli) {
+            return Ok(ExitCode::Success);
+        }
+    }
+    
+    // Load collected tests
+    let tests_index = worker.collect_tests(&cli.paths)?;
+    
+    // Determine which tests to run
+    let nodeids_to_run = select_tests_to_run(&tests_index, cli, config)?;
+    
+    if nodeids_to_run.is_empty() {
+        println!("🎯 No tests selected to run");
+        return Ok(ExitCode::Success);
+    }
+    
+    println!("🎯 Running {} selected tests", nodeids_to_run.len());
+    
+    // Configure test run options
+    let run_options = TestRunOptions {
+        verbose: cli.verbose > 0,
+        quiet: cli.quiet,
+        no_capture: cli.no_capture,
+        exitfirst: cli.exitfirst,
+        maxfail: cli.maxfail,
+        junit_xml: cli.junit_xml.clone(),
+        workers: cli.workers.clone(),
+    };
+    
+    // Execute tests
+    let exit_code = worker.run_tests(&nodeids_to_run, &run_options)?;
+    
+    match exit_code {
+        0 => Ok(ExitCode::Success),
+        1 => Ok(ExitCode::TestFailure),
+        2 => Ok(ExitCode::Interrupted),
+        4 => Ok(ExitCode::UsageError),
+        _ => Ok(ExitCode::InternalError),
+    }
+}
+
+fn should_run_tests(cli: &Cli) -> bool {
+    // Check if any flags indicate we should actually run tests, not just collect
+    cli.keyword.is_some() 
+        || cli.marker.is_some() 
+        || cli.last_failed 
+        || !cli.paths.is_empty()
+        || cli.watch
+}
+
+fn select_tests_to_run(
+    tests_index: &veri_core::python_worker::TestsIndex,
+    cli: &Cli,
+    _config: &Config,
+) -> Result<Vec<String>> {
+    let mut selected = Vec::new();
+    
+    for test in &tests_index.tests {
+        let mut include = true;
+        
+        // Apply keyword filter
+        if let Some(keyword) = &cli.keyword {
+            include &= test.nodeid.contains(keyword) || test.function.contains(keyword);
+        }
+        
+        // Apply marker filter
+        if let Some(marker) = &cli.marker {
+            include &= test.markers.contains(marker);
+        }
+        
+        // Apply path filter
+        if !cli.paths.is_empty() {
+            include &= cli.paths.iter().any(|path| {
+                test.path.starts_with(path) || test.nodeid.contains(path)
+            });
+        }
+        
+        // TODO: Apply last-failed filter (needs failure tracking)
+        // TODO: Apply impact-aware selection (needs import graph analysis)
+        
+        if include {
+            selected.push(test.nodeid.clone());
+        }
+    }
+    
+    Ok(selected)
 }
 
 fn init_logging(cli: &Cli) -> Result<()> {

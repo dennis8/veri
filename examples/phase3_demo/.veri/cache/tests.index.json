@@ -1,0 +1,378 @@
+{
+  "version": "0.1.0",
+  "generated_at": "2025-08-29T11:42:38.931909Z",
+  "python_version": "3.13.3",
+  "pytest_version": "8.4.1",
+  "tests": [
+    {
+      "nodeid": "examples/phase3_demo/test_basic.py::test_addition",
+      "path": "test_basic.py",
+      "line": 6,
+      "function": "test_addition",
+      "class": null,
+      "module": "test_basic",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_basic.py::test_subtraction",
+      "path": "test_basic.py",
+      "line": 12,
+      "function": "test_subtraction",
+      "class": null,
+      "module": "test_basic",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_basic.py::test_large_numbers",
+      "path": "test_basic.py",
+      "line": 18,
+      "function": "test_large_numbers",
+      "class": null,
+      "module": "test_basic",
+      "markers": [
+        "slow"
+      ],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_basic.py::test_negative_numbers",
+      "path": "test_basic.py",
+      "line": 24,
+      "function": "test_negative_numbers",
+      "class": null,
+      "module": "test_basic",
+      "markers": [
+        "edge_case"
+      ],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_basic.py::TestCalculatorClass::test_class_addition",
+      "path": "test_basic.py",
+      "line": 33,
+      "function": "test_class_addition",
+      "class": "TestCalculatorClass",
+      "module": "test_basic",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_basic.py::TestCalculatorClass::test_class_complex",
+      "path": "test_basic.py",
+      "line": 37,
+      "function": "test_class_complex",
+      "class": "TestCalculatorClass",
+      "module": "test_basic",
+      "markers": [
+        "slow"
+      ],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[2-3-5]",
+      "path": "test_calculator.py",
+      "line": 6,
+      "function": "test_addition_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "2-3-5"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[0-0-0]",
+      "path": "test_calculator.py",
+      "line": 6,
+      "function": "test_addition_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "0-0-0"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[-1-1-0]",
+      "path": "test_calculator.py",
+      "line": 6,
+      "function": "test_addition_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "-1-1-0"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[100-200-300]",
+      "path": "test_calculator.py",
+      "line": 6,
+      "function": "test_addition_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "100-200-300"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[2-3-6]",
+      "path": "test_calculator.py",
+      "line": 16,
+      "function": "test_multiplication_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "2-3-6"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[5-4-20]",
+      "path": "test_calculator.py",
+      "line": 16,
+      "function": "test_multiplication_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "5-4-20"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[0-100-0]",
+      "path": "test_calculator.py",
+      "line": 16,
+      "function": "test_multiplication_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "0-100-0"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[-2-3--6]",
+      "path": "test_calculator.py",
+      "line": 16,
+      "function": "test_multiplication_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "-2-3--6"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_division_parametrized[6-2-3.0]",
+      "path": "test_calculator.py",
+      "line": 26,
+      "function": "test_division_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "6-2-3.0"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_division_parametrized[10-5-2.0]",
+      "path": "test_calculator.py",
+      "line": 26,
+      "function": "test_division_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "10-5-2.0"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_division_parametrized[7-2-3.5]",
+      "path": "test_calculator.py",
+      "line": 26,
+      "function": "test_division_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "7-2-3.5"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_division_by_zero",
+      "path": "test_calculator.py",
+      "line": 35,
+      "function": "test_division_by_zero",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    }
+  ],
+  "collection_errors": []
+}
