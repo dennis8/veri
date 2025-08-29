@@ -1,4 +1,9 @@
 pub mod config;
+pub mod schemas;
+pub mod cache;
+
+#[cfg(test)]
+mod schema_tests;
 
 pub fn hello() -> &'static str {
     "veri-core: hello"

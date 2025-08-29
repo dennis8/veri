@@ -1,0 +1,202 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://veri.dev/schemas/timings.json",
+    "title": "Test Timings",
+    "description": "Historical test execution timing data",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Schema version"
+        },
+        "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this data was generated"
+        },
+        "runs": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/timing_run"
+            },
+            "description": "Array of timing runs, most recent first"
+        },
+        "aggregated_timings": {
+            "type": "object",
+            "patternProperties": {
+                ".*": {
+                    "$ref": "#/$defs/aggregated_timing"
+                }
+            },
+            "description": "Aggregated timing statistics per test"
+        }
+    },
+    "required": [
+        "version",
+        "generated_at",
+        "runs",
+        "aggregated_timings"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "timing_run": {
+            "type": "object",
+            "properties": {
+                "run_id": {
+                    "type": "string",
+                    "description": "Unique identifier for this run"
+                },
+                "started_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When this run started"
+                },
+                "finished_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When this run finished"
+                },
+                "workers": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of workers used"
+                },
+                "test_timings": {
+                    "type": "object",
+                    "patternProperties": {
+                        ".*": {
+                            "$ref": "#/$defs/test_timing"
+                        }
+                    },
+                    "description": "Individual test timings for this run"
+                }
+            },
+            "required": [
+                "run_id",
+                "started_at",
+                "finished_at",
+                "workers",
+                "test_timings"
+            ],
+            "additionalProperties": false
+        },
+        "test_timing": {
+            "type": "object",
+            "properties": {
+                "nodeid": {
+                    "type": "string",
+                    "description": "Test nodeid"
+                },
+                "setup_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Setup time in seconds"
+                },
+                "call_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Call time in seconds"
+                },
+                "teardown_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Teardown time in seconds"
+                },
+                "total_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Total time in seconds"
+                },
+                "outcome": {
+                    "type": "string",
+                    "enum": [
+                        "passed",
+                        "failed",
+                        "skipped",
+                        "error"
+                    ],
+                    "description": "Test outcome"
+                },
+                "worker_id": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Worker that executed this test"
+                }
+            },
+            "required": [
+                "nodeid",
+                "setup_duration",
+                "call_duration",
+                "teardown_duration",
+                "total_duration",
+                "outcome"
+            ],
+            "additionalProperties": false
+        },
+        "aggregated_timing": {
+            "type": "object",
+            "properties": {
+                "nodeid": {
+                    "type": "string",
+                    "description": "Test nodeid"
+                },
+                "run_count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of times this test has been run"
+                },
+                "avg_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Average duration in seconds"
+                },
+                "min_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Minimum duration in seconds"
+                },
+                "max_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Maximum duration in seconds"
+                },
+                "p50_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "50th percentile duration in seconds"
+                },
+                "p95_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "95th percentile duration in seconds"
+                },
+                "last_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Most recent duration in seconds"
+                },
+                "stability": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Stability score (1 - coefficient of variation)"
+                }
+            },
+            "required": [
+                "nodeid",
+                "run_count",
+                "avg_duration",
+                "min_duration",
+                "max_duration",
+                "p50_duration",
+                "p95_duration",
+                "last_duration",
+                "stability"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

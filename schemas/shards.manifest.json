@@ -1,0 +1,147 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://veri.dev/schemas/shards.manifest.json",
+    "title": "Shards Manifest",
+    "description": "CI sharding manifest for distributing tests across workers",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Schema version"
+        },
+        "format_version": {
+            "type": "string",
+            "const": "veri-shards@1",
+            "description": "Manifest format version"
+        },
+        "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this manifest was generated"
+        },
+        "total_shards": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Total number of shards"
+        },
+        "strategy": {
+            "type": "string",
+            "enum": [
+                "round_robin",
+                "bin_pack",
+                "timing_based"
+            ],
+            "description": "Sharding strategy used"
+        },
+        "estimated_duration": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Estimated total duration in seconds"
+        },
+        "shards": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/shard"
+            },
+            "description": "Array of shard definitions"
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {
+                "python_version": {
+                    "type": "string",
+                    "description": "Python version used for timing estimates"
+                },
+                "platform": {
+                    "type": "string",
+                    "description": "Platform used for timing estimates"
+                },
+                "cache_key": {
+                    "type": "string",
+                    "description": "Cache key for timing data"
+                }
+            },
+            "additionalProperties": true,
+            "description": "Additional metadata about shard generation"
+        }
+    },
+    "required": [
+        "version",
+        "format_version",
+        "generated_at",
+        "total_shards",
+        "strategy",
+        "estimated_duration",
+        "shards"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "shard": {
+            "type": "object",
+            "properties": {
+                "shard_id": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Zero-based shard identifier"
+                },
+                "estimated_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Estimated duration for this shard in seconds"
+                },
+                "test_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of tests in this shard"
+                },
+                "tests": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/shard_test"
+                    },
+                    "description": "Tests assigned to this shard"
+                }
+            },
+            "required": [
+                "shard_id",
+                "estimated_duration",
+                "test_count",
+                "tests"
+            ],
+            "additionalProperties": false
+        },
+        "shard_test": {
+            "type": "object",
+            "properties": {
+                "nodeid": {
+                    "type": "string",
+                    "description": "Test nodeid"
+                },
+                "estimated_duration": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Estimated duration for this test in seconds"
+                },
+                "priority": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Test priority (0 = highest, for failed tests)"
+                },
+                "markers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Test markers"
+                }
+            },
+            "required": [
+                "nodeid",
+                "estimated_duration",
+                "priority"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

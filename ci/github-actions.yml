@@ -1,4 +1,4 @@
-name: Veri CI (phase-0)
+name: Veri CI (phase-2)
 
 on: [push, pull_request]
 
@@ -36,6 +36,70 @@ jobs:
       
       - name: Test
         run: cargo test --workspace
+
+  schema-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install JSON Schema validator
+        run: npm install -g ajv-cli
+      
+      - name: Validate JSON Schemas
+        run: |
+          # Validate that all schemas are valid JSON Schema documents
+          for schema in schemas/*.json; do
+            echo "Validating schema: $schema"
+            ajv compile -s "$schema"
+          done
+      
+      - name: Test Schema Round-trip
+        run: |
+          # Create some test data and validate against schemas
+          cd schemas
+          
+          # Create test data for tests.index
+          cat > test_tests_index.json << 'EOF'
+          {
+            "version": "0.1.0",
+            "generated_at": "2024-01-01T00:00:00Z",
+            "python_version": "3.11.0",
+            "pytest_version": "7.4.0",
+            "tests": [
+              {
+                "nodeid": "test_example.py::test_function",
+                "path": "test_example.py",
+                "line": 10,
+                "function": "test_function",
+                "module": "test_example",
+                "markers": ["unit"],
+                "fixtures": []
+              }
+            ],
+            "collection_errors": []
+          }
+          EOF
+          
+          # Validate test data against schema
+          ajv validate -s tests.index.json -d test_tests_index.json --verbose
+          
+          # Create test data for event.jsonl
+          cat > test_event.jsonl << 'EOF'
+          {"t": "start", "ts": "2024-01-01T00:00:00Z", "run_id": "test-run", "veri_version": "0.1.0", "python_version": "3.11.0", "platform": "linux-x86_64", "workers": 4, "cache_key": "abc123"}
+          {"t": "plan", "ts": "2024-01-01T00:00:00Z", "run_id": "test-run", "total_tests": 10, "selected_tests": 5, "selection_reason": "impact analysis"}
+          {"t": "case", "ts": "2024-01-01T00:00:00Z", "run_id": "test-run", "nodeid": "test_example.py::test_function", "outcome": "passed", "duration": 0.1, "markers": []}
+          {"t": "summary", "ts": "2024-01-01T00:00:00Z", "run_id": "test-run", "total_duration": 1.0, "passed": 5, "failed": 0, "skipped": 0, "errors": 0, "exit_code": 0}
+          EOF
+          
+          # Validate each line of JSONL
+          while IFS= read -r line; do
+            echo "$line" | ajv validate -s event.jsonl.json --verbose
+          done < test_event.jsonl
 
   python-worker:
     runs-on: ubuntu-latest

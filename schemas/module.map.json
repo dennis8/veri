@@ -1,0 +1,116 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://veri.dev/schemas/module.map.json",
+    "title": "Module Map",
+    "description": "Mapping between file paths and Python module names",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Schema version"
+        },
+        "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this map was generated"
+        },
+        "modules": {
+            "type": "object",
+            "patternProperties": {
+                "^[^/\\\\]+": {
+                    "$ref": "#/$defs/module_info"
+                }
+            },
+            "description": "Map from file path to module information"
+        },
+        "packages": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/package_info"
+            },
+            "description": "Information about Python packages found"
+        }
+    },
+    "required": [
+        "version",
+        "generated_at",
+        "modules",
+        "packages"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "module_info": {
+            "type": "object",
+            "properties": {
+                "module_name": {
+                    "type": "string",
+                    "description": "Fully qualified Python module name"
+                },
+                "is_package": {
+                    "type": "boolean",
+                    "description": "Whether this module is a package (__init__.py)"
+                },
+                "is_namespace": {
+                    "type": "boolean",
+                    "description": "Whether this is a namespace package (PEP 420)"
+                },
+                "parent_package": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Parent package name if applicable"
+                },
+                "relative_path": {
+                    "type": "string",
+                    "description": "Relative path from project root"
+                },
+                "digest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$",
+                    "description": "SHA-256 digest of file content"
+                }
+            },
+            "required": [
+                "module_name",
+                "is_package",
+                "is_namespace",
+                "relative_path",
+                "digest"
+            ],
+            "additionalProperties": false
+        },
+        "package_info": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Package name"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Package directory path"
+                },
+                "is_namespace": {
+                    "type": "boolean",
+                    "description": "Whether this is a namespace package"
+                },
+                "subpackages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Names of direct subpackages"
+                }
+            },
+            "required": [
+                "name",
+                "path",
+                "is_namespace",
+                "subpackages"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

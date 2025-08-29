@@ -1,0 +1,93 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://veri.dev/schemas/markers.index.json",
+    "title": "Markers Index",
+    "description": "Index of pytest markers and their usage",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Schema version"
+        },
+        "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this index was generated"
+        },
+        "markers": {
+            "type": "object",
+            "patternProperties": {
+                ".*": {
+                    "$ref": "#/$defs/marker_info"
+                }
+            },
+            "description": "Map from marker name to marker information"
+        },
+        "test_markers": {
+            "type": "object",
+            "patternProperties": {
+                ".*": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "description": "Map from test nodeid to list of marker names"
+        }
+    },
+    "required": [
+        "version",
+        "generated_at",
+        "markers",
+        "test_markers"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "marker_info": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Marker name"
+                },
+                "description": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Marker description if available"
+                },
+                "registered": {
+                    "type": "boolean",
+                    "description": "Whether marker is officially registered"
+                },
+                "usage_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of tests using this marker"
+                },
+                "first_seen": {
+                    "type": "string",
+                    "description": "First file/test where this marker was encountered"
+                },
+                "common_args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Common arguments used with this marker"
+                }
+            },
+            "required": [
+                "name",
+                "registered",
+                "usage_count",
+                "first_seen",
+                "common_args"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

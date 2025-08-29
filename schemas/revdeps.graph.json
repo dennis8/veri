@@ -1,0 +1,101 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://veri.dev/schemas/revdeps.graph.json",
+    "title": "Reverse Dependencies Graph",
+    "description": "Reverse dependency mapping for efficient impact analysis",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Schema version"
+        },
+        "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this graph was generated"
+        },
+        "reverse_deps": {
+            "type": "object",
+            "patternProperties": {
+                ".*": {
+                    "$ref": "#/$defs/module_reverse_deps"
+                }
+            },
+            "description": "Map from module name to its reverse dependencies"
+        }
+    },
+    "required": [
+        "version",
+        "generated_at",
+        "reverse_deps"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "module_reverse_deps": {
+            "type": "object",
+            "properties": {
+                "direct_dependents": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Modules that directly import this module"
+                },
+                "transitive_dependents": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "All modules that transitively depend on this module"
+                },
+                "test_dependents": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Test modules that depend on this module"
+                },
+                "uncertain_dependents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/uncertain_dependent"
+                    },
+                    "description": "Modules that might depend on this one due to dynamic imports"
+                }
+            },
+            "required": [
+                "direct_dependents",
+                "transitive_dependents",
+                "test_dependents",
+                "uncertain_dependents"
+            ],
+            "additionalProperties": false
+        },
+        "uncertain_dependent": {
+            "type": "object",
+            "properties": {
+                "module": {
+                    "type": "string",
+                    "description": "Module that might depend on the target"
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why this dependency is uncertain"
+                },
+                "confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Confidence level (0-1) for this dependency"
+                }
+            },
+            "required": [
+                "module",
+                "reason",
+                "confidence"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

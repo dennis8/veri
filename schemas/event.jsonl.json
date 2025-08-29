@@ -1,0 +1,291 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://veri.dev/schemas/event.jsonl.json",
+    "title": "Event JSONL",
+    "description": "Schema for individual event lines in JSONL stream",
+    "type": "object",
+    "properties": {
+        "t": {
+            "type": "string",
+            "enum": [
+                "start",
+                "plan",
+                "case",
+                "summary",
+                "log"
+            ],
+            "description": "Event type"
+        },
+        "ts": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp"
+        },
+        "run_id": {
+            "type": "string",
+            "description": "Unique run identifier"
+        }
+    },
+    "required": [
+        "t",
+        "ts",
+        "run_id"
+    ],
+    "allOf": [
+        {
+            "if": {
+                "properties": {
+                    "t": {
+                        "const": "start"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "t": true,
+                    "ts": true,
+                    "run_id": true,
+                    "veri_version": {
+                        "type": "string",
+                        "description": "veri version"
+                    },
+                    "python_version": {
+                        "type": "string",
+                        "description": "Python version"
+                    },
+                    "platform": {
+                        "type": "string",
+                        "description": "Platform identifier"
+                    },
+                    "workers": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Number of workers"
+                    },
+                    "cache_key": {
+                        "type": "string",
+                        "description": "Cache key hash"
+                    }
+                },
+                "required": [
+                    "veri_version",
+                    "python_version",
+                    "platform",
+                    "workers",
+                    "cache_key"
+                ],
+                "additionalProperties": false
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "t": {
+                        "const": "plan"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "t": true,
+                    "ts": true,
+                    "run_id": true,
+                    "total_tests": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Total number of tests discovered"
+                    },
+                    "selected_tests": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Number of tests selected to run"
+                    },
+                    "selection_reason": {
+                        "type": "string",
+                        "description": "Why these tests were selected"
+                    },
+                    "changed_files": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Files that changed and triggered selection"
+                    },
+                    "impacted_modules": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Modules impacted by changes"
+                    }
+                },
+                "required": [
+                    "total_tests",
+                    "selected_tests",
+                    "selection_reason"
+                ],
+                "additionalProperties": false
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "t": {
+                        "const": "case"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "t": true,
+                    "ts": true,
+                    "run_id": true,
+                    "nodeid": {
+                        "type": "string",
+                        "description": "Test nodeid"
+                    },
+                    "outcome": {
+                        "type": "string",
+                        "enum": [
+                            "passed",
+                            "failed",
+                            "skipped",
+                            "error"
+                        ],
+                        "description": "Test outcome"
+                    },
+                    "duration": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "Test duration in seconds"
+                    },
+                    "worker_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Worker that executed this test"
+                    },
+                    "longrepr": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Long representation of failure/error"
+                    },
+                    "markers": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Test markers"
+                    }
+                },
+                "required": [
+                    "nodeid",
+                    "outcome",
+                    "duration"
+                ],
+                "additionalProperties": false
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "t": {
+                        "const": "summary"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "t": true,
+                    "ts": true,
+                    "run_id": true,
+                    "total_duration": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "Total run duration in seconds"
+                    },
+                    "passed": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Number of passed tests"
+                    },
+                    "failed": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Number of failed tests"
+                    },
+                    "skipped": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Number of skipped tests"
+                    },
+                    "errors": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Number of error tests"
+                    },
+                    "exit_code": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 4,
+                        "description": "Exit code for this run"
+                    }
+                },
+                "required": [
+                    "total_duration",
+                    "passed",
+                    "failed",
+                    "skipped",
+                    "errors",
+                    "exit_code"
+                ],
+                "additionalProperties": false
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "t": {
+                        "const": "log"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "t": true,
+                    "ts": true,
+                    "run_id": true,
+                    "level": {
+                        "type": "string",
+                        "enum": [
+                            "DEBUG",
+                            "INFO",
+                            "WARNING",
+                            "ERROR"
+                        ],
+                        "description": "Log level"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Log message"
+                    },
+                    "nodeid": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Related test nodeid if applicable"
+                    }
+                },
+                "required": [
+                    "level",
+                    "message"
+                ],
+                "additionalProperties": false
+            }
+        }
+    ]
+}

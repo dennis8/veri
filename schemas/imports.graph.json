@@ -1,0 +1,178 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://veri.dev/schemas/imports.graph.json",
+    "title": "Imports Graph",
+    "description": "Directed graph of import dependencies between modules",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Schema version"
+        },
+        "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this graph was generated"
+        },
+        "edges": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/import_edge"
+            },
+            "description": "Import dependencies (from -> to edges)"
+        },
+        "dynamic_imports": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/dynamic_import"
+            },
+            "description": "Dynamic imports that couldn't be statically resolved"
+        },
+        "unresolved_imports": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/unresolved_import"
+            },
+            "description": "Imports that couldn't be resolved to local modules"
+        }
+    },
+    "required": [
+        "version",
+        "generated_at",
+        "edges"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "import_edge": {
+            "type": "object",
+            "properties": {
+                "from_module": {
+                    "type": "string",
+                    "description": "Source module name"
+                },
+                "to_module": {
+                    "type": "string",
+                    "description": "Target module name"
+                },
+                "import_type": {
+                    "type": "string",
+                    "enum": [
+                        "import",
+                        "from",
+                        "relative"
+                    ],
+                    "description": "Type of import statement"
+                },
+                "line": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Line number where import occurs"
+                },
+                "names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Specific names imported (for 'from' imports)"
+                },
+                "alias": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Import alias if used"
+                },
+                "is_conditional": {
+                    "type": "boolean",
+                    "description": "Whether import is inside conditional block"
+                }
+            },
+            "required": [
+                "from_module",
+                "to_module",
+                "import_type",
+                "line",
+                "names",
+                "is_conditional"
+            ],
+            "additionalProperties": false
+        },
+        "dynamic_import": {
+            "type": "object",
+            "properties": {
+                "from_module": {
+                    "type": "string",
+                    "description": "Module containing the dynamic import"
+                },
+                "line": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Line number of dynamic import"
+                },
+                "function": {
+                    "type": "string",
+                    "enum": [
+                        "importlib.import_module",
+                        "__import__",
+                        "exec",
+                        "eval"
+                    ],
+                    "description": "Function used for dynamic import"
+                },
+                "argument": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Import argument if statically determinable"
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why this import couldn't be resolved statically"
+                }
+            },
+            "required": [
+                "from_module",
+                "line",
+                "function",
+                "reason"
+            ],
+            "additionalProperties": false
+        },
+        "unresolved_import": {
+            "type": "object",
+            "properties": {
+                "from_module": {
+                    "type": "string",
+                    "description": "Module containing the unresolved import"
+                },
+                "import_name": {
+                    "type": "string",
+                    "description": "Name that couldn't be resolved"
+                },
+                "line": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Line number of import"
+                },
+                "is_third_party": {
+                    "type": "boolean",
+                    "description": "Whether this appears to be a third-party import"
+                },
+                "is_builtin": {
+                    "type": "boolean",
+                    "description": "Whether this is a Python builtin module"
+                }
+            },
+            "required": [
+                "from_module",
+                "import_name",
+                "line",
+                "is_third_party",
+                "is_builtin"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

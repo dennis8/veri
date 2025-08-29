@@ -8,6 +8,7 @@ use cli::{Cli, Commands, ExitCode};
 use log::info;
 use std::process;
 use veri_core::config::Config;
+use veri_core::cache::{CacheKey, compute_config_digest};
 
 fn main() {
     let exit_code = match run() {
@@ -108,17 +109,10 @@ fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
     println!("=== veri Execution Plan ===");
     println!();
     
-    // Cache key components (placeholder for now)
-    println!("Cache key components:");
-    println!("  python_version: {} (placeholder)", "3.11");
-    println!("  platform: {}", std::env::consts::OS);
-    println!("  veri_version: {}", env!("CARGO_PKG_VERSION"));
-    println!("  uv_lock_digest: {} (placeholder)", "abc123");
-    println!("  site_packages_digest: {} (placeholder)", "def456");
-    println!("  pytest_version: {} (placeholder)", "7.4.0");
-    println!("  plugins: {} (placeholder)", "[]");
-    println!("  conftest_digests: {} (placeholder)", "{}");
-    println!("  veri_config_digest: {} (placeholder)", "ghi789");
+    // Cache key components - now with real implementation
+    let config_digest = compute_config_digest(config)?;
+    let cache_key = CacheKey::from_environment(config_digest)?;
+    cache_key.print_explanation();
     println!();
     
     // Configuration summary

@@ -1,0 +1,160 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://veri.dev/schemas/tests.index.json",
+    "title": "Tests Index",
+    "description": "Index of all collected test nodeids with metadata",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Schema version"
+        },
+        "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this index was generated"
+        },
+        "python_version": {
+            "type": "string",
+            "description": "Python version used for collection"
+        },
+        "pytest_version": {
+            "type": "string",
+            "description": "pytest version used for collection"
+        },
+        "tests": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/test_node"
+            },
+            "description": "Array of all collected test nodes"
+        },
+        "collection_errors": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/collection_error"
+            },
+            "description": "Any errors encountered during collection"
+        }
+    },
+    "required": [
+        "version",
+        "generated_at",
+        "python_version",
+        "pytest_version",
+        "tests"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "test_node": {
+            "type": "object",
+            "properties": {
+                "nodeid": {
+                    "type": "string",
+                    "description": "Unique test identifier (pytest nodeid format)"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Relative path to test file"
+                },
+                "line": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Line number where test is defined"
+                },
+                "function": {
+                    "type": "string",
+                    "description": "Test function/method name"
+                },
+                "class": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Test class name if applicable"
+                },
+                "module": {
+                    "type": "string",
+                    "description": "Python module path"
+                },
+                "markers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Applied pytest markers"
+                },
+                "fixtures": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Required fixture names"
+                },
+                "parametrize": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "properties": {
+                        "params": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "description": "Parametrization info if applicable"
+                }
+            },
+            "required": [
+                "nodeid",
+                "path",
+                "line",
+                "function",
+                "module",
+                "markers",
+                "fixtures"
+            ],
+            "additionalProperties": false
+        },
+        "collection_error": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "File path where error occurred"
+                },
+                "line": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 1,
+                    "description": "Line number if applicable"
+                },
+                "error_type": {
+                    "type": "string",
+                    "description": "Type of error (e.g., SyntaxError, ImportError)"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Error message"
+                }
+            },
+            "required": [
+                "path",
+                "error_type",
+                "message"
+            ],
+            "additionalProperties": false
+        }
+    }
+}
