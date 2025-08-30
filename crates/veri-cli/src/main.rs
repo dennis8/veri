@@ -18,6 +18,7 @@ use veri_core::coverage::{CoverageCollector, CoverageConfig, CoverageFormat};
 use veri_core::watch::{WatchSession, WatchConfig};
 use veri_core::sharder::{TestSharder, SharderConfig};
 use veri_core::event_stream::{CIReporter, generate_run_id};
+use veri_core::diagnostics::{DiagnosticReporter, VeriDiagnostic};
 
 fn main() {
     let exit_code = match run() {
@@ -176,6 +177,12 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     
     let worker = PythonWorker::new(&work_dir, &cache_dir);
     
+    // Initialize diagnostics reporter
+    let mut diagnostics = DiagnosticReporter::new(cli.quiet);
+    
+    // Check Python environment
+    worker.check_environment(&mut diagnostics)?;
+    
     // Check if we need to collect tests (first run or --all)
     let needs_collection = cli.all || !worker.has_valid_cache();
     
@@ -191,6 +198,9 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
         
         // Collect tests
         let tests_index = worker.collect_tests(&collection_paths)?;
+        
+        // Check for collection errors
+        worker.check_collection_errors(&tests_index, &mut diagnostics);
         
         println!("✅ Collected {} tests", tests_index.tests.len());
         
@@ -232,6 +242,14 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
         }
     };
     
+    // Report any diagnostics from collection phase
+    diagnostics.report_all()?;
+    
+    // If there were critical errors, exit early
+    if diagnostics.has_errors() {
+        return Ok(ExitCode::InternalError);
+    }
+    
     // Determine which tests to run using impact analysis
     let nodeids_to_run = select_tests_to_run(
         &tests_index, 
@@ -243,8 +261,14 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     )?;
     
     if nodeids_to_run.is_empty() {
-        println!("🎯 No tests selected to run");
-        return Ok(ExitCode::Success);
+        let mut diagnostics = DiagnosticReporter::new(cli.quiet);
+        diagnostics.add(VeriDiagnostic::no_tests_found(
+            cli.keyword.as_deref(),
+            cli.marker.as_deref(),
+            &cli.paths,
+        ));
+        diagnostics.report_all()?;
+        return Ok(ExitCode::UsageError);
     }
     
     println!("🎯 Running {} selected tests", nodeids_to_run.len());
@@ -401,15 +425,41 @@ fn run_watch_mode(cli: &Cli, config: &Config, work_dir: &std::path::Path, cache_
         // Build import graphs
         println!("🔍 Building import graph...");
         let mut graph_builder = ImportGraphBuilder::new(work_dir, cache_dir);
+        let mut diagnostics = DiagnosticReporter::new(false);
+        
         match graph_builder.build_graphs() {
             Ok((imports_graph, _revdeps_graph, _module_map)) => {
                 println!("✅ Built import graph with {} edges", imports_graph.edges.len());
+                
+                // Check for potential issues that might affect analysis
+                if !imports_graph.unresolved_imports.is_empty() {
+                    let missing_files: Vec<String> = imports_graph.unresolved_imports
+                        .iter()
+                        .map(|u| format!("{} (from {})", u.import_name, u.from_module))
+                        .collect();
+                    
+                    diagnostics.add(VeriDiagnostic::ImportGraphBuildFailed {
+                        error_count: imports_graph.unresolved_imports.len(),
+                        syntax_errors: Vec::new(),
+                        missing_files,
+                    });
+                }
             }
             Err(e) => {
+                // Create a diagnostic for graph build failure
+                diagnostics.add(VeriDiagnostic::ImportGraphBuildFailed {
+                    error_count: 1,
+                    syntax_errors: vec![e.to_string()],
+                    missing_files: Vec::new(),
+                });
+                
                 println!("⚠️  Failed to build import graph: {}", e);
                 println!("   Watch mode will run all tests when files change");
             }
         }
+        
+        // Report any diagnostics
+        diagnostics.report_all()?;
     } else {
         println!("✅ Using cached test collection and import graph");
     }
@@ -526,10 +576,32 @@ fn select_tests_to_run(
         imports_graph,
     )?;
     
-    // Print selection summary
+    // Print selection summary and diagnostics
+    let mut diagnostics = DiagnosticReporter::new(cli.quiet);
+    
     if selection.should_broaden {
-        println!("⚠️  Selection broadened: {}", selection.broaden_reason.as_deref().unwrap_or("Unknown"));
+        let original_percentage = (selection.selected_nodeids.len() as f64 / selection.total_tests as f64) * 100.0;
+        let planner_config = PlannerConfig::default();
+        
+        diagnostics.add(VeriDiagnostic::selection_broadened(
+            selection.selected_nodeids.len(),
+            selection.total_tests,
+            planner_config.broaden_threshold,
+            selection.broaden_reason.clone().unwrap_or_else(|| "Unknown".to_string()),
+        ));
     }
+    
+    // Check for dynamic imports and add diagnostics
+    for dynamic_import in &imports_graph.dynamic_imports {
+        diagnostics.add(VeriDiagnostic::dynamic_import_detected(
+            &dynamic_import.from_module,
+            &dynamic_import.reason,
+            selection.should_broaden,
+        ));
+    }
+    
+    // Report diagnostics (warnings only unless there are errors)
+    diagnostics.report_all()?;
     
     // Print explanation if verbose
     if cli.verbose > 0 || cli.explain {
@@ -1033,6 +1105,32 @@ fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
     println!("  3. conftest.py changed → run tests in that directory scope");
     println!("  4. Dynamic import detected → broaden selection for safety");
     println!("  5. Selection > 60% of total → run all tests");
+    
+    // Performance insights
+    println!();
+    println!("Performance Insights:");
+    if cli.all {
+        println!("  • Full test run - no impact analysis overhead");
+    } else {
+        println!("  • Impact analysis will save time on subsequent runs");
+        println!("  • First run builds cache (may be slower)");
+        println!("  • Watch mode provides sub-second feedback");
+    }
+    
+    // Common troubleshooting
+    println!();
+    println!("Common Issues & Solutions:");
+    println!("  • No tests found: Check test file naming (test_*.py or *_test.py)");
+    println!("  • Tests not selected: Use -v to see selection reasoning");
+    println!("  • Import errors: Run with --engine pytest to bypass analysis");
+    println!("  • Slow performance: Check for syntax errors preventing caching");
+    
+    // Help links
+    println!();
+    println!("Documentation:");
+    println!("  • Full guide: https://docs.veri.dev/");
+    println!("  • Troubleshooting: https://docs.veri.dev/troubleshooting");
+    println!("  • Configuration: https://docs.veri.dev/config");
     
     Ok(())
 }

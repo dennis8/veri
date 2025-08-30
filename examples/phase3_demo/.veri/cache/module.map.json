@@ -1,23 +1,7 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-08-30T08:30:52.818745700+00:00",
+  "generated_at": "2025-08-30T09:53:39.486459300+00:00",
   "modules": {
-    "test_basic.py": {
-      "module_name": "test_basic",
-      "is_package": false,
-      "is_namespace": false,
-      "parent_package": null,
-      "relative_path": "test_basic.py",
-      "digest": "f3b9270876e546c4dde54822110148a6fc281f8b5e0614cf260f0547791a69aa"
-    },
-    "calculator.py": {
-      "module_name": "calculator",
-      "is_package": false,
-      "is_namespace": false,
-      "parent_package": null,
-      "relative_path": "calculator.py",
-      "digest": "27d43b22a21d5e0657d6a85e09b22e8562e808982a70bc1fbf83c7735620774c"
-    },
     "conftest.py": {
       "module_name": "conftest",
       "is_package": false,
@@ -26,13 +10,45 @@
       "relative_path": "conftest.py",
       "digest": "7ace5556321eec9b80156a3f337f101629d8aa9a14c7e85cb1d048b81f1c97b0"
     },
+    "test_basic.py": {
+      "module_name": "test_basic",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": null,
+      "relative_path": "test_basic.py",
+      "digest": "f3b9270876e546c4dde54822110148a6fc281f8b5e0614cf260f0547791a69aa"
+    },
+    "test_phase9_demo.py": {
+      "module_name": "test_phase9_demo",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": null,
+      "relative_path": "test_phase9_demo.py",
+      "digest": "62c9b95a5c58141ab57eac5d04c7a683a7abcc24b974af9eaa9cb315007ee98f"
+    },
+    "test_syntax_error.py": {
+      "module_name": "test_syntax_error",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": null,
+      "relative_path": "test_syntax_error.py",
+      "digest": "b90b2fcdc77ccab7effcd2651e7009219d359ae7b1b3a2afb617c6c587af9463"
+    },
     "test_calculator.py": {
       "module_name": "test_calculator",
       "is_package": false,
       "is_namespace": false,
       "parent_package": null,
       "relative_path": "test_calculator.py",
-      "digest": "bb4a7aa98d984f0c3200da0ecd87aaed43fea817b82a215e7532b5f0f58badb2"
+      "digest": "2d1b9a89d7d3e03489b5f93d5013e8eb1e456781062528f34a635388c56a7909"
+    },
+    "calculator.py": {
+      "module_name": "calculator",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": null,
+      "relative_path": "calculator.py",
+      "digest": "e20da417f0d5be67312022ecd7da56a863cd7d3ac935ae1333bc06ff1d87c1c7"
     }
   },
   "packages": []

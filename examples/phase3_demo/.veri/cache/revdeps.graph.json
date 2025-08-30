@@ -1,7 +1,25 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-08-30T08:30:53.400047700+00:00",
+  "generated_at": "2025-08-30T09:53:40.101675200+00:00",
   "reverse_deps": {
+    "test_basic": {
+      "direct_dependents": [],
+      "transitive_dependents": [],
+      "test_dependents": [],
+      "uncertain_dependents": []
+    },
+    "test_syntax_error": {
+      "direct_dependents": [],
+      "transitive_dependents": [],
+      "test_dependents": [],
+      "uncertain_dependents": []
+    },
+    "test_calculator": {
+      "direct_dependents": [],
+      "transitive_dependents": [],
+      "test_dependents": [],
+      "uncertain_dependents": []
+    },
     "conftest": {
       "direct_dependents": [],
       "transitive_dependents": [],
@@ -11,25 +29,22 @@
     "calculator": {
       "direct_dependents": [
         "test_basic",
+        "test_phase9_demo",
         "test_calculator"
       ],
       "transitive_dependents": [
         "test_basic",
-        "test_calculator"
+        "test_calculator",
+        "test_phase9_demo"
       ],
       "test_dependents": [
         "test_basic",
+        "test_phase9_demo",
         "test_calculator"
       ],
       "uncertain_dependents": []
     },
-    "test_calculator": {
-      "direct_dependents": [],
-      "transitive_dependents": [],
-      "test_dependents": [],
-      "uncertain_dependents": []
-    },
-    "test_basic": {
+    "test_phase9_demo": {
       "direct_dependents": [],
       "transitive_dependents": [],
       "test_dependents": [],

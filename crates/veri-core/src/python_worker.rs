@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::{Command, Output};
 use std::collections::HashMap;
+use crate::diagnostics::{VeriDiagnostic, DiagnosticReporter};
 
 /// Test collection data from tests.index.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,7 +125,9 @@ impl PythonWorker {
         let output = self.run_python_command(&args)
             .context("Failed to run Python worker for test collection")?;
 
-        if !output.status.success() {
+        // Check for fatal errors (exit codes other than 0 and 2)
+        let exit_code = output.status.code().unwrap_or(-1);
+        if !output.status.success() && exit_code != 2 {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow!("Test collection failed: {}", stderr));
         }
@@ -361,6 +364,89 @@ impl PythonWorker {
         }
         
         None
+    }
+
+    /// Check for Python environment issues and generate diagnostics
+    pub fn check_environment(&self, diagnostics: &mut DiagnosticReporter) -> Result<()> {
+        // Check if Python is available
+        let python_result = Command::new("python")
+            .arg("--version")
+            .output();
+            
+        match python_result {
+            Ok(output) => {
+                if !output.status.success() {
+                    diagnostics.add(VeriDiagnostic::PythonEnvironmentIssue {
+                        issue_type: crate::diagnostics::PythonIssueType::NotFound,
+                        current_python: "python not found".to_string(),
+                        suggestions: vec![
+                            "Install Python 3.8 or higher".to_string(),
+                            "Ensure Python is in your PATH".to_string(),
+                            "Try 'python3' if 'python' doesn't work".to_string(),
+                        ],
+                    });
+                } else {
+                    let version_output = String::from_utf8_lossy(&output.stdout);
+                    
+                    // Check for pytest availability
+                    let pytest_result = Command::new("python")
+                        .args(["-m", "pytest", "--version"])
+                        .output();
+                        
+                    if let Ok(pytest_output) = pytest_result {
+                        if !pytest_output.status.success() {
+                            diagnostics.add(VeriDiagnostic::PythonEnvironmentIssue {
+                                issue_type: crate::diagnostics::PythonIssueType::MissingDependencies(
+                                    vec!["pytest".to_string()]
+                                ),
+                                current_python: version_output.trim().to_string(),
+                                suggestions: vec![
+                                    "Install pytest: pip install pytest".to_string(),
+                                    "Or: uv add pytest".to_string(),
+                                    "Check virtual environment activation".to_string(),
+                                ],
+                            });
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                diagnostics.add(VeriDiagnostic::PythonEnvironmentIssue {
+                    issue_type: crate::diagnostics::PythonIssueType::NotFound,
+                    current_python: "python not accessible".to_string(),
+                    suggestions: vec![
+                        "Install Python 3.8 or higher".to_string(),
+                        "Ensure Python is in your PATH".to_string(),
+                        "Activate virtual environment if using one".to_string(),
+                    ],
+                });
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Check tests index for collection errors and generate diagnostics
+    pub fn check_collection_errors(&self, tests_index: &TestsIndex, diagnostics: &mut DiagnosticReporter) {
+        if !tests_index.collection_errors.is_empty() {
+            let syntax_errors = tests_index.collection_errors
+                .iter()
+                .filter(|e| e.error_type.contains("Syntax"))
+                .map(|e| e.message.clone())
+                .collect();
+            
+            let import_errors = tests_index.collection_errors
+                .iter()
+                .filter(|e| e.error_type.contains("Import") || e.error_type.contains("Module"))
+                .map(|e| e.path.clone())
+                .collect();
+            
+            diagnostics.add(VeriDiagnostic::ImportGraphBuildFailed {
+                error_count: tests_index.collection_errors.len(),
+                syntax_errors,
+                missing_files: import_errors,
+            });
+        }
     }
 }
 

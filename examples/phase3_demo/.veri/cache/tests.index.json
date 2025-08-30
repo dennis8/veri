@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-08-30T09:12:24.043690+00:00Z",
+  "generated_at": "2025-08-30T09:53:39.403339+00:00Z",
   "python_version": "3.13.3",
   "pytest_version": "8.4.1",
   "tests": [
@@ -398,7 +398,47 @@
       "markers": [],
       "fixtures": [],
       "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_phase9_demo.py::test_phase9_diagnostics_demo",
+      "path": "test_phase9_demo.py",
+      "line": 12,
+      "function": "test_phase9_diagnostics_demo",
+      "class": null,
+      "module": "test_phase9_demo",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_phase9_demo.py::test_import_analysis",
+      "path": "test_phase9_demo.py",
+      "line": 28,
+      "function": "test_import_analysis",
+      "class": null,
+      "module": "test_phase9_demo",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase3_demo/test_phase9_demo.py::test_error_recovery",
+      "path": "test_phase9_demo.py",
+      "line": 40,
+      "function": "test_error_recovery",
+      "class": null,
+      "module": "test_phase9_demo",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
     }
   ],
-  "collection_errors": []
+  "collection_errors": [
+    {
+      "path": "examples/phase3_demo/test_syntax_error.py",
+      "line": null,
+      "error_type": "CollectErrorRepr",
+      "message": "..\\..\\py_worker\\.venv\\Lib\\site-packages\\_pytest\\python.py:498: in importtestmodule\n    mod = import_path(\n..\\..\\py_worker\\.venv\\Lib\\site-packages\\_pytest\\pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n..\\..\\..\\..\\..\\AppData\\Roaming\\uv\\python\\cpython-3.13.3-windows-x86_64-none\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n<frozen importlib._bootstrap>:1387: in _gcd_import\n    ???\n<frozen importlib._bootstrap>:1360: in _find_and_load\n    ???\n<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked\n    ???\n<frozen importlib._bootstrap>:935: in _load_unlocked\n    ???\n..\\..\\py_worker\\.venv\\Lib\\site-packages\\_pytest\\assertion\\rewrite.py:177: in exec_module\n    source_stat, co = _rewrite_test(fn, self.config)\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\py_worker\\.venv\\Lib\\site-packages\\_pytest\\assertion\\rewrite.py:357: in _rewrite_test\n    tree = ast.parse(source, filename=strfn)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\..\\..\\..\\AppData\\Roaming\\uv\\python\\cpython-3.13.3-windows-x86_64-none\\Lib\\ast.py:54: in parse\n    return compile(source, filename, mode, flags,\nE     File \"C:\\Users\\dennisa\\Projecten\\Dennis\\veri\\examples\\phase3_demo\\test_syntax_error.py\", line 10\nE       print(\"Missing closing quote\nE             ^\nE   SyntaxError: unterminated string literal (detected at line 10)"
+    }
+  ]
 }

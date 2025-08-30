@@ -10,6 +10,7 @@ pub mod coverage;
 pub mod watch;
 pub mod sharder;
 pub mod event_stream;
+pub mod diagnostics;
 
 #[cfg(test)]
 mod schema_tests;

@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-08-30T09:12:24.045614+00:00Z",
+  "generated_at": "2025-08-30T09:53:39.405020+00:00Z",
   "markers": {
     "slow": {
       "name": "slow",
@@ -76,6 +76,9 @@
     "examples/phase3_demo/test_calculator.py::test_division_parametrized[7-2-3.5]": [
       "parametrize"
     ],
-    "examples/phase3_demo/test_calculator.py::test_division_by_zero": []
+    "examples/phase3_demo/test_calculator.py::test_division_by_zero": [],
+    "examples/phase3_demo/test_phase9_demo.py::test_phase9_diagnostics_demo": [],
+    "examples/phase3_demo/test_phase9_demo.py::test_import_analysis": [],
+    "examples/phase3_demo/test_phase9_demo.py::test_error_recovery": []
   }
 }

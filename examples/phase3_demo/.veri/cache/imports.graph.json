@@ -1,12 +1,24 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-08-30T08:30:53.351306+00:00Z",
+  "generated_at": "2025-08-30T09:53:40.037610+00:00Z",
   "edges": [
     {
       "from_module": "test_basic",
       "to_module": "calculator",
       "import_type": "from",
       "line": 4,
+      "names": [
+        "add",
+        "subtract"
+      ],
+      "alias": null,
+      "is_conditional": false
+    },
+    {
+      "from_module": "test_phase9_demo",
+      "to_module": "calculator",
+      "import_type": "from",
+      "line": 32,
       "names": [
         "add",
         "subtract"
@@ -31,6 +43,13 @@
   "dynamic_imports": [],
   "unresolved_imports": [
     {
+      "from_module": "conftest",
+      "import_name": "pytest",
+      "line": 3,
+      "is_third_party": false,
+      "is_builtin": true
+    },
+    {
       "from_module": "test_basic",
       "import_name": "pytest",
       "line": 3,
@@ -38,11 +57,32 @@
       "is_builtin": true
     },
     {
-      "from_module": "conftest",
-      "import_name": "pytest",
-      "line": 3,
+      "from_module": "test_phase9_demo",
+      "import_name": "os",
+      "line": 8,
       "is_third_party": false,
       "is_builtin": true
+    },
+    {
+      "from_module": "test_phase9_demo",
+      "import_name": "sys",
+      "line": 9,
+      "is_third_party": false,
+      "is_builtin": true
+    },
+    {
+      "from_module": "test_phase9_demo",
+      "import_name": "pathlib",
+      "line": 10,
+      "is_third_party": false,
+      "is_builtin": true
+    },
+    {
+      "from_module": "test_phase9_demo",
+      "import_name": "non_existent_module",
+      "line": 45,
+      "is_third_party": true,
+      "is_builtin": false
     },
     {
       "from_module": "test_calculator",

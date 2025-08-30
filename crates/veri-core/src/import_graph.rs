@@ -66,7 +66,7 @@ pub enum DynamicImportFunction {
 }
 
 /// Import that couldn't be resolved to a local module
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnresolvedImport {
     pub from_module: String,
     pub import_name: String,
