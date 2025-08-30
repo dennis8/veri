@@ -1,120 +1,190 @@
-name: Veri CI (phase-2)
+# GitHub Actions template for Veri CI sharding
+# Save as .github/workflows/test.yml in your repository
 
-on: [push, pull_request]
+name: Test with Veri
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  lint-and-build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-      
-      - name: Cache Cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Format check
-        run: cargo fmt --all -- --check
-      
-      - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-      
-      - name: Build
-        run: cargo build --workspace
-      
-      - name: Test
-        run: cargo test --workspace
-
-  schema-validation:
+  # Generate sharding manifest
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate-shards.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install JSON Schema validator
-        run: npm install -g ajv-cli
-      
-      - name: Validate JSON Schemas
-        run: |
-          # Validate that all schemas are valid JSON Schema documents
-          for schema in schemas/*.json; do
-            echo "Validating schema: $schema"
-            ajv compile -s "$schema"
-          done
-      
-      - name: Test Schema Round-trip
-        run: |
-          # Create some test data and validate against schemas
-          cd schemas
-          
-          # Create test data for tests.index
-          cat > test_tests_index.json << 'EOF'
-          {
-            "version": "0.1.0",
-            "generated_at": "2024-01-01T00:00:00Z",
-            "python_version": "3.11.0",
-            "pytest_version": "7.4.0",
-            "tests": [
-              {
-                "nodeid": "test_example.py::test_function",
-                "path": "test_example.py",
-                "line": 10,
-                "function": "test_function",
-                "module": "test_example",
-                "markers": ["unit"],
-                "fixtures": []
-              }
-            ],
-            "collection_errors": []
-          }
-          EOF
-          
-          # Validate test data against schema
-          ajv validate -s tests.index.json -d test_tests_index.json --verbose
-          
-          # Create test data for event.jsonl
-          cat > test_event.jsonl << 'EOF'
-          {"t": "start", "ts": "2024-01-01T00:00:00Z", "run_id": "test-run", "veri_version": "0.1.0", "python_version": "3.11.0", "platform": "linux-x86_64", "workers": 4, "cache_key": "abc123"}
-          {"t": "plan", "ts": "2024-01-01T00:00:00Z", "run_id": "test-run", "total_tests": 10, "selected_tests": 5, "selection_reason": "impact analysis"}
-          {"t": "case", "ts": "2024-01-01T00:00:00Z", "run_id": "test-run", "nodeid": "test_example.py::test_function", "outcome": "passed", "duration": 0.1, "markers": []}
-          {"t": "summary", "ts": "2024-01-01T00:00:00Z", "run_id": "test-run", "total_duration": 1.0, "passed": 5, "failed": 0, "skipped": 0, "errors": 0, "exit_code": 0}
-          EOF
-          
-          # Validate each line of JSONL
-          while IFS= read -r line; do
-            echo "$line" | ajv validate -s event.jsonl.json --verbose
-          done < test_event.jsonl
-
-  python-worker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
       
       - name: Install uv
-        run: pip install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
       
-      - name: Check Python worker
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
         run: |
-          cd py_worker
-          python -m py_compile veri_worker.py
+          uv venv
+          uv pip install -e .
+          uv pip install pytest pytest-cov
+      
+      - name: Install veri
+        run: uv tool install veri
+      
+      - name: Generate test shards
+        id: generate-shards
+        run: |
+          veri split --ci 4 > shards.json
+          echo "matrix=$(cat shards.json | jq -c .shards | jq -c 'map({shard_id, test_count, estimated_duration})')" >> $GITHUB_OUTPUT
+      
+      - name: Upload shards manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-shards
+          path: shards.json
+          retention-days: 1
+
+  # Run tests in parallel shards
+  test:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    
+    name: "Test Shard ${{ matrix.shard.shard_id }} (${{ matrix.shard.test_count }} tests)"
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Restore veri cache
+        uses: actions/cache@v4
+        with:
+          path: .veri/cache
+          key: veri-cache-${{ runner.os }}-py3.11-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
+          restore-keys: |
+            veri-cache-${{ runner.os }}-py3.11-
+            veri-cache-${{ runner.os }}-
+      
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip install -e .
+          uv pip install pytest pytest-cov
+      
+      - name: Install veri
+        run: uv tool install veri
+      
+      - name: Download shards manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: test-shards
+      
+      - name: Run tests for shard
+        run: |
+          mkdir -p reports
+          veri shard --ci ${{ matrix.shard.shard_id }} --manifest shards.json \
+            --junit-xml reports/junit-shard-${{ matrix.shard.shard_id }}.xml \
+            --jsonl reports/events-shard-${{ matrix.shard.shard_id }}.jsonl \
+            --cov --cov-merge-full
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-shard-${{ matrix.shard.shard_id }}
+          path: |
+            reports/junit-shard-${{ matrix.shard.shard_id }}.xml
+            reports/events-shard-${{ matrix.shard.shard_id }}.jsonl
+          retention-days: 7
+      
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-shard-${{ matrix.shard.shard_id }}
+          path: |
+            reports/coverage*.xml
+            .veri/cache/coverage*.json
+          retention-days: 7
+      
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Test Results (Shard ${{ matrix.shard.shard_id }})
+          path: reports/junit-shard-${{ matrix.shard.shard_id }}.xml
+          reporter: java-junit
+
+  # Merge coverage reports
+  coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip install -e .
+          uv pip install coverage
+      
+      - name: Download all coverage data
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-shard-*
+          path: coverage-data/
+          merge-multiple: true
+      
+      - name: Merge coverage reports
+        run: |
+          mkdir -p reports
+          # Use veri's fast coverage combiner if available, fallback to coverage.py
+          if command -v veri &> /dev/null; then
+            veri --cov-merge-full coverage-data/*.xml > reports/coverage.xml
+          else
+            coverage combine coverage-data/.coverage.*
+            coverage xml -o reports/coverage.xml
+          fi
+      
+      - name: Upload merged coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-merged
+          path: reports/coverage.xml
+          retention-days: 30
+      
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: reports/coverage.xml
+          fail_ci_if_error: true

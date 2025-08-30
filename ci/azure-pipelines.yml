@@ -1,0 +1,214 @@
+# Azure Pipelines template for Veri CI sharding
+# Save as azure-pipelines.yml in your repository
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    exclude:
+    - docs/*
+    - README.md
+
+pr:
+  branches:
+    include:
+    - main
+
+variables:
+  pythonVersion: '3.11'
+  veriCacheDir: '$(Pipeline.Workspace)/.veri/cache'
+
+stages:
+- stage: Prepare
+  displayName: 'Prepare test shards'
+  jobs:
+  - job: GenerateShards
+    displayName: 'Generate sharding manifest'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        displayName: 'Use Python $(pythonVersion)'
+    
+    - task: Cache@2
+      inputs:
+        key: 'veri-cache | "$(Agent.OS)" | "$(pythonVersion)" | $(Build.SourcesDirectory)/**/pyproject.toml'
+        restoreKeys: |
+          veri-cache | "$(Agent.OS)" | "$(pythonVersion)"
+          veri-cache | "$(Agent.OS)"
+        path: $(veriCacheDir)
+      displayName: 'Cache veri data'
+    
+    - script: |
+        pip install uv
+        uv venv
+        uv pip install -e .
+        uv pip install pytest pytest-cov
+        uv tool install veri
+      displayName: 'Install dependencies'
+    
+    - script: |
+        veri split --ci 4 > shards.json
+        cat shards.json | jq -c .shards | jq -c 'map({shard_id, test_count, estimated_duration})' > matrix.json
+      displayName: 'Generate test shards'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathtoPublish: 'shards.json'
+        artifactName: 'test-shards'
+      displayName: 'Upload shards manifest'
+
+- stage: Test
+  displayName: 'Run tests in shards'
+  dependsOn: Prepare
+  jobs:
+  - job: TestShards
+    displayName: 'Run test shards'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Shard0:
+          shardId: 0
+        Shard1:
+          shardId: 1
+        Shard2:
+          shardId: 2
+        Shard3:
+          shardId: 3
+    
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        displayName: 'Use Python $(pythonVersion)'
+    
+    - task: Cache@2
+      inputs:
+        key: 'veri-cache | "$(Agent.OS)" | "$(pythonVersion)" | $(Build.SourcesDirectory)/**/pyproject.toml'
+        restoreKeys: |
+          veri-cache | "$(Agent.OS)" | "$(pythonVersion)"
+          veri-cache | "$(Agent.OS)"
+        path: $(veriCacheDir)
+      displayName: 'Cache veri data'
+    
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        artifactName: 'test-shards'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Download shards manifest'
+    
+    - script: |
+        pip install uv
+        uv venv
+        uv pip install -e .
+        uv pip install pytest pytest-cov
+        uv tool install veri
+      displayName: 'Install dependencies'
+    
+    - script: |
+        mkdir -p reports
+        cp $(System.ArtifactsDirectory)/test-shards/shards.json .
+        veri shard --ci $(shardId) --manifest shards.json \
+          --junit-xml reports/junit-shard-$(shardId).xml \
+          --jsonl reports/events-shard-$(shardId).jsonl \
+          --cov --cov-merge-full
+      displayName: 'Run tests for shard $(shardId)'
+    
+    - task: PublishTestResults@2
+      condition: always()
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: 'reports/junit-shard-$(shardId).xml'
+        testRunTitle: 'Test Results (Shard $(shardId))'
+      displayName: 'Publish test results'
+    
+    - task: PublishBuildArtifacts@1
+      condition: always()
+      inputs:
+        pathtoPublish: 'reports'
+        artifactName: 'test-results-shard-$(shardId)'
+      displayName: 'Upload test artifacts'
+    
+    - task: PublishBuildArtifacts@1
+      condition: always()
+      inputs:
+        pathtoPublish: '.veri/cache'
+        artifactName: 'coverage-shard-$(shardId)'
+      displayName: 'Upload coverage data'
+
+- stage: Coverage
+  displayName: 'Merge coverage reports'
+  dependsOn: Test
+  condition: always()
+  jobs:
+  - job: MergeCoverage
+    displayName: 'Combine coverage from all shards'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        displayName: 'Use Python $(pythonVersion)'
+    
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        artifactName: 'coverage-shard-0'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Download coverage shard 0'
+    
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        artifactName: 'coverage-shard-1'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Download coverage shard 1'
+    
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        artifactName: 'coverage-shard-2'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Download coverage shard 2'
+    
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        artifactName: 'coverage-shard-3'
+        downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Download coverage shard 3'
+    
+    - script: |
+        pip install uv coverage
+        uv venv
+        uv pip install -e .
+      displayName: 'Install dependencies'
+    
+    - script: |
+        mkdir -p reports
+        # Combine coverage from all shards
+        cp $(System.ArtifactsDirectory)/coverage-shard-*/.veri/cache/coverage*.json .
+        # Use veri's fast coverage combiner if available, fallback to coverage.py
+        if command -v veri &> /dev/null; then
+          veri --cov-merge-full coverage*.json > reports/coverage.xml
+        else
+          coverage combine .coverage.*
+          coverage xml -o reports/coverage.xml
+        fi
+      displayName: 'Merge coverage reports'
+    
+    - task: PublishCodeCoverageResults@1
+      inputs:
+        codeCoverageToolType: 'Cobertura'
+        summaryFileLocation: 'reports/coverage.xml'
+      displayName: 'Publish coverage results'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathtoPublish: 'reports/coverage.xml'
+        artifactName: 'coverage-merged'
+      displayName: 'Upload merged coverage'

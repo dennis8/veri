@@ -1,0 +1,172 @@
+{
+  "version": "0.1.0",
+  "format_version": "veri-shards@1",
+  "generated_at": "2025-08-30T09:12:05.905807500Z",
+  "total_shards": 2,
+  "strategy": "timing_based",
+  "estimated_duration": 19.0,
+  "shards": [
+    {
+      "shard_id": 0,
+      "estimated_duration": 10.0,
+      "test_count": 10,
+      "tests": [
+        {
+          "nodeid": "examples/phase3_demo/test_basic.py::test_addition",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": []
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_basic.py::test_large_numbers",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "slow"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_basic.py::TestCalculatorClass::test_class_addition",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": []
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[2-3-5]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[-1-1-0]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[1-1-2]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[5-4-20]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[-2-3--6]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_division_parametrized[10-5-2.0]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_division_by_zero",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": []
+        }
+      ]
+    },
+    {
+      "shard_id": 1,
+      "estimated_duration": 9.0,
+      "test_count": 9,
+      "tests": [
+        {
+          "nodeid": "examples/phase3_demo/test_basic.py::test_subtraction",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": []
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_basic.py::test_negative_numbers",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "edge_case"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_basic.py::TestCalculatorClass::test_class_complex",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "slow"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[0-0-0]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[100-200-300]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[2-3-6]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[0-100-0]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_division_parametrized[6-2-3.0]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        },
+        {
+          "nodeid": "examples/phase3_demo/test_calculator.py::test_division_parametrized[7-2-3.5]",
+          "estimated_duration": 1.0,
+          "priority": 1,
+          "markers": [
+            "parametrize"
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "python_version": "unknown",
+    "platform": "windows"
+  }
+}

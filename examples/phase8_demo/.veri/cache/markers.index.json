@@ -1,0 +1,64 @@
+{
+  "version": "0.1.0",
+  "generated_at": "2025-08-30T08:53:26.674892+00:00Z",
+  "markers": {
+    "parametrize": {
+      "name": "parametrize",
+      "description": null,
+      "registered": false,
+      "usage_count": 5,
+      "first_seen": "test_sharding.py",
+      "common_args": []
+    },
+    "slow": {
+      "name": "slow",
+      "description": null,
+      "registered": false,
+      "usage_count": 1,
+      "first_seen": "test_sharding.py",
+      "common_args": []
+    },
+    "integration": {
+      "name": "integration",
+      "description": null,
+      "registered": false,
+      "usage_count": 1,
+      "first_seen": "test_sharding.py",
+      "common_args": []
+    }
+  },
+  "test_markers": {
+    "examples/phase8_demo/test_sharding.py::TestSlowGroup::test_slow_1": [],
+    "examples/phase8_demo/test_sharding.py::TestSlowGroup::test_slow_2": [],
+    "examples/phase8_demo/test_sharding.py::TestSlowGroup::test_slow_3": [],
+    "examples/phase8_demo/test_sharding.py::TestFastGroup::test_fast_1": [],
+    "examples/phase8_demo/test_sharding.py::TestFastGroup::test_fast_2": [],
+    "examples/phase8_demo/test_sharding.py::TestFastGroup::test_fast_3": [],
+    "examples/phase8_demo/test_sharding.py::TestFastGroup::test_fast_4": [],
+    "examples/phase8_demo/test_sharding.py::TestMediumGroup::test_medium_1": [],
+    "examples/phase8_demo/test_sharding.py::TestMediumGroup::test_medium_2": [],
+    "examples/phase8_demo/test_sharding.py::TestMediumGroup::test_medium_3": [],
+    "examples/phase8_demo/test_sharding.py::test_parametrized[1]": [
+      "parametrize"
+    ],
+    "examples/phase8_demo/test_sharding.py::test_parametrized[2]": [
+      "parametrize"
+    ],
+    "examples/phase8_demo/test_sharding.py::test_parametrized[3]": [
+      "parametrize"
+    ],
+    "examples/phase8_demo/test_sharding.py::test_parametrized[4]": [
+      "parametrize"
+    ],
+    "examples/phase8_demo/test_sharding.py::test_parametrized[5]": [
+      "parametrize"
+    ],
+    "examples/phase8_demo/test_sharding.py::test_standalone": [],
+    "examples/phase8_demo/test_sharding.py::test_marked_slow": [
+      "slow"
+    ],
+    "examples/phase8_demo/test_sharding.py::test_integration": [
+      "integration"
+    ]
+  }
+}

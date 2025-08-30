@@ -1,0 +1,131 @@
+# GitLab CI template for Veri CI sharding
+# Save as .gitlab-ci.yml in your repository
+
+stages:
+  - prepare
+  - test
+  - coverage
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  VERI_CACHE_DIR: "$CI_PROJECT_DIR/.veri/cache"
+
+cache: &cache_config
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/pip
+    - .venv/
+    - .veri/cache
+
+# Generate sharding manifest
+prepare-shards:
+  stage: prepare
+  image: python:3.11
+  cache: *cache_config
+  before_script:
+    - pip install uv
+    - uv venv
+    - uv pip install -e .
+    - uv pip install pytest pytest-cov
+    - uv tool install veri
+  script:
+    - veri split --ci 4 > shards.json
+    - cat shards.json | jq -c .shards | jq -c 'map({shard_id, test_count, estimated_duration})' > matrix.json
+  artifacts:
+    paths:
+      - shards.json
+      - matrix.json
+    expire_in: 1 hour
+
+# Dynamic job generation for shards
+.test_template: &test_template
+  stage: test
+  image: python:3.11
+  cache: *cache_config
+  dependencies:
+    - prepare-shards
+  before_script:
+    - pip install uv
+    - uv venv
+    - uv pip install -e .
+    - uv pip install pytest pytest-cov
+    - uv tool install veri
+  script:
+    - mkdir -p reports
+    - |
+      veri shard --ci $SHARD_ID --manifest shards.json \
+        --junit-xml reports/junit-shard-$SHARD_ID.xml \
+        --jsonl reports/events-shard-$SHARD_ID.jsonl \
+        --cov --cov-merge-full
+  artifacts:
+    when: always
+    paths:
+      - reports/
+      - .veri/cache/coverage*.json
+    expire_in: 1 week
+    reports:
+      junit: reports/junit-shard-*.xml
+
+# Define shard jobs
+test-shard-0:
+  <<: *test_template
+  variables:
+    SHARD_ID: "0"
+
+test-shard-1:
+  <<: *test_template
+  variables:
+    SHARD_ID: "1"
+
+test-shard-2:
+  <<: *test_template
+  variables:
+    SHARD_ID: "2"
+
+test-shard-3:
+  <<: *test_template
+  variables:
+    SHARD_ID: "3"
+
+# Merge coverage reports
+merge-coverage:
+  stage: coverage
+  image: python:3.11
+  dependencies:
+    - test-shard-0
+    - test-shard-1
+    - test-shard-2
+    - test-shard-3
+  before_script:
+    - pip install uv coverage
+    - uv venv
+    - uv pip install -e .
+  script:
+    - mkdir -p reports
+    - |
+      # Use veri's fast coverage combiner if available, fallback to coverage.py
+      if command -v veri &> /dev/null; then
+        veri --cov-merge-full .veri/cache/coverage*.json > reports/coverage.xml
+      else
+        coverage combine .coverage.*
+        coverage xml -o reports/coverage.xml
+      fi
+  artifacts:
+    paths:
+      - reports/coverage.xml
+    expire_in: 30 days
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+
+# Optional: Upload to external services
+upload-coverage:
+  stage: coverage
+  image: python:3.11
+  dependencies:
+    - merge-coverage
+  script:
+    - pip install codecov
+    - codecov -f reports/coverage.xml
+  only:
+    - main
+    - develop
+  when: manual

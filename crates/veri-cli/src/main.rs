@@ -16,6 +16,8 @@ use veri_core::scheduler::{TestScheduler, SchedulerConfig, SchedulingStrategy};
 use veri_core::worker_pool::{WorkerPool, WorkerPoolConfig};
 use veri_core::coverage::{CoverageCollector, CoverageConfig, CoverageFormat};
 use veri_core::watch::{WatchSession, WatchConfig};
+use veri_core::sharder::{TestSharder, SharderConfig};
+use veri_core::event_stream::{CIReporter, generate_run_id};
 
 fn main() {
     let exit_code = match run() {
@@ -62,7 +64,7 @@ fn run() -> Result<ExitCode> {
     
     // Handle subcommands first
     if let Some(command) = &cli.command {
-        return handle_subcommand(command, &config);
+        return handle_subcommand(command, &config, &cli);
     }
     
     // Print configuration in explain mode
@@ -766,17 +768,152 @@ fn init_logging(cli: &Cli) -> Result<()> {
     Ok(())
 }
 
-fn handle_subcommand(command: &Commands, _config: &Config) -> Result<ExitCode> {
+fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Result<ExitCode> {
+    let work_dir = std::env::current_dir()?;
+    let cache_dir = work_dir.join(".veri").join("cache");
+    
     match command {
         Commands::Split { shards } => {
-            println!("Would split tests into {} shards", shards);
-            // TODO: Implement actual splitting logic in later phases
+            eprintln!("🔀 Splitting tests into {} shards", shards);
+            
+            // Create sharder with default configuration
+            let sharder_config = SharderConfig {
+                strategy: veri_core::schemas::ShardingStrategy::TimingBased,
+                ..Default::default()
+            };
+            let sharder = TestSharder::with_config(&work_dir, &cache_dir, sharder_config);
+            
+            // Generate manifest
+            let manifest = sharder.split_tests(*shards, None)?;
+            
+            // Generate stats for logging
+            let stats = sharder.generate_stats_summary(&manifest);
+            
+            // Output manifest to stdout as JSON
+            let manifest_json = serde_json::to_string_pretty(&manifest)?;
+            println!("{}", manifest_json);
+            
+            // Log statistics to stderr
+            eprintln!("📊 Generated {} shards with {:.1}% load balance", 
+                stats.total_shards, stats.balance_ratio * 100.0);
+            eprintln!("⏱️  Total estimated duration: {:.1}s (avg per shard: {:.1}s)", 
+                stats.total_estimated_duration, stats.avg_shard_duration);
+            
+            if cli_args.verbose > 0 {
+                eprintln!("{}", sharder.format_explain(&manifest, &stats));
+            }
+            
             Ok(ExitCode::Success)
         }
         Commands::Shard { shard_id, manifest } => {
-            println!("Would run shard {} from manifest {:?}", shard_id, manifest);
-            // TODO: Implement actual shard execution in later phases
-            Ok(ExitCode::Success)
+            println!("🎯 Running shard {} of CI execution", shard_id);
+            
+            // Load manifest
+            let manifest_data = if let Some(manifest_path) = manifest {
+                std::fs::read_to_string(manifest_path)?
+            } else {
+                // Read from stdin
+                use std::io::Read;
+                let mut buffer = String::new();
+                std::io::stdin().read_to_string(&mut buffer)?;
+                buffer
+            };
+            
+            let manifest: veri_core::schemas::ShardsManifest = serde_json::from_str(&manifest_data)?;
+            
+            // Validate manifest
+            let sharder = TestSharder::new(&work_dir, &cache_dir);
+            sharder.validate_manifest(&manifest)?;
+            
+            // Get the specific shard
+            let shard = sharder.get_shard(&manifest, *shard_id)?
+                .ok_or_else(|| anyhow::anyhow!("Shard {} not found in manifest", shard_id))?;
+            
+            println!("📋 Shard {}: {} tests, estimated {:.1}s", 
+                shard.shard_id, shard.test_count, shard.estimated_duration);
+            
+            // Extract nodeids for execution
+            let nodeids = sharder.extract_nodeids(shard);
+            
+            if nodeids.is_empty() {
+                println!("✅ No tests to run in this shard");
+                return Ok(ExitCode::Success);
+            }
+            
+            // Set up CI reporting
+            let run_id = generate_run_id();
+            let mut ci_reporter = CIReporter::with_shard(run_id.clone(), *shard_id);
+            
+            // Initialize output streams if configured
+            if let Some(jsonl_path) = &config.jsonl {
+                ci_reporter.init_jsonl(jsonl_path)?;
+                if let Some(stream) = ci_reporter.event_stream() {
+                    stream.emit_start(manifest.shards.iter().map(|s| s.test_count).sum(), shard.test_count, 1, "shard")?;
+                    stream.emit_plan(nodeids.clone(), None, shard.estimated_duration)?;
+                }
+            }
+            
+            if let Some(junit_path) = &config.junit_xml {
+                ci_reporter.init_junit(junit_path)?;
+            }
+            
+            // Execute tests for this shard
+            let worker = PythonWorker::new(&work_dir, &cache_dir);
+            
+            // Configure test run options
+            let run_options = veri_core::python_worker::TestRunOptions {
+                verbose: cli_args.verbose > 0,
+                quiet: cli_args.quiet,
+                no_capture: cli_args.no_capture,
+                exitfirst: cli_args.exitfirst,
+                maxfail: cli_args.maxfail,
+                junit_xml: config.junit_xml.clone(),
+                workers: Some("1".to_string()), // Single worker for shard execution
+                coverage: config.cov.unwrap_or(false),
+                coverage_xml: config.cov.unwrap_or(false) || config.cov_merge_full.unwrap_or(false),
+                coverage_html: false,
+                coverage_source_dirs: vec!["src".to_string()],
+                coverage_omit: vec![
+                    "*/tests/*".to_string(),
+                    "*/test_*".to_string(),
+                    "*/__pycache__/*".to_string(),
+                    "*/venv/*".to_string(),
+                    "*/.venv/*".to_string(),
+                ],
+            };
+            
+            println!("🚀 Executing {} tests...", nodeids.len());
+            let start_time = std::time::Instant::now();
+            
+            // Run the tests
+            let exit_code = worker.run_tests(&nodeids, &run_options)?;
+            let duration = start_time.elapsed().as_secs_f64();
+            
+            // Emit summary event if JSONL enabled
+            if let Some(stream) = ci_reporter.event_stream() {
+                // Parse exit code to test results (simplified)
+                let (passed, failed, error) = match exit_code {
+                    0 => (nodeids.len() as u32, 0, 0),
+                    1 => (0, nodeids.len() as u32, 0), // Simplified: assume all failed
+                    _ => (0, 0, nodeids.len() as u32), // Simplified: assume all error
+                };
+                
+                stream.emit_summary(duration, nodeids.len() as u32, passed, failed, 0, error, exit_code)?;
+            }
+            
+            // Finalize reporting
+            ci_reporter.finalize()?;
+            
+            println!("✅ Shard {} completed in {:.1}s", shard_id, duration);
+            
+            // Return appropriate exit code
+            match exit_code {
+                0 => Ok(ExitCode::Success),
+                1 => Ok(ExitCode::TestFailure),
+                2 => Ok(ExitCode::Interrupted),
+                4 => Ok(ExitCode::UsageError),
+                _ => Ok(ExitCode::InternalError),
+            }
         }
     }
 }

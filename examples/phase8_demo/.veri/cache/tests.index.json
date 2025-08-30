@@ -1,0 +1,266 @@
+{
+  "version": "0.1.0",
+  "generated_at": "2025-08-30T08:53:26.673760+00:00Z",
+  "python_version": "3.13.3",
+  "pytest_version": "8.4.1",
+  "tests": [
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestSlowGroup::test_slow_1",
+      "path": "test_sharding.py",
+      "line": 12,
+      "function": "test_slow_1",
+      "class": "TestSlowGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestSlowGroup::test_slow_2",
+      "path": "test_sharding.py",
+      "line": 16,
+      "function": "test_slow_2",
+      "class": "TestSlowGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestSlowGroup::test_slow_3",
+      "path": "test_sharding.py",
+      "line": 20,
+      "function": "test_slow_3",
+      "class": "TestSlowGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestFastGroup::test_fast_1",
+      "path": "test_sharding.py",
+      "line": 28,
+      "function": "test_fast_1",
+      "class": "TestFastGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestFastGroup::test_fast_2",
+      "path": "test_sharding.py",
+      "line": 31,
+      "function": "test_fast_2",
+      "class": "TestFastGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestFastGroup::test_fast_3",
+      "path": "test_sharding.py",
+      "line": 34,
+      "function": "test_fast_3",
+      "class": "TestFastGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestFastGroup::test_fast_4",
+      "path": "test_sharding.py",
+      "line": 37,
+      "function": "test_fast_4",
+      "class": "TestFastGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestMediumGroup::test_medium_1",
+      "path": "test_sharding.py",
+      "line": 44,
+      "function": "test_medium_1",
+      "class": "TestMediumGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestMediumGroup::test_medium_2",
+      "path": "test_sharding.py",
+      "line": 48,
+      "function": "test_medium_2",
+      "class": "TestMediumGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::TestMediumGroup::test_medium_3",
+      "path": "test_sharding.py",
+      "line": 52,
+      "function": "test_medium_3",
+      "class": "TestMediumGroup",
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::test_parametrized[1]",
+      "path": "test_sharding.py",
+      "line": 57,
+      "function": "test_parametrized",
+      "class": null,
+      "module": "test_sharding",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "value"
+      ],
+      "parametrize": {
+        "params": [
+          "value"
+        ],
+        "ids": [
+          "1"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::test_parametrized[2]",
+      "path": "test_sharding.py",
+      "line": 57,
+      "function": "test_parametrized",
+      "class": null,
+      "module": "test_sharding",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "value"
+      ],
+      "parametrize": {
+        "params": [
+          "value"
+        ],
+        "ids": [
+          "2"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::test_parametrized[3]",
+      "path": "test_sharding.py",
+      "line": 57,
+      "function": "test_parametrized",
+      "class": null,
+      "module": "test_sharding",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "value"
+      ],
+      "parametrize": {
+        "params": [
+          "value"
+        ],
+        "ids": [
+          "3"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::test_parametrized[4]",
+      "path": "test_sharding.py",
+      "line": 57,
+      "function": "test_parametrized",
+      "class": null,
+      "module": "test_sharding",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "value"
+      ],
+      "parametrize": {
+        "params": [
+          "value"
+        ],
+        "ids": [
+          "4"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::test_parametrized[5]",
+      "path": "test_sharding.py",
+      "line": 57,
+      "function": "test_parametrized",
+      "class": null,
+      "module": "test_sharding",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "value"
+      ],
+      "parametrize": {
+        "params": [
+          "value"
+        ],
+        "ids": [
+          "5"
+        ]
+      }
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::test_standalone",
+      "path": "test_sharding.py",
+      "line": 64,
+      "function": "test_standalone",
+      "class": null,
+      "module": "test_sharding",
+      "markers": [],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::test_marked_slow",
+      "path": "test_sharding.py",
+      "line": 69,
+      "function": "test_marked_slow",
+      "class": null,
+      "module": "test_sharding",
+      "markers": [
+        "slow"
+      ],
+      "fixtures": [],
+      "parametrize": null
+    },
+    {
+      "nodeid": "examples/phase8_demo/test_sharding.py::test_integration",
+      "path": "test_sharding.py",
+      "line": 76,
+      "function": "test_integration",
+      "class": null,
+      "module": "test_sharding",
+      "markers": [
+        "integration"
+      ],
+      "fixtures": [],
+      "parametrize": null
+    }
+  ],
+  "collection_errors": []
+}

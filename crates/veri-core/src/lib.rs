@@ -8,6 +8,8 @@ pub mod scheduler;
 pub mod worker_pool;
 pub mod coverage;
 pub mod watch;
+pub mod sharder;
+pub mod event_stream;
 
 #[cfg(test)]
 mod schema_tests;

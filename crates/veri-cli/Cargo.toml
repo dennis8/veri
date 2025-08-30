@@ -7,6 +7,7 @@ edition = "2021"
 veri-core = { path = "../veri-core" }
 clap = { version = "4.4", features = ["derive", "env"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 toml = "0.8"
 anyhow = "1.0"
 env_logger = "0.10"

@@ -10,7 +10,7 @@ use std::process::{Command, Output};
 use std::collections::HashMap;
 
 /// Test collection data from tests.index.json
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestsIndex {
     pub version: String,
     pub generated_at: String,
@@ -21,7 +21,7 @@ pub struct TestsIndex {
 }
 
 /// Individual test node information
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestNode {
     pub nodeid: String,
     pub path: String,
@@ -35,14 +35,14 @@ pub struct TestNode {
 }
 
 /// Parametrization information for tests
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParametrizeInfo {
     pub params: Vec<String>,
     pub ids: Vec<String>,
 }
 
 /// Collection error information
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CollectionError {
     pub path: String,
     pub line: Option<u32>,
