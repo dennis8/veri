@@ -19,6 +19,8 @@ use veri_core::watch::{WatchSession, WatchConfig};
 use veri_core::sharder::{TestSharder, SharderConfig};
 use veri_core::event_stream::{CIReporter, generate_run_id};
 use veri_core::diagnostics::{DiagnosticReporter, VeriDiagnostic};
+use veri_core::security::{SecurityConfig, SecurityScanner};
+use veri_core::telemetry::{TelemetryClient, RunEvent, ErrorCategory};
 
 fn main() {
     let exit_code = match run() {
@@ -56,9 +58,31 @@ fn run() -> Result<ExitCode> {
         cli.cov_merge_full,
         cli.no_capture,
         cli.engine.to_string(),
+        cli.no_network,
+        cli.disable_allowlist,
     );
     
     info!("veri v{} starting", env!("CARGO_PKG_VERSION"));
+    
+    // Initialize security configuration
+    let _security_config = SecurityConfig::from_config(&config);
+    
+    // Initialize telemetry client (disabled by default)
+    let telemetry_config = veri_core::telemetry::TelemetryConfig {
+        enabled: config.is_telemetry_enabled(),
+        endpoint: config.telemetry().endpoint,
+        collection_interval: config.telemetry().collection_interval.unwrap_or(300),
+        collect_performance: true,
+        collect_usage: true,
+        max_queue_size: 1000,
+    };
+    let telemetry_client = TelemetryClient::new(telemetry_config);
+    
+    // Handle telemetry status flag early
+    if cli.telemetry_status {
+        telemetry_client.print_status(!config.no_color());
+        return Ok(ExitCode::Success);
+    }
     
     // Handle version flag (clap handles this automatically with --version)
     // Handle help flag (clap handles this automatically with --help)
@@ -85,7 +109,7 @@ fn run() -> Result<ExitCode> {
         }
         Engine::Veri => {
             // Use veri's fast engine with pytest compatibility layer
-            run_veri_engine(&cli, &config)
+            run_veri_engine(&cli, &config, &_security_config, &mut telemetry_client.clone())
         }
     }
 }
@@ -164,7 +188,7 @@ fn run_pytest_engine(cli: &Cli, _config: &Config) -> Result<ExitCode> {
     }
 }
 
-fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
+fn run_veri_engine(cli: &Cli, config: &Config, security_config: &SecurityConfig, telemetry_client: &mut TelemetryClient) -> Result<ExitCode> {
     println!("🚀 Using veri engine for maximum speed");
     
     let work_dir = std::env::current_dir()?;
@@ -172,7 +196,7 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     
     // Handle watch mode
     if cli.watch {
-        return run_watch_mode(cli, config, &work_dir, &cache_dir);
+        return run_watch_mode(cli, config, &work_dir, &cache_dir, &mut telemetry_client.clone());
     }
     
     let worker = PythonWorker::new(&work_dir, &cache_dir);
@@ -182,6 +206,51 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     
     // Check Python environment
     worker.check_environment(&mut diagnostics)?;
+    
+    // Security: Validate pytest plugins
+    if security_config.enforce_allowlist {
+        println!("🔒 Validating pytest plugins...");
+        match worker.get_pytest_plugins() {
+            Ok(plugins) => {
+                let validation_result = security_config.validate_plugins(&plugins);
+                
+                if validation_result.has_blocked_plugins() {
+                    // Add security diagnostic
+                    diagnostics.add(VeriDiagnostic::PluginIncompatible {
+                        plugin_name: validation_result.blocked.join(", "),
+                        version: "unknown".to_string(),
+                        reason: "Plugin not in allowlist".to_string(),
+                        fallback_suggested: true,
+                    });
+                    
+                    if let Some(warning) = validation_result.get_warning_message() {
+                        eprintln!("{}", warning);
+                    }
+                    
+                    // Exit early if we have blocked plugins and no override
+                    if !cli.disable_allowlist {
+                        println!("🚨 Blocked plugins detected. Use --disable-allowlist to override (not recommended)");
+                        telemetry_client.record_error(ErrorCategory::PluginError);
+                        return Ok(ExitCode::UsageError);
+                    }
+                } else {
+                    println!("✅ All {} plugins are allowed", validation_result.allowed.len());
+                }
+                
+                // Run security scanner for additional warnings
+                let security_warnings = SecurityScanner::scan_plugins(&plugins);
+                for warning in &security_warnings {
+                    println!("{}", warning.format(!config.no_color()));
+                }
+            }
+            Err(e) => {
+                println!("⚠️  Could not validate plugins: {}", e);
+                telemetry_client.record_error(ErrorCategory::PluginError);
+            }
+        }
+    } else {
+        println!("ℹ️  Plugin allowlist enforcement disabled");
+    }
     
     // Check if we need to collect tests (first run or --all)
     let needs_collection = cli.all || !worker.has_valid_cache();
@@ -328,6 +397,7 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     }
 
     // Execute tests using scheduler and worker pool if we have multiple workers
+    let start_time = std::time::Instant::now();
     let test_result = if worker_count == 1 || nodeids_to_run.len() == 1 {
         // Single worker execution - use direct approach
         let exit_code = worker.run_tests(&nodeids_to_run, &run_options)?;
@@ -350,6 +420,36 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
             cli.verbose > 0,
         )
     };
+    
+    let execution_duration = start_time.elapsed();
+    
+    // Record telemetry for this run
+    let run_event = RunEvent {
+        test_count: nodeids_to_run.len() as u32,
+        worker_count: worker_count as u32,
+        collection_time_ms: 0, // TODO: Measure collection time separately
+        execution_time_ms: execution_duration.as_millis() as u64,
+        coverage_enabled: cli.cov || cli.cov_merge_full,
+        watch_mode: cli.watch,
+        ci_mode: cli.ci,
+        python_version: worker.get_pytest_plugins().ok()
+            .and_then(|_| Some("3.12".to_string())), // TODO: Get actual Python version
+        features_used: {
+            let mut features = Vec::new();
+            if cli.cov || cli.cov_merge_full { features.push("coverage".to_string()); }
+            if cli.watch { features.push("watch".to_string()); }
+            if worker_count > 1 { features.push("parallel".to_string()); }
+            if !needs_collection { features.push("impact_analysis".to_string()); }
+            features
+        },
+    };
+    
+    telemetry_client.record_run(run_event);
+    
+    // Record telemetry based on test result
+    if let Err(_) = &test_result {
+        telemetry_client.record_error(ErrorCategory::ExecutionError);
+    }
 
     // Process coverage if enabled
     if let Some(collector) = coverage_collector {
@@ -373,7 +473,7 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     test_result
 }
 
-fn run_watch_mode(cli: &Cli, config: &Config, work_dir: &std::path::Path, cache_dir: &std::path::Path) -> Result<ExitCode> {
+fn run_watch_mode(cli: &Cli, _config: &Config, work_dir: &std::path::Path, cache_dir: &std::path::Path, _telemetry_client: &mut TelemetryClient) -> Result<ExitCode> {
     println!("👀 Starting watch mode...");
     
     // Configure watch settings
@@ -580,7 +680,7 @@ fn select_tests_to_run(
     let mut diagnostics = DiagnosticReporter::new(cli.quiet);
     
     if selection.should_broaden {
-        let original_percentage = (selection.selected_nodeids.len() as f64 / selection.total_tests as f64) * 100.0;
+        let _original_percentage = (selection.selected_nodeids.len() as f64 / selection.total_tests as f64) * 100.0;
         let planner_config = PlannerConfig::default();
         
         diagnostics.add(VeriDiagnostic::selection_broadened(
@@ -1015,7 +1115,7 @@ fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
     
     println!("Import Graph Status:");
     match graph_builder.load_cached_graphs()? {
-        Some((imports_graph, revdeps_graph, module_map)) => {
+        Some((imports_graph, _revdeps_graph, module_map)) => {
             println!("  Status: Cached graphs available");
             println!("  Modules: {}", module_map.modules.len());
             println!("  Import edges: {}", imports_graph.edges.len());

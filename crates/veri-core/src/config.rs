@@ -58,6 +58,56 @@ pub struct Config {
     
     /// Run all tests by default
     pub all: Option<bool>,
+    
+    /// Security configuration
+    pub security: Option<SecurityConfig>,
+    
+    /// Telemetry configuration
+    pub telemetry: Option<TelemetryConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SecurityConfig {
+    /// Whether to enforce plugin allowlist (default: true)
+    pub enforce_allowlist: Option<bool>,
+    
+    /// List of allowed pytest plugins
+    pub allowed_plugins: Option<Vec<String>>,
+    
+    /// Whether to block network access (default: false)
+    pub no_network: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TelemetryConfig {
+    /// Whether telemetry is enabled (default: false)
+    pub enabled: Option<bool>,
+    
+    /// Endpoint URL for telemetry data
+    pub endpoint: Option<String>,
+    
+    /// Collection interval in seconds
+    pub collection_interval: Option<u64>,
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
+            enforce_allowlist: Some(true),
+            allowed_plugins: None,
+            no_network: Some(false),
+        }
+    }
+}
+
+impl Default for TelemetryConfig {
+    fn default() -> Self {
+        Self {
+            enabled: Some(false),
+            endpoint: None,
+            collection_interval: Some(300),
+        }
+    }
 }
 
 impl Default for Config {
@@ -81,6 +131,8 @@ impl Default for Config {
             engine: Some("veri".to_string()),
             watch: Some(false),
             all: Some(false),
+            security: None,
+            telemetry: None,
         }
     }
 }
@@ -169,6 +221,44 @@ impl Config {
         if let Ok(workers) = env::var("VERI_WORKERS") {
             self.workers = Some(workers);
         }
+        
+        // Security-related environment variables
+        if let Ok(_) = env::var("VERI_NO_NETWORK") {
+            if self.security.is_none() {
+                self.security = Some(SecurityConfig::default());
+            }
+            if let Some(ref mut security) = self.security {
+                security.no_network = Some(true);
+            }
+        }
+        
+        if let Ok(_) = env::var("VERI_DISABLE_ALLOWLIST") {
+            if self.security.is_none() {
+                self.security = Some(SecurityConfig::default());
+            }
+            if let Some(ref mut security) = self.security {
+                security.enforce_allowlist = Some(false);
+            }
+        }
+        
+        // Telemetry environment variables
+        if let Ok(_) = env::var("VERI_TELEMETRY_ENABLED") {
+            if self.telemetry.is_none() {
+                self.telemetry = Some(TelemetryConfig::default());
+            }
+            if let Some(ref mut telemetry) = self.telemetry {
+                telemetry.enabled = Some(true);
+            }
+        }
+        
+        if let Ok(endpoint) = env::var("VERI_TELEMETRY_ENDPOINT") {
+            if self.telemetry.is_none() {
+                self.telemetry = Some(TelemetryConfig::default());
+            }
+            if let Some(ref mut telemetry) = self.telemetry {
+                telemetry.endpoint = Some(endpoint);
+            }
+        }
     }
     
     /// Merge another config into this one, keeping non-None values from other
@@ -191,13 +281,16 @@ impl Config {
         if other.engine.is_some() { self.engine = other.engine; }
         if other.watch.is_some() { self.watch = other.watch; }
         if other.all.is_some() { self.all = other.all; }
+        if other.security.is_some() { self.security = other.security; }
+        if other.telemetry.is_some() { self.telemetry = other.telemetry; }
     }
     
     /// Apply CLI arguments to override config values
     pub fn apply_cli_args(&mut self, all: bool, watch: bool, keyword: Option<String>, marker: Option<String>, 
                          workers: Option<String>, last_failed: bool, junit_xml: Option<std::path::PathBuf>, 
                          jsonl: Option<std::path::PathBuf>, maxfail: Option<u32>, verbose: u8, quiet: bool, 
-                         cov: bool, cov_merge_full: bool, no_capture: bool, engine: String) {
+                         cov: bool, cov_merge_full: bool, no_capture: bool, engine: String,
+                         no_network: bool, disable_allowlist: bool) {
         if workers.is_some() { self.workers = workers; }
         if keyword.is_some() { self.keyword = keyword; }
         if marker.is_some() { self.markers = marker; }
@@ -212,6 +305,21 @@ impl Config {
         if cov { self.cov = Some(true); }
         if cov_merge_full { self.cov_merge_full = Some(true); }
         if no_capture { /* handle capture mode */ }
+        
+        // Handle security flags
+        if no_network || disable_allowlist {
+            if self.security.is_none() {
+                self.security = Some(SecurityConfig::default());
+            }
+            if let Some(ref mut security) = self.security {
+                if no_network {
+                    security.no_network = Some(true);
+                }
+                if disable_allowlist {
+                    security.enforce_allowlist = Some(false);
+                }
+            }
+        }
         
         // Engine conversion
         self.engine = Some(engine);
@@ -230,6 +338,41 @@ impl Config {
     /// Check if colored output should be disabled
     pub fn no_color(&self) -> bool {
         self.no_color.unwrap_or(false) || env::var("NO_COLOR").is_ok()
+    }
+    
+    /// Get security configuration with defaults
+    pub fn security(&self) -> SecurityConfig {
+        self.security.clone().unwrap_or_default()
+    }
+    
+    /// Get telemetry configuration with defaults
+    pub fn telemetry(&self) -> TelemetryConfig {
+        self.telemetry.clone().unwrap_or_default()
+    }
+    
+    /// Check if network access should be blocked
+    pub fn should_block_network(&self) -> bool {
+        self.security().no_network.unwrap_or(false) || env::var("VERI_NO_NETWORK").is_ok()
+    }
+    
+    /// Check if plugin allowlist should be enforced
+    pub fn enforce_plugin_allowlist(&self) -> bool {
+        if env::var("VERI_DISABLE_ALLOWLIST").is_ok() {
+            return false;
+        }
+        self.security().enforce_allowlist.unwrap_or(true)
+    }
+    
+    /// Check if telemetry is enabled
+    pub fn is_telemetry_enabled(&self) -> bool {
+        // Respect opt-out environment variables
+        if env::var("VERI_NO_TELEMETRY").is_ok() || 
+           env::var("DO_NOT_TRACK").is_ok() || 
+           env::var("NO_ANALYTICS").is_ok() {
+            return false;
+        }
+        
+        self.telemetry().enabled.unwrap_or(false)
     }
 }
 

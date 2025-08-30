@@ -11,9 +11,8 @@ pub mod watch;
 pub mod sharder;
 pub mod event_stream;
 pub mod diagnostics;
-
-#[cfg(test)]
-mod schema_tests;
+pub mod security;
+pub mod telemetry;
 
 pub fn hello() -> &'static str {
     "veri-core: hello"

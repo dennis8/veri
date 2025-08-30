@@ -576,11 +576,36 @@ impl Drop for WatchTui {
 
 /// Simple glob pattern matching
 fn glob_match(pattern: &str, text: &str) -> bool {
-    // Simple implementation - just check for * wildcard at end
-    if pattern.ends_with('*') {
-        let prefix = &pattern[..pattern.len() - 1];
-        text.starts_with(prefix)
+    // Handle exact match first
+    if pattern == text {
+        return true;
+    }
+    
+    // Handle patterns with * wildcard
+    if pattern.contains('*') {
+        if pattern.starts_with('*') && pattern.ends_with('*') {
+            // *substring* pattern
+            let middle = &pattern[1..pattern.len() - 1];
+            text.contains(middle)
+        } else if pattern.starts_with('*') {
+            // *suffix pattern
+            let suffix = &pattern[1..];
+            text.ends_with(suffix)
+        } else if pattern.ends_with('*') {
+            // prefix* pattern
+            let prefix = &pattern[..pattern.len() - 1];
+            text.starts_with(prefix)
+        } else {
+            // More complex pattern - for now, just do simple contains check
+            let parts: Vec<&str> = pattern.split('*').collect();
+            if parts.len() == 2 {
+                text.starts_with(parts[0]) && text.ends_with(parts[1])
+            } else {
+                false // More complex patterns not supported yet
+            }
+        }
     } else {
+        // No wildcards, must be exact match
         pattern == text
     }
 }

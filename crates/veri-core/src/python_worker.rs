@@ -287,6 +287,64 @@ impl PythonWorker {
 
         Ok(imports_graph)
     }
+    
+    /// Get list of installed pytest plugins
+    pub fn get_pytest_plugins(&self) -> Result<Vec<String>> {
+        // Run Python to get installed pytest plugins
+        let output = Command::new("python")
+            .args(&[
+                "-c",
+                r#"
+import pkg_resources
+import json
+import sys
+
+try:
+    # Get all installed packages
+    installed_packages = [d.project_name for d in pkg_resources.working_set]
+    
+    # Filter for pytest plugins (packages that start with 'pytest-' or are pytest itself)
+    plugins = [pkg for pkg in installed_packages if pkg.startswith('pytest') or 'pytest' in pkg.lower()]
+    
+    # Also check for setuptools entry points for pytest plugins
+    try:
+        for entry_point in pkg_resources.iter_entry_points('pytest11'):
+            plugin_name = entry_point.dist.project_name
+            if plugin_name not in plugins:
+                plugins.append(plugin_name)
+    except:
+        pass
+    
+    # Get version information for each plugin
+    plugin_info = []
+    for plugin in plugins:
+        try:
+            dist = pkg_resources.get_distribution(plugin)
+            plugin_info.append(f"{dist.project_name}=={dist.version}")
+        except:
+            plugin_info.append(plugin)
+    
+    print(json.dumps(plugin_info))
+except Exception as e:
+    print(json.dumps([]), file=sys.stderr)
+    print(f"Error getting plugins: {e}", file=sys.stderr)
+"#,
+            ])
+            .current_dir(&self.work_dir)
+            .output()
+            .context("Failed to run Python to get pytest plugins")?;
+        
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!("Failed to get pytest plugins: {}", stderr));
+        }
+        
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let plugins: Vec<String> = serde_json::from_str(&stdout)
+            .context("Failed to parse pytest plugins JSON")?;
+        
+        Ok(plugins)
+    }
 
     /// Check if tests.index.json exists and is recent
     pub fn has_valid_cache(&self) -> bool {

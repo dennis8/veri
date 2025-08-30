@@ -453,6 +453,10 @@ mod tests {
         let config = SchedulerConfig::default();
         let scheduler = TestScheduler::new(config);
         let tests_index = TestsIndex {
+            version: "1.0".to_string(),
+            generated_at: "2023-01-01T00:00:00Z".to_string(),
+            python_version: "3.12".to_string(),
+            pytest_version: "8.0".to_string(),
             tests: Vec::new(),
             collection_errors: Vec::new(),
         };

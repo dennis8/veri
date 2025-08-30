@@ -82,6 +82,18 @@ pub struct Cli {
     #[arg(short = 'c', long = "config")]
     pub config: Option<PathBuf>,
 
+    /// Block network access during test execution
+    #[arg(long = "no-network")]
+    pub no_network: bool,
+
+    /// Disable plugin allowlist enforcement (security risk)
+    #[arg(long = "disable-allowlist")]
+    pub disable_allowlist: bool,
+
+    /// Show telemetry status and exit
+    #[arg(long = "telemetry-status")]
+    pub telemetry_status: bool,
+
     /// Test paths or nodeids
     pub paths: Vec<String>,
 
