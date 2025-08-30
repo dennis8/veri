@@ -14,6 +14,12 @@ from typing import Any
 import pytest
 from _pytest.nodes import Item
 
+try:
+    import coverage
+    COVERAGE_AVAILABLE = True
+except ImportError:
+    COVERAGE_AVAILABLE = False
+
 
 class VeriASTParser:
     """Handles AST-based import analysis for building import graphs"""
@@ -419,6 +425,7 @@ class VeriExecutor:
 
     def __init__(self, work_dir: Path) -> None:
         self.work_dir = work_dir
+        self.coverage_instance = None
 
     def run_tests(self, nodeids: list[str], **kwargs: Any) -> int:
         """
@@ -428,6 +435,13 @@ class VeriExecutor:
         # Early return for empty nodeids - nothing to run
         if not nodeids:
             return 0
+
+        # Handle coverage if enabled
+        if kwargs.get('coverage'):
+            if not COVERAGE_AVAILABLE:
+                print("Warning: coverage package not available, skipping coverage collection", file=sys.stderr)
+            else:
+                self._start_coverage(**kwargs)
 
         args = []
 
@@ -456,9 +470,79 @@ class VeriExecutor:
         original_cwd = os.getcwd()
         try:
             os.chdir(self.work_dir)
-            return pytest.main(args)
+            exit_code = pytest.main(args)
+            
+            # Stop coverage and save data
+            if kwargs.get('coverage') and COVERAGE_AVAILABLE and self.coverage_instance:
+                self._stop_coverage(**kwargs)
+                
+            return exit_code
         finally:
             os.chdir(original_cwd)
+
+    def _start_coverage(self, **kwargs: Any) -> None:
+        """Initialize and start coverage collection"""
+        if not COVERAGE_AVAILABLE:
+            return
+            
+        # Create coverage instance with appropriate settings
+        config_file = self.work_dir / '.coveragerc'
+        if config_file.exists():
+            self.coverage_instance = coverage.Coverage(config_file=str(config_file))
+        else:
+            # Use sensible defaults for incremental coverage
+            source_dirs = kwargs.get('coverage_source_dirs', ['src'])
+            omit_patterns = kwargs.get('coverage_omit', [
+                '*/tests/*', '*/test_*', '*/__pycache__/*', 
+                '*/venv/*', '*/.venv/*'
+            ])
+            
+            self.coverage_instance = coverage.Coverage(
+                source=source_dirs,
+                omit=omit_patterns,
+                branch=True,
+                data_file=str(self.work_dir / '.veri' / 'cache' / '.coverage')
+            )
+        
+        # Start coverage measurement
+        self.coverage_instance.start()
+        print("Started coverage collection")
+
+    def _stop_coverage(self, **kwargs: Any) -> None:
+        """Stop coverage collection and generate reports"""
+        if not self.coverage_instance:
+            return
+            
+        # Stop coverage measurement
+        self.coverage_instance.stop()
+        self.coverage_instance.save()
+        
+        # Generate JSON report for veri to process
+        cache_dir = self.work_dir / '.veri' / 'cache'
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        
+        json_report_path = cache_dir / 'coverage.json'
+        
+        try:
+            # Generate JSON report
+            with open(json_report_path, 'w') as json_file:
+                self.coverage_instance.json_report(outfile=json_file, pretty_print=True)
+            
+            print(f"Coverage data saved to {json_report_path}")
+            
+            # Generate additional reports if requested
+            if kwargs.get('coverage_xml'):
+                xml_path = kwargs.get('coverage_xml_path', self.work_dir / 'coverage.xml')
+                self.coverage_instance.xml_report(outfile=str(xml_path))
+                print(f"Coverage XML report saved to {xml_path}")
+                
+            if kwargs.get('coverage_html'):
+                html_dir = kwargs.get('coverage_html_dir', self.work_dir / 'htmlcov')
+                self.coverage_instance.html_report(directory=str(html_dir))
+                print(f"Coverage HTML report saved to {html_dir}")
+                
+        except Exception as e:
+            print(f"Error generating coverage reports: {e}", file=sys.stderr)
 
     def run_pytest_engine(self, original_args: list[str]) -> int:
         """
@@ -527,6 +611,17 @@ def main():
                        help='JUnit XML output path')
     parser.add_argument('--workers', default='1',
                        help='Number of workers for parallel execution')
+    parser.add_argument('--coverage', action='store_true',
+                       help='Enable coverage collection')
+    parser.add_argument('--coverage-xml', action='store_true',
+                       help='Generate XML coverage report')
+    parser.add_argument('--coverage-html', action='store_true',
+                       help='Generate HTML coverage report')
+    parser.add_argument('--coverage-source-dirs', nargs='*', default=['src'],
+                       help='Source directories for coverage')
+    parser.add_argument('--coverage-omit', nargs='*', 
+                       default=['*/tests/*', '*/test_*', '*/__pycache__/*', '*/venv/*', '*/.venv/*'],
+                       help='Patterns to omit from coverage')
     parser.add_argument('--pytest-args', nargs='*', default=[],
                        help='Additional arguments to pass to pytest')
     parser.add_argument('--module-map', type=Path,
@@ -609,7 +704,12 @@ def main():
                 exitfirst=args.exitfirst,
                 maxfail=args.maxfail,
                 junit_xml=args.junit_xml,
-                workers=args.workers
+                workers=args.workers,
+                coverage=args.coverage,
+                coverage_xml=args.coverage_xml,
+                coverage_html=args.coverage_html,
+                coverage_source_dirs=args.coverage_source_dirs,
+                coverage_omit=args.coverage_omit
             )
 
             return exit_code

@@ -14,6 +14,7 @@ use veri_core::import_graph::ImportGraphBuilder;
 use veri_core::planner::{TestPlanner, PlannerConfig};
 use veri_core::scheduler::{TestScheduler, SchedulerConfig, SchedulingStrategy};
 use veri_core::worker_pool::{WorkerPool, WorkerPoolConfig};
+use veri_core::coverage::{CoverageCollector, CoverageConfig, CoverageFormat};
 
 fn main() {
     let exit_code = match run() {
@@ -251,10 +252,50 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
         maxfail: cli.maxfail,
         junit_xml: cli.junit_xml.clone(),
         workers: Some("1".to_string()), // Each worker handles their batch sequentially
+        coverage: cli.cov,
+        coverage_xml: cli.cov || cli.cov_merge_full,
+        coverage_html: false, // Can be configured later
+        coverage_source_dirs: vec!["src".to_string()], // Default, can be made configurable
+        coverage_omit: vec![
+            "*/tests/*".to_string(),
+            "*/test_*".to_string(),
+            "*/__pycache__/*".to_string(),
+            "*/venv/*".to_string(),
+            "*/.venv/*".to_string(),
+        ],
     };
     
+    // Initialize coverage if enabled
+    let coverage_config = if cli.cov || cli.cov_merge_full {
+        Some(CoverageConfig {
+            enabled: true,
+            merge_full: cli.cov_merge_full,
+            output_formats: vec![CoverageFormat::Xml, CoverageFormat::Json],
+            output_dir: work_dir.join("reports"),
+            source_dirs: vec![work_dir.join("src")],
+            omit_patterns: vec![
+                "*/tests/*".to_string(),
+                "*/test_*".to_string(),
+                "*/__pycache__/*".to_string(),
+                "*/venv/*".to_string(),
+                "*/.venv/*".to_string(),
+            ],
+        })
+    } else {
+        None
+    };
+
+    let coverage_collector = coverage_config.as_ref().map(|config| {
+        CoverageCollector::new(config.clone(), cache_dir.clone(), work_dir.clone())
+    });
+
+    // Initialize coverage for selected tests
+    if let Some(collector) = &coverage_collector {
+        collector.initialize_coverage(&nodeids_to_run)?;
+    }
+
     // Execute tests using scheduler and worker pool if we have multiple workers
-    if worker_count == 1 || nodeids_to_run.len() == 1 {
+    let test_result = if worker_count == 1 || nodeids_to_run.len() == 1 {
         // Single worker execution - use direct approach
         let exit_code = worker.run_tests(&nodeids_to_run, &run_options)?;
         match exit_code {
@@ -275,7 +316,28 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
             &cache_dir,
             cli.verbose > 0,
         )
+    };
+
+    // Process coverage if enabled
+    if let Some(collector) = coverage_collector {
+        if cli.cov || cli.cov_merge_full {
+            // Collect coverage data from the test run
+            let coverage_map = collector.collect_coverage(&nodeids_to_run)?;
+            
+            // Save coverage map to cache
+            collector.save_coverage_map(&coverage_map)?;
+            
+            // Generate full report if requested
+            if cli.cov_merge_full {
+                collector.generate_full_report(&coverage_map)?;
+                println!("📊 Generated full coverage report in reports/");
+            } else if cli.cov {
+                println!("📊 Incremental coverage data collected and cached");
+            }
+        }
     }
+
+    test_result
 }
 
 fn should_run_tests(cli: &Cli) -> bool {

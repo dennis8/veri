@@ -5,7 +5,8 @@ description = "Python pytest shim for veri"
 requires-python = ">=3.11"
 dependencies = [
     "pytest>=7.0.0",
-    "pytest-xdist>=2.0.0",  # For parallel execution support
+    "pytest-xdist>=2.0.0", # For parallel execution support
+    "coverage>=7.0.0", # For coverage collection
 ]
 
 [project.optional-dependencies]

@@ -6,6 +6,7 @@ pub mod import_graph;
 pub mod planner;
 pub mod scheduler;
 pub mod worker_pool;
+pub mod coverage;
 
 #[cfg(test)]
 mod schema_tests;

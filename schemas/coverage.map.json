@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coverage Map Schema",
+  "description": "Schema for veri coverage map files",
+  "type": "object",
+  "properties": {
+    "files": {
+      "type": "object",
+      "description": "Mapping from file path to coverage data",
+      "patternProperties": {
+        ".*": {
+          "$ref": "#/definitions/FileCoverage"
+        }
+      }
+    },
+    "metadata": {
+      "$ref": "#/definitions/CoverageMetadata"
+    }
+  },
+  "required": [
+    "files",
+    "metadata"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "FileCoverage": {
+      "type": "object",
+      "description": "Coverage data for a single file",
+      "properties": {
+        "digest": {
+          "type": "string",
+          "description": "File digest for cache validation (SHA-256 hex)"
+        },
+        "covered_lines": {
+          "type": "array",
+          "description": "Set of covered line numbers (1-indexed)",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "total_lines": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of executable lines"
+        },
+        "coverage_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Coverage percentage"
+        }
+      },
+      "required": [
+        "digest",
+        "covered_lines",
+        "total_lines",
+        "coverage_percent"
+      ],
+      "additionalProperties": false
+    },
+    "CoverageMetadata": {
+      "type": "object",
+      "description": "Metadata about coverage collection",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this coverage was collected (ISO 8601)"
+        },
+        "python_version": {
+          "type": "string",
+          "description": "Python version used"
+        },
+        "coverage_version": {
+          "type": "string",
+          "description": "Coverage tool version"
+        },
+        "incremental": {
+          "type": "boolean",
+          "description": "Whether this is incremental or full coverage"
+        }
+      },
+      "required": [
+        "timestamp",
+        "python_version",
+        "coverage_version",
+        "incremental"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

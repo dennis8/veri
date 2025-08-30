@@ -194,6 +194,25 @@ impl PythonWorker {
             args.push(workers.clone());
         }
 
+        // Add coverage options
+        if options.coverage {
+            args.push("--coverage".to_string());
+        }
+        if options.coverage_xml {
+            args.push("--coverage-xml".to_string());
+        }
+        if options.coverage_html {
+            args.push("--coverage-html".to_string());
+        }
+        if !options.coverage_source_dirs.is_empty() {
+            args.push("--coverage-source-dirs".to_string());
+            args.extend(options.coverage_source_dirs.iter().cloned());
+        }
+        if !options.coverage_omit.is_empty() {
+            args.push("--coverage-omit".to_string());
+            args.extend(options.coverage_omit.iter().cloned());
+        }
+
         // Execute Python worker
         let output = self.run_python_command(&args)
             .context("Failed to run Python worker for test execution")?;
@@ -355,4 +374,9 @@ pub struct TestRunOptions {
     pub maxfail: Option<u32>,
     pub junit_xml: Option<PathBuf>,
     pub workers: Option<String>,
+    pub coverage: bool,
+    pub coverage_xml: bool,
+    pub coverage_html: bool,
+    pub coverage_source_dirs: Vec<String>,
+    pub coverage_omit: Vec<String>,
 }

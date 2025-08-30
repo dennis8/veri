@@ -4,7 +4,7 @@
 //! execute tests in parallel while maintaining warm interpreter state for
 //! improved performance.
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -178,9 +178,47 @@ impl WorkerPool {
         }
     }
 
+    /// Set up the worker script in the cache directory
+    fn setup_worker_script(&self) -> Result<()> {
+        let worker_script_dest = self.config.cache_dir.join("veri_worker.py");
+        
+        // Find the worker script in the source tree
+        // Try common locations relative to the working directory
+        let potential_paths = [
+            self.config.work_dir.join("py_worker").join("veri_worker.py"),
+            self.config.work_dir.join("veri_worker.py"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap().join("py_worker").join("veri_worker.py"),
+        ];
+        
+        let mut worker_script_src = None;
+        for path in &potential_paths {
+            if path.exists() {
+                worker_script_src = Some(path.clone());
+                break;
+            }
+        }
+        
+        let worker_script_src = worker_script_src
+            .ok_or_else(|| anyhow!("Could not find veri_worker.py script"))?;
+            
+        debug!("Copying worker script from {} to {}", 
+               worker_script_src.display(), 
+               worker_script_dest.display());
+               
+        std::fs::copy(&worker_script_src, &worker_script_dest)
+            .with_context(|| format!("Failed to copy worker script from {} to {}", 
+                                    worker_script_src.display(), 
+                                    worker_script_dest.display()))?;
+                                    
+        Ok(())
+    }
+
     /// Initialize the worker pool and start worker processes
     pub fn start(&mut self) -> Result<()> {
         info!("Starting worker pool with {} workers", self.config.worker_count);
+        
+        // Set up worker script
+        self.setup_worker_script()?;
         
         // Initialize worker processes
         for i in 0..self.config.worker_count {

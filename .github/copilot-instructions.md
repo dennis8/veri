@@ -62,8 +62,6 @@ just lint      # cargo clippy --workspace --all-targets
 - **`crates/veri-core/src/python_worker.rs`** — Python subprocess management  
 - **`py_worker/veri_worker.py`** — pytest compatibility layer
 - **`py_worker/pyproject.toml`** — Python dependencies (uv managed)
-- **`examples/phase3_demo/`** — working demo for testing
-- **`docs/PHASE_3_SUMMARY.md`** — implementation summary
 
 ## Editing guidance
 
