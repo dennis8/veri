@@ -1,13 +1,7 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-08-30T08:22:55.509684800+00:00",
+  "generated_at": "2025-08-30T08:30:53.400047700+00:00",
   "reverse_deps": {
-    "test_calculator": {
-      "direct_dependents": [],
-      "transitive_dependents": [],
-      "test_dependents": [],
-      "uncertain_dependents": []
-    },
     "conftest": {
       "direct_dependents": [],
       "transitive_dependents": [],
@@ -16,17 +10,23 @@
     },
     "calculator": {
       "direct_dependents": [
-        "test_calculator",
-        "test_basic"
+        "test_basic",
+        "test_calculator"
       ],
       "transitive_dependents": [
         "test_basic",
         "test_calculator"
       ],
       "test_dependents": [
-        "test_calculator",
-        "test_basic"
+        "test_basic",
+        "test_calculator"
       ],
+      "uncertain_dependents": []
+    },
+    "test_calculator": {
+      "direct_dependents": [],
+      "transitive_dependents": [],
+      "test_dependents": [],
       "uncertain_dependents": []
     },
     "test_basic": {

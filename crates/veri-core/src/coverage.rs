@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use log::{debug, info, warn};
-use sha2::{Sha256, Digest};
+use sha2::Digest;
 
 /// Coverage map data keyed by file digest
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -8,6 +8,7 @@ from calculator import add, multiply, divide
     (0, 0, 0),
     (-1, 1, 0),
     (100, 200, 300),
+    (1, 1, 2),  # Added new test case
 ])
 def test_addition_parametrized(a, b, expected):
     """Parametrized addition tests"""

@@ -1,7 +1,19 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-08-30T08:22:55.448273+00:00Z",
+  "generated_at": "2025-08-30T08:30:53.351306+00:00Z",
   "edges": [
+    {
+      "from_module": "test_basic",
+      "to_module": "calculator",
+      "import_type": "from",
+      "line": 4,
+      "names": [
+        "add",
+        "subtract"
+      ],
+      "alias": null,
+      "is_conditional": false
+    },
     {
       "from_module": "test_calculator",
       "to_module": "calculator",
@@ -14,22 +26,17 @@
       ],
       "alias": null,
       "is_conditional": false
-    },
-    {
-      "from_module": "test_basic",
-      "to_module": "calculator",
-      "import_type": "from",
-      "line": 4,
-      "names": [
-        "add",
-        "subtract"
-      ],
-      "alias": null,
-      "is_conditional": false
     }
   ],
   "dynamic_imports": [],
   "unresolved_imports": [
+    {
+      "from_module": "test_basic",
+      "import_name": "pytest",
+      "line": 3,
+      "is_third_party": false,
+      "is_builtin": true
+    },
     {
       "from_module": "conftest",
       "import_name": "pytest",
@@ -39,13 +46,6 @@
     },
     {
       "from_module": "test_calculator",
-      "import_name": "pytest",
-      "line": 3,
-      "is_third_party": false,
-      "is_builtin": true
-    },
-    {
-      "from_module": "test_basic",
       "import_name": "pytest",
       "line": 3,
       "is_third_party": false,

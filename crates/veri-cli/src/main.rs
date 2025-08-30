@@ -15,6 +15,7 @@ use veri_core::planner::{TestPlanner, PlannerConfig};
 use veri_core::scheduler::{TestScheduler, SchedulerConfig, SchedulingStrategy};
 use veri_core::worker_pool::{WorkerPool, WorkerPoolConfig};
 use veri_core::coverage::{CoverageCollector, CoverageConfig, CoverageFormat};
+use veri_core::watch::{WatchSession, WatchConfig};
 
 fn main() {
     let exit_code = match run() {
@@ -165,6 +166,12 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     
     let work_dir = std::env::current_dir()?;
     let cache_dir = work_dir.join(".veri").join("cache");
+    
+    // Handle watch mode
+    if cli.watch {
+        return run_watch_mode(cli, config, &work_dir, &cache_dir);
+    }
+    
     let worker = PythonWorker::new(&work_dir, &cache_dir);
     
     // Check if we need to collect tests (first run or --all)
@@ -338,6 +345,99 @@ fn run_veri_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     }
 
     test_result
+}
+
+fn run_watch_mode(cli: &Cli, config: &Config, work_dir: &std::path::Path, cache_dir: &std::path::Path) -> Result<ExitCode> {
+    println!("👀 Starting watch mode...");
+    
+    // Configure watch settings
+    let watch_config = WatchConfig {
+        debounce_delay: std::time::Duration::from_millis(150),
+        max_wait_time: std::time::Duration::from_millis(500),
+        respect_gitignore: true,
+        enable_tui: !cli.quiet,
+        verbose: cli.verbose > 0,
+        ..Default::default()
+    };
+    
+    // Configure test run options
+    let run_options = TestRunOptions {
+        verbose: cli.verbose > 0,
+        quiet: cli.quiet,
+        no_capture: cli.no_capture,
+        exitfirst: cli.exitfirst,
+        maxfail: cli.maxfail,
+        junit_xml: cli.junit_xml.clone(),
+        workers: Some("1".to_string()), // Use single worker in watch mode for speed
+        coverage: cli.cov,
+        coverage_xml: cli.cov || cli.cov_merge_full,
+        coverage_html: false,
+        coverage_source_dirs: vec!["src".to_string()],
+        coverage_omit: vec![
+            "*/tests/*".to_string(),
+            "*/test_*".to_string(),
+            "*/__pycache__/*".to_string(),
+            "*/venv/*".to_string(),
+            "*/.venv/*".to_string(),
+        ],
+    };
+    
+    // Ensure we have collected tests first
+    let worker = PythonWorker::new(work_dir, cache_dir);
+    if !worker.has_valid_cache() {
+        println!("📋 Initial collection required...");
+        match worker.collect_tests(&[]) {
+            Ok(_tests_index) => {
+                println!("✅ Initial collection completed");
+            }
+            Err(e) => {
+                println!("⚠️  Initial collection failed: {}", e);
+                println!("   Watch mode will continue but may have limited functionality");
+            }
+        }
+        
+        // Build import graphs
+        println!("🔍 Building import graph...");
+        let mut graph_builder = ImportGraphBuilder::new(work_dir, cache_dir);
+        match graph_builder.build_graphs() {
+            Ok((imports_graph, _revdeps_graph, _module_map)) => {
+                println!("✅ Built import graph with {} edges", imports_graph.edges.len());
+            }
+            Err(e) => {
+                println!("⚠️  Failed to build import graph: {}", e);
+                println!("   Watch mode will run all tests when files change");
+            }
+        }
+    } else {
+        println!("✅ Using cached test collection and import graph");
+    }
+    
+    // Create and start watch session
+    let mut watch_session = WatchSession::new(
+        work_dir.to_path_buf(),
+        cache_dir.to_path_buf(),
+        watch_config,
+    )?;
+    
+    watch_session.start()?;
+    
+    // Set up signal handling for graceful shutdown
+    setup_signal_handlers()?;
+    
+    // Run watch loop
+    watch_session.run(run_options)?;
+    
+    Ok(ExitCode::Success)
+}
+
+fn setup_signal_handlers() -> Result<()> {
+    // Register Ctrl+C handler
+    ctrlc::set_handler(move || {
+        println!("\n🛑 Stopping watch mode...");
+        std::process::exit(0);
+    })?;
+    
+    Ok(())
 }
 
 fn should_run_tests(cli: &Cli) -> bool {

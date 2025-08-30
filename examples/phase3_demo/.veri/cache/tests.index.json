@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-08-30T08:22:54.853396+00:00Z",
+  "generated_at": "2025-08-30T08:33:44.583928+00:00Z",
   "python_version": "3.13.3",
   "pytest_version": "8.4.1",
   "tests": [
@@ -181,9 +181,35 @@
       }
     },
     {
+      "nodeid": "examples/phase3_demo/test_calculator.py::test_addition_parametrized[1-1-2]",
+      "path": "test_calculator.py",
+      "line": 6,
+      "function": "test_addition_parametrized",
+      "class": null,
+      "module": "test_calculator",
+      "markers": [
+        "parametrize"
+      ],
+      "fixtures": [
+        "a",
+        "b",
+        "expected"
+      ],
+      "parametrize": {
+        "params": [
+          "a",
+          "b",
+          "expected"
+        ],
+        "ids": [
+          "1-1-2"
+        ]
+      }
+    },
+    {
       "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[2-3-6]",
       "path": "test_calculator.py",
-      "line": 16,
+      "line": 17,
       "function": "test_multiplication_parametrized",
       "class": null,
       "module": "test_calculator",
@@ -209,7 +235,7 @@
     {
       "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[5-4-20]",
       "path": "test_calculator.py",
-      "line": 16,
+      "line": 17,
       "function": "test_multiplication_parametrized",
       "class": null,
       "module": "test_calculator",
@@ -235,7 +261,7 @@
     {
       "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[0-100-0]",
       "path": "test_calculator.py",
-      "line": 16,
+      "line": 17,
       "function": "test_multiplication_parametrized",
       "class": null,
       "module": "test_calculator",
@@ -261,7 +287,7 @@
     {
       "nodeid": "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[-2-3--6]",
       "path": "test_calculator.py",
-      "line": 16,
+      "line": 17,
       "function": "test_multiplication_parametrized",
       "class": null,
       "module": "test_calculator",
@@ -287,7 +313,7 @@
     {
       "nodeid": "examples/phase3_demo/test_calculator.py::test_division_parametrized[6-2-3.0]",
       "path": "test_calculator.py",
-      "line": 26,
+      "line": 27,
       "function": "test_division_parametrized",
       "class": null,
       "module": "test_calculator",
@@ -313,7 +339,7 @@
     {
       "nodeid": "examples/phase3_demo/test_calculator.py::test_division_parametrized[10-5-2.0]",
       "path": "test_calculator.py",
-      "line": 26,
+      "line": 27,
       "function": "test_division_parametrized",
       "class": null,
       "module": "test_calculator",
@@ -339,7 +365,7 @@
     {
       "nodeid": "examples/phase3_demo/test_calculator.py::test_division_parametrized[7-2-3.5]",
       "path": "test_calculator.py",
-      "line": 26,
+      "line": 27,
       "function": "test_division_parametrized",
       "class": null,
       "module": "test_calculator",
@@ -365,7 +391,7 @@
     {
       "nodeid": "examples/phase3_demo/test_calculator.py::test_division_by_zero",
       "path": "test_calculator.py",
-      "line": 35,
+      "line": 36,
       "function": "test_division_by_zero",
       "class": null,
       "module": "test_calculator",

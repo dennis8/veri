@@ -7,6 +7,7 @@ pub mod planner;
 pub mod scheduler;
 pub mod worker_pool;
 pub mod coverage;
+pub mod watch;
 
 #[cfg(test)]
 mod schema_tests;

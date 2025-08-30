@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-08-30T08:22:54.854837+00:00Z",
+  "generated_at": "2025-08-30T08:33:44.586428+00:00Z",
   "markers": {
     "slow": {
       "name": "slow",
@@ -22,7 +22,7 @@
       "name": "parametrize",
       "description": null,
       "registered": false,
-      "usage_count": 11,
+      "usage_count": 12,
       "first_seen": "test_calculator.py",
       "common_args": []
     }
@@ -50,6 +50,9 @@
       "parametrize"
     ],
     "examples/phase3_demo/test_calculator.py::test_addition_parametrized[100-200-300]": [
+      "parametrize"
+    ],
+    "examples/phase3_demo/test_calculator.py::test_addition_parametrized[1-1-2]": [
       "parametrize"
     ],
     "examples/phase3_demo/test_calculator.py::test_multiplication_parametrized[2-3-6]": [
