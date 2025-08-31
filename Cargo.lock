@@ -1360,6 +1360,7 @@ dependencies = [
  "notify",
  "num_cpus",
  "rand 0.8.5",
+ "regex",
  "serde",
  "serde_json",
  "sha2",
@@ -1368,6 +1369,7 @@ dependencies = [
  "toml",
  "url",
  "uuid",
+ "walkdir",
 ]
 
 [[package]]

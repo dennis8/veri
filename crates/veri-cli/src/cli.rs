@@ -94,6 +94,22 @@ pub struct Cli {
     #[arg(long = "telemetry-status")]
     pub telemetry_status: bool,
 
+    /// Enable automatic retry of failed tests
+    #[arg(long = "auto-retry")]
+    pub auto_retry: bool,
+
+    /// Number of retries for failed tests (default: 1)
+    #[arg(long = "retry-count")]
+    pub retry_count: Option<u32>,
+
+    /// Show flaky test report
+    #[arg(long = "flaky-report")]
+    pub flaky_report: bool,
+
+    /// Show compatibility report
+    #[arg(long = "compatibility-report")]
+    pub compatibility_report: bool,
+
     /// Test paths or nodeids
     pub paths: Vec<String>,
 

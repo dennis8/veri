@@ -10,6 +10,158 @@ on:
     branches: [ main ]
 
 jobs:
+  # Matrix compatibility testing
+  compatibility:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        env-type: [venv, uv]
+        exclude:
+          # Reduce matrix size - test core combinations
+          - os: macos-latest
+            python-version: "3.9"
+          - os: windows-latest
+            python-version: "3.9"
+          - os: macos-latest
+            python-version: "3.13"
+            env-type: venv
+    
+    name: "Compat ${{ matrix.os }} Python ${{ matrix.python-version }} (${{ matrix.env-type }})"
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install uv (if using uv env)
+        if: matrix.env-type == 'uv'
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      
+      - name: Create virtual environment
+        run: |
+          if [ "${{ matrix.env-type }}" = "uv" ]; then
+            uv venv .venv
+            if [ "${{ runner.os }}" = "Windows" ]; then
+              echo ".venv/Scripts" >> $GITHUB_PATH
+            else
+              echo ".venv/bin" >> $GITHUB_PATH
+            fi
+          else
+            python -m venv .venv
+            if [ "${{ runner.os }}" = "Windows" ]; then
+              echo ".venv/Scripts" >> $GITHUB_PATH
+            else
+              echo ".venv/bin" >> $GITHUB_PATH
+            fi
+          fi
+        shell: bash
+      
+      - name: Install dependencies
+        run: |
+          if [ "${{ matrix.env-type }}" = "uv" ]; then
+            uv pip install pytest pytest-cov pytest-asyncio pytest-mock
+            uv pip install -e .
+          else
+            python -m pip install --upgrade pip
+            pip install pytest pytest-cov pytest-asyncio pytest-mock
+            pip install -e .
+          fi
+        shell: bash
+      
+      - name: Install veri
+        run: |
+          if [ "${{ matrix.env-type }}" = "uv" ]; then
+            uv tool install veri
+          else
+            pip install veri
+          fi
+        shell: bash
+      
+      - name: Run compatibility tests
+        run: |
+          python scripts/matrix_test.py --output compatibility-report.json
+        shell: bash
+      
+      - name: Upload compatibility report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compatibility-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.env-type }}
+          path: compatibility-report.json
+          retention-days: 7
+  
+  # Plugin compatibility tests
+  plugin-compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin-set:
+          - name: "core"
+            plugins: "pytest-cov pytest-mock pytest-asyncio"
+          - name: "frameworks"
+            plugins: "pytest-django pytest-flask pytest-tornado"
+          - name: "reporting"
+            plugins: "pytest-html pytest-json-report pytest-benchmark"
+          - name: "problematic"
+            plugins: "pytest-xdist pytest-testmon"
+    
+    name: "Plugin Compat (${{ matrix.plugin-set.name }})"
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      
+      - name: Install base dependencies
+        run: |
+          uv venv
+          uv pip install pytest
+          uv pip install -e .
+      
+      - name: Install plugin set
+        run: |
+          uv pip install ${{ matrix.plugin-set.plugins }}
+        continue-on-error: true
+      
+      - name: Install veri
+        run: uv tool install veri
+      
+      - name: Test plugin compatibility
+        run: |
+          echo "Testing with plugins: ${{ matrix.plugin-set.plugins }}"
+          python scripts/matrix_test.py --output plugin-compatibility-${{ matrix.plugin-set.name }}.json
+        continue-on-error: true
+      
+      - name: Check fallback behavior
+        if: matrix.plugin-set.name == 'problematic'
+        run: |
+          echo "Testing automatic fallback for problematic plugins..."
+          veri --engine pytest -v || echo "Fallback test completed"
+      
+      - name: Upload plugin compatibility report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plugin-compatibility-${{ matrix.plugin-set.name }}
+          path: plugin-compatibility-${{ matrix.plugin-set.name }}.json
+          retention-days: 7
   # Generate sharding manifest
   prepare:
     runs-on: ubuntu-latest

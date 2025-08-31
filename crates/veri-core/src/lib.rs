@@ -13,6 +13,8 @@ pub mod event_stream;
 pub mod diagnostics;
 pub mod security;
 pub mod telemetry;
+pub mod compatibility;
+pub mod flaky;
 
 pub fn hello() -> &'static str {
     "veri-core: hello"

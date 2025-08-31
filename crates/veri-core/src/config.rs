@@ -64,6 +64,15 @@ pub struct Config {
     
     /// Telemetry configuration
     pub telemetry: Option<TelemetryConfig>,
+    
+    /// Flaky test configuration
+    pub flaky: Option<FlakyTestConfig>,
+    
+    /// Automatic retry of failed tests
+    pub auto_retry: Option<bool>,
+    
+    /// Number of retries for failed tests
+    pub retry_count: Option<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -88,6 +97,36 @@ pub struct TelemetryConfig {
     
     /// Collection interval in seconds
     pub collection_interval: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FlakyTestConfig {
+    /// Number of retries for failed tests (default: 1)
+    pub retry_count: Option<u32>,
+    
+    /// Whether to enable automatic retry (default: true)
+    pub auto_retry: Option<bool>,
+    
+    /// Threshold for marking a test as flaky (default: 0.2)
+    pub flaky_threshold: Option<f64>,
+    
+    /// Minimum number of runs before considering flaky threshold (default: 5)
+    pub min_runs_for_flaky: Option<u32>,
+    
+    /// Whether to fail the overall run if flaky tests are detected (default: false)
+    pub fail_on_flaky: Option<bool>,
+}
+
+impl Default for FlakyTestConfig {
+    fn default() -> Self {
+        Self {
+            retry_count: Some(1),
+            auto_retry: Some(true),
+            flaky_threshold: Some(0.2),
+            min_runs_for_flaky: Some(5),
+            fail_on_flaky: Some(false),
+        }
+    }
 }
 
 impl Default for SecurityConfig {
@@ -133,6 +172,9 @@ impl Default for Config {
             all: Some(false),
             security: None,
             telemetry: None,
+            flaky: None,
+            auto_retry: Some(false),
+            retry_count: Some(1),
         }
     }
 }

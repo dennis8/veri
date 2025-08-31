@@ -1,0 +1,97 @@
+# Example veri configuration showing Phase 13 features
+# Save as veri.toml or add to [tool.veri] section in pyproject.toml
+
+# Basic test execution settings
+workers = "auto"
+log_level = "INFO"
+no_color = false
+
+# Test discovery
+test_paths = ["tests/", "src/"]
+markers = ""
+keyword = ""
+
+# Output formats
+junit_xml = "reports/junit.xml"
+jsonl = "reports/events.jsonl"
+
+# Coverage settings
+cov = false
+cov_merge_full = true
+
+# Execution behavior
+maxfail = 0  # 0 means no limit
+verbose = 1
+quiet = false
+last_failed = false
+engine = "veri"  # or "pytest"
+watch = false
+all = false
+
+# Phase 13: Security and plugin allowlist
+[security]
+enforce_allowlist = true
+no_network = false
+allowed_plugins = [
+    # Core testing plugins
+    "pytest",
+    "pytest-cov",
+    "pytest-mock", 
+    "pytest-asyncio",
+    "pytest-html",
+    "pytest-json-report",
+    "pytest-benchmark",
+    "pytest-timeout",
+    "pytest-randomly",
+    "pytest-rerunfailures",
+    "pytest-sugar",
+    "pytest-clarity",
+    
+    # Framework plugins
+    "pytest-django",
+    "pytest-flask",
+    "pytest-tornado",
+    "pytest-aiohttp",
+    
+    # Data/science plugins
+    "pytest-datadir",
+    "pytest-postgresql",
+    "pytest-redis",
+    "pytest-mysql",
+    
+    # Add your custom plugins here
+    # "my-custom-pytest-plugin",
+]
+
+# Phase 13: Flaky test handling
+[flaky]
+# Enable automatic retry of failed tests
+auto_retry = true
+
+# Number of times to retry a failed test (default: 1)
+retry_count = 1
+
+# Threshold for marking a test as flaky (failure rate)
+# 0.2 means 20% failure rate
+flaky_threshold = 0.2
+
+# Minimum number of runs before considering flaky threshold
+min_runs_for_flaky = 5
+
+# Whether to fail the overall run if flaky tests are detected
+fail_on_flaky = false
+
+# Telemetry (disabled by default)
+[telemetry]
+enabled = false
+# endpoint = "https://telemetry.veri.dev/api/v1/events"
+# collection_interval = 300
+
+# Environment-specific overrides
+# These can also be set via environment variables:
+# VERI_LOG_LEVEL=DEBUG
+# VERI_NO_COLOR=1
+# VERI_CACHE_DIR=/custom/cache/path
+# VERI_NO_NETWORK=1
+# VERI_DISABLE_ALLOWLIST=1
+# VERI_TELEMETRY_ENABLED=1

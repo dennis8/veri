@@ -5,7 +5,7 @@ mod cli_tests;
 use anyhow::Result;
 use clap::Parser;
 use cli::{Cli, Commands, ExitCode, Engine};
-use log::info;
+use log::{info, warn};
 use std::process;
 use veri_core::config::Config;
 use veri_core::cache::{CacheKey, compute_config_digest};
@@ -21,6 +21,8 @@ use veri_core::event_stream::{CIReporter, generate_run_id};
 use veri_core::diagnostics::{DiagnosticReporter, VeriDiagnostic};
 use veri_core::security::{SecurityConfig, SecurityScanner};
 use veri_core::telemetry::{TelemetryClient, RunEvent, ErrorCategory};
+use veri_core::compatibility::CompatibilityMatrix;
+use veri_core::flaky::{FlakyManager, FlakyConfig};
 
 fn main() {
     let exit_code = match run() {
@@ -65,7 +67,26 @@ fn run() -> Result<ExitCode> {
     info!("veri v{} starting", env!("CARGO_PKG_VERSION"));
     
     // Initialize security configuration
-    let _security_config = SecurityConfig::from_config(&config);
+    let security_config = SecurityConfig::from_config(&config);
+    
+    // Load compatibility matrix
+    let work_dir = std::env::current_dir()?;
+    let cache_dir = work_dir.join(".veri").join("cache");
+    let compatibility_matrix = CompatibilityMatrix::load_or_default(
+        work_dir.join("veri-compatibility.toml")
+    ).unwrap_or_default();
+    
+    // Initialize flaky test manager
+    let flaky_config = FlakyConfig {
+        auto_retry: config.auto_retry.unwrap_or(true),
+        retry_count: config.retry_count.unwrap_or(1),
+        flaky_db_path: cache_dir.join("flaky_tests.json"),
+        ..Default::default()
+    };
+    let mut flaky_manager = FlakyManager::new(flaky_config);
+    if let Err(e) = flaky_manager.load() {
+        warn!("Could not load flaky test database: {}", e);
+    }
     
     // Initialize telemetry client (disabled by default)
     let telemetry_config = veri_core::telemetry::TelemetryConfig {
@@ -109,7 +130,7 @@ fn run() -> Result<ExitCode> {
         }
         Engine::Veri => {
             // Use veri's fast engine with pytest compatibility layer
-            run_veri_engine(&cli, &config, &_security_config, &mut telemetry_client.clone())
+            run_veri_engine(&cli, &config, &security_config, &compatibility_matrix, &mut flaky_manager, &mut telemetry_client.clone())
         }
     }
 }
@@ -188,7 +209,14 @@ fn run_pytest_engine(cli: &Cli, _config: &Config) -> Result<ExitCode> {
     }
 }
 
-fn run_veri_engine(cli: &Cli, config: &Config, security_config: &SecurityConfig, telemetry_client: &mut TelemetryClient) -> Result<ExitCode> {
+fn run_veri_engine(
+    cli: &Cli, 
+    config: &Config, 
+    security_config: &SecurityConfig, 
+    compatibility_matrix: &CompatibilityMatrix,
+    _flaky_manager: &mut FlakyManager,
+    telemetry_client: &mut TelemetryClient
+) -> Result<ExitCode> {
     println!("🚀 Using veri engine for maximum speed");
     
     let work_dir = std::env::current_dir()?;
@@ -203,6 +231,22 @@ fn run_veri_engine(cli: &Cli, config: &Config, security_config: &SecurityConfig,
     
     // Initialize diagnostics reporter
     let mut diagnostics = DiagnosticReporter::new(cli.quiet);
+    
+    // Check Python environment compatibility
+    let plugins = worker.get_pytest_plugins().unwrap_or_default();
+    let compatibility_report = compatibility_matrix.generate_report(&worker, &plugins)?;
+    
+    // Print compatibility report if verbose or if there are issues
+    if cli.verbose > 0 || !compatibility_report.environment.overall_supported || compatibility_report.plugin_check.needs_fallback {
+        compatibility_report.print_report(!config.no_color());
+        println!();
+    }
+    
+    // Auto-fallback to pytest if incompatible plugins detected
+    if compatibility_report.plugin_check.needs_fallback && !cli.disable_allowlist {
+        println!("🔄 Automatically falling back to pytest engine due to plugin compatibility issues");
+        return run_pytest_engine(cli, config);
+    }
     
     // Check Python environment
     worker.check_environment(&mut diagnostics)?;
@@ -283,7 +327,7 @@ fn run_veri_engine(cli: &Cli, config: &Config, security_config: &SecurityConfig,
         // Build import graph and dependency analysis
         println!("🔍 Building import graph...");
         let mut graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
-        let (imports_graph, revdeps_graph, module_map) = graph_builder.build_graphs()?;
+        let (imports_graph, _revdeps_graph, _module_map) = graph_builder.build_graphs()?;
         
         println!("✅ Built import graph with {} edges", imports_graph.edges.len());
         if !imports_graph.dynamic_imports.is_empty() {

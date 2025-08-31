@@ -1,0 +1,2820 @@
+{
+  "version": "0.1.0",
+  "generated_at": "2025-08-31T11:31:48.176933500+00:00",
+  "modules": {
+    "pytest/src/_pytest/config/__init__.py": {
+      "module_name": "pytest.src._pytest.config",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.config",
+      "relative_path": "pytest/src/_pytest/config/__init__.py",
+      "digest": "7a34502c47cedf2b43b713394678d3eea1e1336ebe81b0f294d5f7f638b5bf34"
+    },
+    "pytest/testing/example_scripts/unittest/test_unittest_asynctest.py": {
+      "module_name": "pytest.testing.example_scripts.unittest.test_unittest_asynctest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.unittest",
+      "relative_path": "pytest/testing/example_scripts/unittest/test_unittest_asynctest.py",
+      "digest": "13b7fc887787cf9548160e84c92ff9ad835f24a927f9dbd30da0fd31f107c45c"
+    },
+    "pytest/src/_pytest/threadexception.py": {
+      "module_name": "pytest.src._pytest.threadexception",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/threadexception.py",
+      "digest": "7f2d2b1969a7a756f359c4c233ee7b629c8599af41bc73c7c146e90f7abaec8f"
+    },
+    "pytest/src/_pytest/_py/__init__.py": {
+      "module_name": "pytest.src._pytest._py",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._py",
+      "relative_path": "pytest/src/_pytest/_py/__init__.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "pytest/testing/plugins_integration/bdd_wallet.py": {
+      "module_name": "pytest.testing.plugins_integration.bdd_wallet",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.plugins_integration",
+      "relative_path": "pytest/testing/plugins_integration/bdd_wallet.py",
+      "digest": "d74ef47c5bea9aae40b49d0da370dbba05ae89143e39e2bee3697a777f99a174"
+    },
+    "pytest/src/_pytest/_io/terminalwriter.py": {
+      "module_name": "pytest.src._pytest._io.terminalwriter",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._io",
+      "relative_path": "pytest/src/_pytest/_io/terminalwriter.py",
+      "digest": "14c324b761ab987ad8d89a5fa48cba58e3913800a852ab383513dbc59e293a61"
+    },
+    "pytest/testing/example_scripts/unittest/test_setup_skip_module.py": {
+      "module_name": "pytest.testing.example_scripts.unittest.test_setup_skip_module",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.unittest",
+      "relative_path": "pytest/testing/example_scripts/unittest/test_setup_skip_module.py",
+      "digest": "a2cc742edcec047fd20dc2b792ecadf77eb5a0e50b17aab315a222d62ab5e859"
+    },
+    "pytest/testing/test_mark_expression.py": {
+      "module_name": "pytest.testing.test_mark_expression",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_mark_expression.py",
+      "digest": "b8bfdbc251b8162a2fee4fd3f91dc789d6ec82dbff9487cd8d8dcc4579a2c7e2"
+    },
+    "pytest/testing/example_scripts/warnings/test_group_warnings_by_message_summary/test_1.py": {
+      "module_name": "pytest.testing.example_scripts.warnings.test_group_warnings_by_message_summary.test_1",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.warnings.test_group_warnings_by_message_summary",
+      "relative_path": "pytest/testing/example_scripts/warnings/test_group_warnings_by_message_summary/test_1.py",
+      "digest": "e04bf217ec66aa675ace383bf5311c724444a728529c0474757bd727e1decfa9"
+    },
+    "pytest/testing/logging/test_reporting.py": {
+      "module_name": "pytest.testing.logging.test_reporting",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.logging",
+      "relative_path": "pytest/testing/logging/test_reporting.py",
+      "digest": "fa570eea67bb06e4c70371ced0608ec39dfe62f8c3eab5d0c4c9effd96ace61b"
+    },
+    "pytest/src/_pytest/unraisableexception.py": {
+      "module_name": "pytest.src._pytest.unraisableexception",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/unraisableexception.py",
+      "digest": "214f6cf3b021704d9c0e1890c715981c83e3585527a2ec2b2425ef4e79e7d4c3"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/conftest.py",
+      "digest": "96196ec68ba9157df790018c2a1e0569743f59cf34c3a27ab23449b14806f184"
+    },
+    "pytest/src/_pytest/monkeypatch.py": {
+      "module_name": "pytest.src._pytest.monkeypatch",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/monkeypatch.py",
+      "digest": "e95f357c44d8a698047cce04b278d4f88426683246fc25d7486f8de34e0f8155"
+    },
+    "pytest/doc/en/example/fixtures/test_fixtures_order_autouse_multiple_scopes.py": {
+      "module_name": "pytest.doc.en.example.fixtures.test_fixtures_order_autouse_multiple_scopes",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.fixtures",
+      "relative_path": "pytest/doc/en/example/fixtures/test_fixtures_order_autouse_multiple_scopes.py",
+      "digest": "2d23d83650545838f9e03c7471cd05b9aa65b47b95608d01aeadee8b3a15bd2e"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookup_modulelevel.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_funcarg_lookup_modulelevel",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookup_modulelevel.py",
+      "digest": "21dbf234c2dc57a5fdd249bbaae1231d2bce32689e32acc190b87b2fdbc20659"
+    },
+    "pytest/testing/typing_raises_group.py": {
+      "module_name": "pytest.testing.typing_raises_group",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/typing_raises_group.py",
+      "digest": "4d7216e380b6298d9fc04e542e3b5c315ce59bd3429225abbc6d516f82be11ba"
+    },
+    "pytest/scripts/generate-gh-release-notes.py": {
+      "module_name": "pytest.scripts.generate-gh-release-notes",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.scripts",
+      "relative_path": "pytest/scripts/generate-gh-release-notes.py",
+      "digest": "d39688e204fe1e412e9fc33c84b5c5598b148420d3873eabf1cfaa13f8eea6db"
+    },
+    "pytest/testing/python/show_fixtures_per_test.py": {
+      "module_name": "pytest.testing.python.show_fixtures_per_test",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.python",
+      "relative_path": "pytest/testing/python/show_fixtures_per_test.py",
+      "digest": "31e7935302b6e2bfa068b418c5f01adc9e535d82206fc0f2691845906e65141c"
+    },
+    "pytest/src/_pytest/pytester.py": {
+      "module_name": "pytest.src._pytest.pytester",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/pytester.py",
+      "digest": "eac7412b59abb6d0a1c6bb2bdac9ededb2b30ed76c315c940f33664167700a9a"
+    },
+    "py_worker/tests/test_execute.py": {
+      "module_name": "py_worker.tests.test_execute",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "py_worker.tests",
+      "relative_path": "py_worker/tests/test_execute.py",
+      "digest": "e6dc70c6a031bcf9b8836e0eda5181fccfe4bdb2a33d04da81f0ad2794f1f6b8"
+    },
+    "pytest/testing/example_scripts/perf_examples/collect_stats/generate_folders.py": {
+      "module_name": "pytest.testing.example_scripts.perf_examples.collect_stats.generate_folders",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.perf_examples.collect_stats",
+      "relative_path": "pytest/testing/example_scripts/perf_examples/collect_stats/generate_folders.py",
+      "digest": "3ca31b1c9d55ab6822c2761a76a5903d1a39a25d95fd75d23bdf279642210217"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1/test_in_sub1.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub1.test_in_sub1",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub1",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1/test_in_sub1.py",
+      "digest": "b424e8014322b0fcca31f07977a8e67d5cc0fa655e761ea36bfc4fde7950c308"
+    },
+    "pytest/testing/freeze/create_executable.py": {
+      "module_name": "pytest.testing.freeze.create_executable",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.freeze",
+      "relative_path": "pytest/testing/freeze/create_executable.py",
+      "digest": "8e405697dd6b6ffe3e88ef5b8e9303b68428822955d3a3938fbd865d4888b130"
+    },
+    "pytest/doc/en/example/nonpython/__init__.py": {
+      "module_name": "pytest.doc.en.example.nonpython",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.nonpython",
+      "relative_path": "pytest/doc/en/example/nonpython/__init__.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "pytest/src/_pytest/terminal.py": {
+      "module_name": "pytest.src._pytest.terminal",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/terminal.py",
+      "digest": "c84b34a14a80913b495afd8f68319a945a4dadf9c461ff3886c2d828329b82bf"
+    },
+    "py_worker/tests/test_collect.py": {
+      "module_name": "py_worker.tests.test_collect",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "py_worker.tests",
+      "relative_path": "py_worker/tests/test_collect.py",
+      "digest": "f4e2c02e7623b6f796b2895ae1adae18c5a47d8061b9c4e70832baa490a2b6f4"
+    },
+    "pytest/src/_pytest/raises.py": {
+      "module_name": "pytest.src._pytest.raises",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/raises.py",
+      "digest": "1b1dd2188e52c2117a4a4f7fd893456fe607930544714341d7a665079ea378da"
+    },
+    "pytest/testing/example_scripts/collect/package_init_given_as_arg/pkg/__init__.py": {
+      "module_name": "pytest.testing.example_scripts.collect.package_init_given_as_arg.pkg",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.collect.package_init_given_as_arg.pkg",
+      "relative_path": "pytest/testing/example_scripts/collect/package_init_given_as_arg/pkg/__init__.py",
+      "digest": "496370d7d315fb4cd7733dc41306c0fb31c41154ae079d74ccc429c643110114"
+    },
+    "pytest/testing/test_cacheprovider.py": {
+      "module_name": "pytest.testing.test_cacheprovider",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_cacheprovider.py",
+      "digest": "075c4eebf05542ef0246ac91ba85d7c7b99bd7053e166d8ec6432eb5f0482718"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_detect_recursive_dependency_error.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_detect_recursive_dependency_error",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_detect_recursive_dependency_error.py",
+      "digest": "aca7c4616349064dafe34a3bf2e46f9fd396cc408655c018e2e1580b064aa215"
+    },
+    "pytest/testing/python/collect.py": {
+      "module_name": "pytest.testing.python.collect",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.python",
+      "relative_path": "pytest/testing/python/collect.py",
+      "digest": "6ed9201c9ed08a14e6570b30d1a4e8230ad3dc5aa06ff89858a87bd627fe00e8"
+    },
+    "pytest/src/_pytest/pytester_assertions.py": {
+      "module_name": "pytest.src._pytest.pytester_assertions",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/pytester_assertions.py",
+      "digest": "5def19acf1dfa27c6529bb3f24c9c75afc199d327b0e129b39662959c7728589"
+    },
+    "pytest/testing/example_scripts/fixtures/custom_item/foo/__init__.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.custom_item.foo",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.custom_item.foo",
+      "relative_path": "pytest/testing/example_scripts/fixtures/custom_item/foo/__init__.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "pytest/testing/test_collection.py": {
+      "module_name": "pytest.testing.test_collection",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_collection.py",
+      "digest": "f293354bae32f80de4983ef1ad80a1dd6162ffaf151b74849d1b1f70dd4c14f1"
+    },
+    "pytest/testing/code/test_source.py": {
+      "module_name": "pytest.testing.code.test_source",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.code",
+      "relative_path": "pytest/testing/code/test_source.py",
+      "digest": "5298c7a4f229cd2912a3dd0533f8902735b4ef7e471abd7b83ad720095be2359"
+    },
+    "pytest/testing/example_scripts/collect/package_infinite_recursion/tests/__init__.py": {
+      "module_name": "pytest.testing.example_scripts.collect.package_infinite_recursion.tests",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.collect.package_infinite_recursion.tests",
+      "relative_path": "pytest/testing/example_scripts/collect/package_infinite_recursion/tests/__init__.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "pytest/src/_pytest/stepwise.py": {
+      "module_name": "pytest.src._pytest.stepwise",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/stepwise.py",
+      "digest": "7580bd715f0359d15fc75c31c3a6d3fb043719781e893f90ed8f65942faf8596"
+    },
+    "examples/phase3_demo/test_phase9_demo.py": {
+      "module_name": "examples.phase3_demo.test_phase9_demo",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "examples.phase3_demo",
+      "relative_path": "examples/phase3_demo/test_phase9_demo.py",
+      "digest": "62c9b95a5c58141ab57eac5d04c7a683a7abcc24b974af9eaa9cb315007ee98f"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_module_class.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_module_class",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_module_class.py",
+      "digest": "27a77beb305b461511409a250eae0f51fcfc671b2b19905fb73ac859836291db"
+    },
+    "pytest/src/_pytest/_code/__init__.py": {
+      "module_name": "pytest.src._pytest._code",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._code",
+      "relative_path": "pytest/src/_pytest/_code/__init__.py",
+      "digest": "8c7d75238999bf1cb31b3ce2ed45f42334195a268dc1b17b9e2f9b7fe011d2ca"
+    },
+    "pytest/testing/io/test_wcwidth.py": {
+      "module_name": "pytest.testing.io.test_wcwidth",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.io",
+      "relative_path": "pytest/testing/io/test_wcwidth.py",
+      "digest": "6beac91484731c40ff1fc0acb045ae4717b384d81383ca5a2127072a4ab6fe26"
+    },
+    "pytest/testing/python/approx.py": {
+      "module_name": "pytest.testing.python.approx",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.python",
+      "relative_path": "pytest/testing/python/approx.py",
+      "digest": "9a2c0eacf20fdfa74b1c75f3cc2e5b0b8ea1365944e8a2e0b8d20fdf5397d9ef"
+    },
+    "pytest/testing/test_stash.py": {
+      "module_name": "pytest.testing.test_stash",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_stash.py",
+      "digest": "c9db424475428d56d7bcccb42ef0acf8646c34a9d8bfb0a5daedf4118df9af52"
+    },
+    "pytest/doc/en/example/xfail_demo.py": {
+      "module_name": "pytest.doc.en.example.xfail_demo",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example",
+      "relative_path": "pytest/doc/en/example/xfail_demo.py",
+      "digest": "8fff35da08a68976aa3ad5960d5e4ac3d843890df38279d833df44bc55abaa24"
+    },
+    "pytest/src/_pytest/capture.py": {
+      "module_name": "pytest.src._pytest.capture",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/capture.py",
+      "digest": "bf6bdde2659a731ba9bc8935b62eefba6f0455498e1bea6f1487580f162d8779"
+    },
+    "pytest/testing/logging/test_fixture.py": {
+      "module_name": "pytest.testing.logging.test_fixture",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.logging",
+      "relative_path": "pytest/testing/logging/test_fixture.py",
+      "digest": "95d5b4382ab507244ac475dfaca3f29c47ceaf3effd419554b2f2ecdb2ecdc46"
+    },
+    "pytest/scripts/prepare-release-pr.py": {
+      "module_name": "pytest.scripts.prepare-release-pr",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.scripts",
+      "relative_path": "pytest/scripts/prepare-release-pr.py",
+      "digest": "da615e60d397d12c48fa468820617eaa903a271a2de76a899523bd7f8cfd5d29"
+    },
+    "pytest/testing/plugins_integration/pytest_anyio_integration.py": {
+      "module_name": "pytest.testing.plugins_integration.pytest_anyio_integration",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.plugins_integration",
+      "relative_path": "pytest/testing/plugins_integration/pytest_anyio_integration.py",
+      "digest": "d387ab8fd42125bcfa94c0acdc67771ea8e2290162da4398e2b4f796159328a6"
+    },
+    "pytest/testing/test_entry_points.py": {
+      "module_name": "pytest.testing.test_entry_points",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_entry_points.py",
+      "digest": "415edef10cde7b6fa162b8d9ded7c9bcb9a025d696568def004eeff7ae29ead7"
+    },
+    "pytest/testing/test_monkeypatch.py": {
+      "module_name": "pytest.testing.test_monkeypatch",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_monkeypatch.py",
+      "digest": "90f18278081637113e83c735bf67b8c4ab24bd8b60a808091d2b68aae00d31f7"
+    },
+    "pytest/testing/test_runner.py": {
+      "module_name": "pytest.testing.test_runner",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_runner.py",
+      "digest": "7d9b3216dadac1a40da0bd28ec5b469cd3ff11ae2e2556d106559e4d62febe56"
+    },
+    "pytest/testing/example_scripts/dataclasses/test_compare_initvar.py": {
+      "module_name": "pytest.testing.example_scripts.dataclasses.test_compare_initvar",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.dataclasses",
+      "relative_path": "pytest/testing/example_scripts/dataclasses/test_compare_initvar.py",
+      "digest": "863d68eb70c1fed3b44a22295de1dc2d0a2246af05cf3883ed85588846bda5cc"
+    },
+    "pytest/testing/example_scripts/issue88_initial_file_multinodes/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.issue88_initial_file_multinodes.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.issue88_initial_file_multinodes",
+      "relative_path": "pytest/testing/example_scripts/issue88_initial_file_multinodes/conftest.py",
+      "digest": "a356c097ed9b215af3439d8b678898b96e46b6f4f6d697a758dd5d91ddea5e69"
+    },
+    "pytest/testing/example_scripts/customdirectory/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.customdirectory.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.customdirectory",
+      "relative_path": "pytest/testing/example_scripts/customdirectory/conftest.py",
+      "digest": "733798ad3c9850c96ced8e817413755ad8787aafaf1d2e3d96ca586c8b6b2e5d"
+    },
+    "pytest/src/pytest/__main__.py": {
+      "module_name": "pytest.src.pytest.__main__",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src.pytest",
+      "relative_path": "pytest/src/pytest/__main__.py",
+      "digest": "ed35a6d8727a4a5d1bd90a3f2715e6016f270770ecfb5e817be7bd84a9aba6c9"
+    },
+    "pytest/src/pytest/__init__.py": {
+      "module_name": "pytest.src.pytest",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.src.pytest",
+      "relative_path": "pytest/src/pytest/__init__.py",
+      "digest": "aa118b5e12dedcaab7cb51a4b6080ce63f23eebec9e7c55650c723fec3ddb103"
+    },
+    "pytest/testing/example_scripts/fixtures/test_getfixturevalue_dynamic.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.test_getfixturevalue_dynamic",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures",
+      "relative_path": "pytest/testing/example_scripts/fixtures/test_getfixturevalue_dynamic.py",
+      "digest": "bf6f0a93dac422e95c32d9d1f5e26347f8b28e33e6ea3fd5dcccf74404212bd7"
+    },
+    "pytest/src/_pytest/_io/saferepr.py": {
+      "module_name": "pytest.src._pytest._io.saferepr",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._io",
+      "relative_path": "pytest/src/_pytest/_io/saferepr.py",
+      "digest": "1c9c17ff628b1c202e9e7bcf35ca73de4da2d517d8f897a10979e0efadbeecd4"
+    },
+    "pytest/doc/en/example/fixtures/test_fixtures_request_different_scope.py": {
+      "module_name": "pytest.doc.en.example.fixtures.test_fixtures_request_different_scope",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.fixtures",
+      "relative_path": "pytest/doc/en/example/fixtures/test_fixtures_request_different_scope.py",
+      "digest": "e24a1a4a45613ccd27ef65c3613cf6493364ab3ac95f34495c32827c4bb89b9c"
+    },
+    "pytest/src/_pytest/doctest.py": {
+      "module_name": "pytest.src._pytest.doctest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/doctest.py",
+      "digest": "cc9816069954cdb3573683701db8b55533d8818f9aa771ddef1199cb26765d53"
+    },
+    "pytest/testing/example_scripts/marks/marks_considered_keywords/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.marks.marks_considered_keywords.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.marks.marks_considered_keywords",
+      "relative_path": "pytest/testing/example_scripts/marks/marks_considered_keywords/conftest.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "py_worker/tests/test_ast.py": {
+      "module_name": "py_worker.tests.test_ast",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "py_worker.tests",
+      "relative_path": "py_worker/tests/test_ast.py",
+      "digest": "4a1dd8db530c198cb66a9a1dbbe517df02d9e26fbadc65367ff5e031a7a20713"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_module/test_extend_fixture_conftest_module.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_module.test_extend_fixture_conftest_module",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_module",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_module/test_extend_fixture_conftest_module.py",
+      "digest": "e0a3a37901ba82019876d8719bcef2419bd302eab191fb39bc4b4d1fce1f1451"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg/__init__.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest.pkg",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest.pkg",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg/__init__.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "pytest/doc/en/conf.py": {
+      "module_name": "pytest.doc.en.conf",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en",
+      "relative_path": "pytest/doc/en/conf.py",
+      "digest": "9a4dceb9907bc6ee60cdbd7f47e201de9cd69df908aa54c93fb6eb02daf68409"
+    },
+    "pytest/src/_pytest/warning_types.py": {
+      "module_name": "pytest.src._pytest.warning_types",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/warning_types.py",
+      "digest": "7f567d22230254dd8bc4710b0e4fbeb1a9e29ca9311cb184a19aae6399b8f1c8"
+    },
+    "pytest/doc/en/example/fixtures/test_fixtures_order_autouse_temp_effects.py": {
+      "module_name": "pytest.doc.en.example.fixtures.test_fixtures_order_autouse_temp_effects",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.fixtures",
+      "relative_path": "pytest/doc/en/example/fixtures/test_fixtures_order_autouse_temp_effects.py",
+      "digest": "0d1dd4309aa115384e67c20dc2d1f463bb948ba69c2620f68fe0ddd8fc2c2581"
+    },
+    "pytest/src/_pytest/skipping.py": {
+      "module_name": "pytest.src._pytest.skipping",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/skipping.py",
+      "digest": "0cb59b796e06ac3c116b7f1310f7a287695dd83c70201f1824487360809b5858"
+    },
+    "pytest/doc/en/example/assertion/global_testmodule_config/conftest.py": {
+      "module_name": "pytest.doc.en.example.assertion.global_testmodule_config.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.assertion.global_testmodule_config",
+      "relative_path": "pytest/doc/en/example/assertion/global_testmodule_config/conftest.py",
+      "digest": "0ce66f2f071193158ad9fc6b00e4c21fb237c10fbd6821b94962c31f6f87d0fc"
+    },
+    "pytest/src/py.py": {
+      "module_name": "pytest.src.py",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src",
+      "relative_path": "pytest/src/py.py",
+      "digest": "b0dba2f85b4a54c2ca32a15ea3ab3527a59516a60e5f7d96b9cfa76ea5247b40"
+    },
+    "pytest/src/_pytest/fixtures.py": {
+      "module_name": "pytest.src._pytest.fixtures",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/fixtures.py",
+      "digest": "22a67d009b9aa99811199ddc7072f261b12538fa2462ae81e40b6b966c740866"
+    },
+    "pytest/testing/io/test_saferepr.py": {
+      "module_name": "pytest.testing.io.test_saferepr",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.io",
+      "relative_path": "pytest/testing/io/test_saferepr.py",
+      "digest": "6d857c4c6797e947f4e6dbbbb085594187b5bf0931c6e61688a61889ca75adc2"
+    },
+    "pytest/doc/en/example/customdirectory/tests/test_first.py": {
+      "module_name": "pytest.doc.en.example.customdirectory.tests.test_first",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.customdirectory.tests",
+      "relative_path": "pytest/doc/en/example/customdirectory/tests/test_first.py",
+      "digest": "7ad939c09ba44e195add93d8bf4c0fef55196976ef0cbb5f82bafdd854bdad10"
+    },
+    "pytest/src/_pytest/deprecated.py": {
+      "module_name": "pytest.src._pytest.deprecated",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/deprecated.py",
+      "digest": "7068818ab83f503f724f18a2e7d9f1e1e4b1432659be49848b28127cba64f90f"
+    },
+    "pytest/testing/test_runner_xunit.py": {
+      "module_name": "pytest.testing.test_runner_xunit",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_runner_xunit.py",
+      "digest": "74f4ca4b9f396e3d48e7fba39fc4443bb99ca8d5085c776abae60c16e9e09777"
+    },
+    "pytest/testing/plugins_integration/pytest_twisted_integration.py": {
+      "module_name": "pytest.testing.plugins_integration.pytest_twisted_integration",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.plugins_integration",
+      "relative_path": "pytest/testing/plugins_integration/pytest_twisted_integration.py",
+      "digest": "799db03233388830c86fc10a19255e22f06af590c9fb3c99dbc79b3e34a1e9d6"
+    },
+    "pytest/testing/example_scripts/warnings/test_group_warnings_by_message.py": {
+      "module_name": "pytest.testing.example_scripts.warnings.test_group_warnings_by_message",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.warnings",
+      "relative_path": "pytest/testing/example_scripts/warnings/test_group_warnings_by_message.py",
+      "digest": "a02c4586a26bf5940ed13e2f1eeb9604bc96f8770bbf2400347b8bbcc1e659ec"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2/__init__.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub2",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub2",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2/__init__.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "pytest/testing/python/raises_group.py": {
+      "module_name": "pytest.testing.python.raises_group",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.python",
+      "relative_path": "pytest/testing/python/raises_group.py",
+      "digest": "08b237acbef49e4ddc4835f0da406090e3dd878885032527e18bd3e362e1054f"
+    },
+    "pytest/src/_pytest/pathlib.py": {
+      "module_name": "pytest.src._pytest.pathlib",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/pathlib.py",
+      "digest": "b8d2b0b421f823d1a198056fe0d21461766d8ae0141b740b454a80e4588b8ff6"
+    },
+    "pytest/src/_pytest/pastebin.py": {
+      "module_name": "pytest.src._pytest.pastebin",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/pastebin.py",
+      "digest": "00cc59781b2cc7d88e9ae5dfcf4ffc0d3f5fb3ce8034633d3c56936d3fec98e4"
+    },
+    "pytest/testing/test_meta.py": {
+      "module_name": "pytest.testing.test_meta",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_meta.py",
+      "digest": "05bd6262b58f560583834f7202cf9aff3e523dd645081638cd008b4448c75f7e"
+    },
+    "pytest/testing/code/test_code.py": {
+      "module_name": "pytest.testing.code.test_code",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.code",
+      "relative_path": "pytest/testing/code/test_code.py",
+      "digest": "9d5738e44032f6f582de68f8fd4eb27a74160055f37026d8e350a0248f519545"
+    },
+    "pytest/testing/example_scripts/collect/collect_init_tests/tests/test_foo.py": {
+      "module_name": "pytest.testing.example_scripts.collect.collect_init_tests.tests.test_foo",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.collect.collect_init_tests.tests",
+      "relative_path": "pytest/testing/example_scripts/collect/collect_init_tests/tests/test_foo.py",
+      "digest": "d76597cc236d966a6d1c168e43197c654f51f85c2ba9e8bfd2fcc74ce09c4d28"
+    },
+    "pytest/testing/test_mark.py": {
+      "module_name": "pytest.testing.test_mark",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_mark.py",
+      "digest": "9036f7955c69565d8ba637e02a70b6de8b760dda93a4d77c695f518efd82e2e4"
+    },
+    "pytest/testing/test_threadexception.py": {
+      "module_name": "pytest.testing.test_threadexception",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_threadexception.py",
+      "digest": "bc129173f3bebe30239b4c6da1a7a82df4d19f586ca9325d376e03a657b4f6ea"
+    },
+    "pytest/bench/bench_argcomplete.py": {
+      "module_name": "pytest.bench.bench_argcomplete",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.bench",
+      "relative_path": "pytest/bench/bench_argcomplete.py",
+      "digest": "16f7063a165fe63a159b5e4053c08fb708961b1b24ce33f9cb3dd7e457df3369"
+    },
+    "pytest/testing/test_main.py": {
+      "module_name": "pytest.testing.test_main",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_main.py",
+      "digest": "801bc32a11c3b6653e2feabfc0894c5a8f4651964aaf1eaa3bf6820512264d0f"
+    },
+    "pytest/testing/example_scripts/dataclasses/test_compare_two_different_dataclasses.py": {
+      "module_name": "pytest.testing.example_scripts.dataclasses.test_compare_two_different_dataclasses",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.dataclasses",
+      "relative_path": "pytest/testing/example_scripts/dataclasses/test_compare_two_different_dataclasses.py",
+      "digest": "cbe1d71ba408cfcbbe7e3047154e3d61548386076047b73c026cadac1a2ed9c8"
+    },
+    "pytest/testing/test_python_path.py": {
+      "module_name": "pytest.testing.test_python_path",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_python_path.py",
+      "digest": "f5a0a94eb020b7de8ecc6c90471d7f30e3c719160c983cb2f9ea54343abeeb85"
+    },
+    "examples/phase3_demo/calculator.py": {
+      "module_name": "examples.phase3_demo.calculator",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "examples.phase3_demo",
+      "relative_path": "examples/phase3_demo/calculator.py",
+      "digest": "e20da417f0d5be67312022ecd7da56a863cd7d3ac935ae1333bc06ff1d87c1c7"
+    },
+    "pytest/src/_pytest/__init__.py": {
+      "module_name": "pytest.src._pytest",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/__init__.py",
+      "digest": "0ffacfb052b622e7aae9d748982b6ae90cc0f73fcab88cb74009ee460d16e714"
+    },
+    "pytest/doc/en/example/pythoncollection.py": {
+      "module_name": "pytest.doc.en.example.pythoncollection",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example",
+      "relative_path": "pytest/doc/en/example/pythoncollection.py",
+      "digest": "cfb0bd5bb2c5f4ee6ee9cb93d3d072c2e485d43e83ba1fb27e723bf6d2cf49c3"
+    },
+    "pytest/src/_pytest/legacypath.py": {
+      "module_name": "pytest.src._pytest.legacypath",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/legacypath.py",
+      "digest": "d2f27d2c2a876e36a11d692eb38694fa0f9391973f8e2d08ff6a1f23ef835851"
+    },
+    "pytest/src/_pytest/reports.py": {
+      "module_name": "pytest.src._pytest.reports",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/reports.py",
+      "digest": "ab9bbf53265b0c8d4d82e82dddbf10f9c95f13f294feadc450519a143d10f8eb"
+    },
+    "pytest/testing/test_nodes.py": {
+      "module_name": "pytest.testing.test_nodes",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_nodes.py",
+      "digest": "7f373c08e967770150e9cb9b48c1960acc1c10ca010219be79293b940bddb5d7"
+    },
+    "pytest/doc/en/example/customdirectory/conftest.py": {
+      "module_name": "pytest.doc.en.example.customdirectory.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.customdirectory",
+      "relative_path": "pytest/doc/en/example/customdirectory/conftest.py",
+      "digest": "8e8f4b0f4a5f9a703f63c4885d27d66ad26e185f0ac820cf6bd86ab28335cdf6"
+    },
+    "pytest/src/_pytest/junitxml.py": {
+      "module_name": "pytest.src._pytest.junitxml",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/junitxml.py",
+      "digest": "9ccf2f5be24325b88246d4af6443a2970b4e61161e580fbea5c7f94799b975de"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookupfails.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_funcarg_lookupfails",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookupfails.py",
+      "digest": "e5ba176269612225685023d7c3b59204338aeb9d8510f1f3cda0f6ac684a97c4"
+    },
+    "pytest/bench/xunit.py": {
+      "module_name": "pytest.bench.xunit",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.bench",
+      "relative_path": "pytest/bench/xunit.py",
+      "digest": "37156553e05a1287def5302db9b604a6da58ea5ce2270e9fad04eacb90c58eb2"
+    },
+    "scripts/matrix_test.py": {
+      "module_name": "scripts.matrix_test",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "scripts",
+      "relative_path": "scripts/matrix_test.py",
+      "digest": "8d9e196491e7b4fc67c8fe4700b87a51213366dda8c9a6f5859b11e47e79e3c2"
+    },
+    "pytest/testing/examples/test_issue519.py": {
+      "module_name": "pytest.testing.examples.test_issue519",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.examples",
+      "relative_path": "pytest/testing/examples/test_issue519.py",
+      "digest": "7a001c866d6fdc4ff96db8f217adf183968f3e140a7024b854ef0fd358a657ab"
+    },
+    "pytest/src/_pytest/tmpdir.py": {
+      "module_name": "pytest.src._pytest.tmpdir",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/tmpdir.py",
+      "digest": "f81065b8307f41c59916a58d5aa988e7a2bbe0c7d8a2433a60462ab445b27de2"
+    },
+    "pytest/testing/test_helpconfig.py": {
+      "module_name": "pytest.testing.test_helpconfig",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_helpconfig.py",
+      "digest": "c531168e7ded3c1a2d521ac528561b9bb2f64bdb377a8c92a6264150aa3ec0e2"
+    },
+    "pytest/src/_pytest/timing.py": {
+      "module_name": "pytest.src._pytest.timing",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/timing.py",
+      "digest": "beafc250cf3da10e8f2f93f8ac82d42a17b5a635f45f177b53ffc92eba6b3832"
+    },
+    "pytest/src/_pytest/_code/code.py": {
+      "module_name": "pytest.src._pytest._code.code",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._code",
+      "relative_path": "pytest/src/_pytest/_code/code.py",
+      "digest": "6813a4afa686828ad0086b6164559bbdacb7fb2614bd1f0dccccd043f48784c2"
+    },
+    "pytest/src/_pytest/tracemalloc.py": {
+      "module_name": "pytest.src._pytest.tracemalloc",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/tracemalloc.py",
+      "digest": "bfd0ea8ac187dc4378dca7420754d8ed3cd37ca02cbf46b57f401e3ff7761937"
+    },
+    "pytest/testing/io/test_pprint.py": {
+      "module_name": "pytest.testing.io.test_pprint",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.io",
+      "relative_path": "pytest/testing/io/test_pprint.py",
+      "digest": "475ef2ff68feadde28065b38360a8c45fc13dab3b0ac34b285b7fafe6a2b5064"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1/__init__.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub1",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub1",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1/__init__.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookup_classlevel.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_funcarg_lookup_classlevel",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_lookup_classlevel.py",
+      "digest": "541db83f1e40d1f37c02083269f4f97ec1bec4ebc978ffe992f928dc9a5915b0"
+    },
+    "pytest/testing/freeze/tox_run.py": {
+      "module_name": "pytest.testing.freeze.tox_run",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.freeze",
+      "relative_path": "pytest/testing/freeze/tox_run.py",
+      "digest": "35fd95591db269a5cb083f210354111ced67fcdeb198c865c796000d86d51733"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest.pkg.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest.pkg",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg/conftest.py",
+      "digest": "d82bc3b94547b58cd1f266126b1e3c02e9eeb724440e6a47d78a242313306ed6"
+    },
+    "py_worker/tests/conftest.py": {
+      "module_name": "py_worker.tests.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "py_worker.tests",
+      "relative_path": "py_worker/tests/conftest.py",
+      "digest": "eef2545bfae1658f1348a4c6b54778046e7b423ed4e10e30d5b49b3ab25eedff"
+    },
+    "pytest/src/_pytest/setupplan.py": {
+      "module_name": "pytest.src._pytest.setupplan",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/setupplan.py",
+      "digest": "6b9f5ed70171efef90bde2adc420bb5c2a2533370a028ba3f46c8130cac5ade4"
+    },
+    "pytest/testing/python/raises.py": {
+      "module_name": "pytest.testing.python.raises",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.python",
+      "relative_path": "pytest/testing/python/raises.py",
+      "digest": "73767374aa48c6f8686ba0f6f47c3105696463b4d25fc3a58a42ba143583567d"
+    },
+    "pytest/testing/example_scripts/unittest/test_parametrized_fixture_error_message.py": {
+      "module_name": "pytest.testing.example_scripts.unittest.test_parametrized_fixture_error_message",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.unittest",
+      "relative_path": "pytest/testing/example_scripts/unittest/test_parametrized_fixture_error_message.py",
+      "digest": "e7cdd7434edf6db30a3a06856fb3484ba43df83b31f2c29449d429f94c27f02e"
+    },
+    "pytest/testing/example_scripts/doctest/main_py/test_normal_module.py": {
+      "module_name": "pytest.testing.example_scripts.doctest.main_py.test_normal_module",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.doctest.main_py",
+      "relative_path": "pytest/testing/example_scripts/doctest/main_py/test_normal_module.py",
+      "digest": "b7c1d7fe7485182d02fa4ef419aa530ff172dd6fa862b1fee4274f33f010d73f"
+    },
+    "pytest/testing/example_scripts/fixtures/custom_item/foo/test_foo.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.custom_item.foo.test_foo",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.custom_item.foo",
+      "relative_path": "pytest/testing/example_scripts/fixtures/custom_item/foo/test_foo.py",
+      "digest": "b87ed23b1f60fd09407467dd55b638dfc554f7a1d31470650414fbb16933c1ce"
+    },
+    "pytest/src/_pytest/config/argparsing.py": {
+      "module_name": "pytest.src._pytest.config.argparsing",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.config",
+      "relative_path": "pytest/src/_pytest/config/argparsing.py",
+      "digest": "b2a3a281e424da4bdf07910a744845a9356b7227df0aa8b53cef252fb379d47b"
+    },
+    "pytest/testing/plugins_integration/pytest_asyncio_integration.py": {
+      "module_name": "pytest.testing.plugins_integration.pytest_asyncio_integration",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.plugins_integration",
+      "relative_path": "pytest/testing/plugins_integration/pytest_asyncio_integration.py",
+      "digest": "c1a55fdb00a75052be7528c27a5cc7bad6346fedbf931050759839a417c8d9bb"
+    },
+    "pytest/src/_pytest/config/compat.py": {
+      "module_name": "pytest.src._pytest.config.compat",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.config",
+      "relative_path": "pytest/src/_pytest/config/compat.py",
+      "digest": "05b929b73c14752b222eae679edef09cff868170520545389d6bf786f77b34a7"
+    },
+    "pytest/src/_pytest/_io/wcwidth.py": {
+      "module_name": "pytest.src._pytest._io.wcwidth",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._io",
+      "relative_path": "pytest/src/_pytest/_io/wcwidth.py",
+      "digest": "2f933a3485c20ad3e4d895a58b51f41faeadf8facc217c112b0558c2f9c87646"
+    },
+    "pytest/doc/en/conftest.py": {
+      "module_name": "pytest.doc.en.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en",
+      "relative_path": "pytest/doc/en/conftest.py",
+      "digest": "54956def785de0bec78128de649bfcac3cfcb4f0c7e87cd4c4aabf3850cd1694"
+    },
+    "pytest/testing/python/fixtures.py": {
+      "module_name": "pytest.testing.python.fixtures",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.python",
+      "relative_path": "pytest/testing/python/fixtures.py",
+      "digest": "1d73d8a613a49c2e181969abeecbb75d627f58ba6fd74eb75fc5c365869e8d39"
+    },
+    "pytest/testing/example_scripts/config/collect_pytest_prefix/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.config.collect_pytest_prefix.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.config.collect_pytest_prefix",
+      "relative_path": "pytest/testing/example_scripts/config/collect_pytest_prefix/conftest.py",
+      "digest": "55d98cd06cbdcce558de01031e60ca1889572bf4ce32621aec09581491e76477"
+    },
+    "pytest/testing/typing_checks.py": {
+      "module_name": "pytest.testing.typing_checks",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/typing_checks.py",
+      "digest": "95e970458984dce3b10c831390ee2ca807e713b6462e696c4b295301ac161c89"
+    },
+    "pytest/doc/en/example/conftest.py": {
+      "module_name": "pytest.doc.en.example.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example",
+      "relative_path": "pytest/doc/en/example/conftest.py",
+      "digest": "66135cb151f73b0fee71f8fd0b6e8f4d84a32043f638bea032fe0ea000fd33cb"
+    },
+    "pytest/testing/example_scripts/unittest/test_setup_skip_class.py": {
+      "module_name": "pytest.testing.example_scripts.unittest.test_setup_skip_class",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.unittest",
+      "relative_path": "pytest/testing/example_scripts/unittest/test_setup_skip_class.py",
+      "digest": "02b48c6bfb9ea88f40b75e120f4f46305e4eec5330b38aa03445f4dd1a8626d8"
+    },
+    "pytest/testing/test_tmpdir.py": {
+      "module_name": "pytest.testing.test_tmpdir",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_tmpdir.py",
+      "digest": "88bba9b5fe6a0ec02660c7572c1317904ee478de51d8de129e4489a7d603eba9"
+    },
+    "pytest/extra/get_issues.py": {
+      "module_name": "pytest.extra.get_issues",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.extra",
+      "relative_path": "pytest/extra/get_issues.py",
+      "digest": "8fd936ba6d33aaf34bc18e9a5209abbe7173e77686f46ca111786343a89a8aae"
+    },
+    "pytest/src/_pytest/setuponly.py": {
+      "module_name": "pytest.src._pytest.setuponly",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/setuponly.py",
+      "digest": "9c5772e7dbd862524af1358f9197a6ae806747c2bd9bec348e7df2fac2aea2b0"
+    },
+    "pytest/src/_pytest/assertion/util.py": {
+      "module_name": "pytest.src._pytest.assertion.util",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.assertion",
+      "relative_path": "pytest/src/_pytest/assertion/util.py",
+      "digest": "ca65295b297a40a782d027fd1d034debc4b9a44b06c473a134b538f6b1d7b553"
+    },
+    "pytest/testing/test_unraisableexception.py": {
+      "module_name": "pytest.testing.test_unraisableexception",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_unraisableexception.py",
+      "digest": "3dd402885d8290bbd85395629c263805c6fa5adef2a021c4a78b7eb8110814b2"
+    },
+    "pytest/doc/en/example/customdirectory/tests/test_third.py": {
+      "module_name": "pytest.doc.en.example.customdirectory.tests.test_third",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.customdirectory.tests",
+      "relative_path": "pytest/doc/en/example/customdirectory/tests/test_third.py",
+      "digest": "5a2e65893fba1cbdf0a4004eadb623685536952b8bd023da12c17a0984cd7d3d"
+    },
+    "pytest/doc/en/example/assertion/failure_demo.py": {
+      "module_name": "pytest.doc.en.example.assertion.failure_demo",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.assertion",
+      "relative_path": "pytest/doc/en/example/assertion/failure_demo.py",
+      "digest": "8405603c71d6fa0c4df0ba4a14a3a3d1cbc23ddf774d4b4651df2079e04ce39e"
+    },
+    "pytest/testing/acceptance_test.py": {
+      "module_name": "pytest.testing.acceptance_test",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/acceptance_test.py",
+      "digest": "8fc5e226e30600aadbc3a2401209d55eca1db25b06f977caeb7bed7ec73608ae"
+    },
+    "pytest/testing/test_capture.py": {
+      "module_name": "pytest.testing.test_capture",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_capture.py",
+      "digest": "b2743ace86248b6f15fc92b5118041d14739a1b99c388f11ab47c461e615cc35"
+    },
+    "pytest/testing/example_scripts/unittest/test_unittest_asyncio.py": {
+      "module_name": "pytest.testing.example_scripts.unittest.test_unittest_asyncio",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.unittest",
+      "relative_path": "pytest/testing/example_scripts/unittest/test_unittest_asyncio.py",
+      "digest": "0605442e2432ab00fb308a793a3c17a0aed10a58c418a7378e29035dd7d0df5d"
+    },
+    "pytest/doc/en/example/fixtures/test_fixtures_order_autouse.py": {
+      "module_name": "pytest.doc.en.example.fixtures.test_fixtures_order_autouse",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.fixtures",
+      "relative_path": "pytest/doc/en/example/fixtures/test_fixtures_order_autouse.py",
+      "digest": "cb11fcfeaa87de65a5a7b7d9887e1bec4ca4444ff4a15a0de3e1e1a826fc62fd"
+    },
+    "pytest/testing/plugins_integration/pytest_rerunfailures_integration.py": {
+      "module_name": "pytest.testing.plugins_integration.pytest_rerunfailures_integration",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.plugins_integration",
+      "relative_path": "pytest/testing/plugins_integration/pytest_rerunfailures_integration.py",
+      "digest": "580d7470cc84403a1e3829737fcbd509719a0f70b225dea6e55ac18c2de30c24"
+    },
+    "pytest/testing/test_doctest.py": {
+      "module_name": "pytest.testing.test_doctest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_doctest.py",
+      "digest": "2cceca56b52c1325b4f6b7dab06d2c969f23f5eca01dfb86b1cb5a0613be7bf9"
+    },
+    "pytest/src/_pytest/warnings.py": {
+      "module_name": "pytest.src._pytest.warnings",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/warnings.py",
+      "digest": "92c55704fc111f928b11ec88c98c75104435935506d89cd3906399f702fed316"
+    },
+    "pytest/testing/test_pathlib.py": {
+      "module_name": "pytest.testing.test_pathlib",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_pathlib.py",
+      "digest": "a1f47f18a0f358e80f34b3fc0ba83b64c65f6f3c1d03a6fda604f267041c1e63"
+    },
+    "pytest/testing/test_warnings.py": {
+      "module_name": "pytest.testing.test_warnings",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_warnings.py",
+      "digest": "54aa7e2c750be69b8ec9da56661d4143b17dee73391ca5f08a3c836fd2d12cfa"
+    },
+    "pytest/bench/empty.py": {
+      "module_name": "pytest.bench.empty",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.bench",
+      "relative_path": "pytest/bench/empty.py",
+      "digest": "c60782c9c803d4e4d9156a91cba82308aebb5704466283d4f7a84773537abbab"
+    },
+    "pytest/src/_pytest/compat.py": {
+      "module_name": "pytest.src._pytest.compat",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/compat.py",
+      "digest": "3f6f3fa00105a6b6dc2df187f9498628c93868fcb2157ec0204e7fae1bbedc8f"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_basic.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_funcarg_basic",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_funcarg_basic.py",
+      "digest": "ac7397cb7befb67068e213affeac9f5ea4437f9b72e5c676fefead72098297e1"
+    },
+    "scripts/quick_benchmark_test.py": {
+      "module_name": "scripts.quick_benchmark_test",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "scripts",
+      "relative_path": "scripts/quick_benchmark_test.py",
+      "digest": "7f421bdec62f4d4a4975c442c2b8bb242613eac4011bd14dbc1597f344ba8501"
+    },
+    "pytest/src/_pytest/unittest.py": {
+      "module_name": "pytest.src._pytest.unittest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/unittest.py",
+      "digest": "5906c54594a38f2e296044d6eeab3506d291f4194abcff5e827cc17dfe5d80dd"
+    },
+    "pytest/testing/example_scripts/doctest/main_py/__main__.py": {
+      "module_name": "pytest.testing.example_scripts.doctest.main_py.__main__",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.doctest.main_py",
+      "relative_path": "pytest/testing/example_scripts/doctest/main_py/__main__.py",
+      "digest": "d3d0090d77ba1d6860a7d88fbb266655e6dc76066f9db95d092086ffed0f959f"
+    },
+    "pytest/testing/example_scripts/dataclasses/test_compare_dataclasses.py": {
+      "module_name": "pytest.testing.example_scripts.dataclasses.test_compare_dataclasses",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.dataclasses",
+      "relative_path": "pytest/testing/example_scripts/dataclasses/test_compare_dataclasses.py",
+      "digest": "af787f28bf4348d6842e27264dd6110ba356b74a71a81f82488d18744329a6a4"
+    },
+    "pytest/testing/plugins_integration/django_settings.py": {
+      "module_name": "pytest.testing.plugins_integration.django_settings",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.plugins_integration",
+      "relative_path": "pytest/testing/plugins_integration/django_settings.py",
+      "digest": "4dfcab74277525adfa5b48f2fbe5c65e4cca52586ba0a0f9f967c1df07673c08"
+    },
+    "pytest/doc/en/example/fixtures/test_fixtures_order_scope.py": {
+      "module_name": "pytest.doc.en.example.fixtures.test_fixtures_order_scope",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.fixtures",
+      "relative_path": "pytest/doc/en/example/fixtures/test_fixtures_order_scope.py",
+      "digest": "c1a156f8ee7719759486f5c60cfaadd28b31d5a0a32d99629f6c207f28345efc"
+    },
+    "examples/phase8_demo/test_sharding.py": {
+      "module_name": "examples.phase8_demo.test_sharding",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "examples.phase8_demo",
+      "relative_path": "examples/phase8_demo/test_sharding.py",
+      "digest": "08431d5bff77e3ede78c44861fb57f813792f50389473bbf56c18cadcd5485e9"
+    },
+    "pytest/bench/skip.py": {
+      "module_name": "pytest.bench.skip",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.bench",
+      "relative_path": "pytest/bench/skip.py",
+      "digest": "526f8355b1ff3ce51da4f94dab686920d86eeac95a5ae59d226e75813dd749e5"
+    },
+    "pytest/src/_pytest/_py/path.py": {
+      "module_name": "pytest.src._pytest._py.path",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._py",
+      "relative_path": "pytest/src/_pytest/_py/path.py",
+      "digest": "813cc38c94bdaf23d8176a71a714b6c90703b99b6634e9839473900b0b388018"
+    },
+    "pytest/src/_pytest/freeze_support.py": {
+      "module_name": "pytest.src._pytest.freeze_support",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/freeze_support.py",
+      "digest": "41cd8e8fecfa53ed444ea0abeee9c575ae24ee82ab78bf5d6647bbf3de235642"
+    },
+    "pytest/src/_pytest/mark/structures.py": {
+      "module_name": "pytest.src._pytest.mark.structures",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.mark",
+      "relative_path": "pytest/src/_pytest/mark/structures.py",
+      "digest": "5190e5ec7d9732928deb104343c3da5697ee7e7c21a8bbefc62d9a1111cf4f2e"
+    },
+    "pytest/bench/bench.py": {
+      "module_name": "pytest.bench.bench",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.bench",
+      "relative_path": "pytest/bench/bench.py",
+      "digest": "ba3e233ff06aaac07e77ff17ff49d8bf0724f3b188d5213c149818ffcaef9aac"
+    },
+    "pytest/testing/example_scripts/perf_examples/collect_stats/template_test.py": {
+      "module_name": "pytest.testing.example_scripts.perf_examples.collect_stats.template_test",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.perf_examples.collect_stats",
+      "relative_path": "pytest/testing/example_scripts/perf_examples/collect_stats/template_test.py",
+      "digest": "a2fc5ba3a76f132d4a74f6202a7f4622c66145661488482e74815c9b027445b5"
+    },
+    "pytest/testing/test_reports.py": {
+      "module_name": "pytest.testing.test_reports",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_reports.py",
+      "digest": "776a47b99a0e93296a05556d45535d0d5ff6eda6e291a6d88983b9254d672988"
+    },
+    "pytest/src/_pytest/hookspec.py": {
+      "module_name": "pytest.src._pytest.hookspec",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/hookspec.py",
+      "digest": "92a338483cfd0978da1da726ea259e225df1a4911c70da22b012fe927c60407c"
+    },
+    "pytest/testing/test_session.py": {
+      "module_name": "pytest.testing.test_session",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_session.py",
+      "digest": "32e1cad9c82508d3920aa71d3bb6c344c1c1f2dbb054ee2c68423879c50764af"
+    },
+    "pytest/testing/python/metafunc.py": {
+      "module_name": "pytest.testing.python.metafunc",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.python",
+      "relative_path": "pytest/testing/python/metafunc.py",
+      "digest": "5f350c9d14a93bc6259d991de32f276f2579ba8a3570dc5a8a0bca980e789462"
+    },
+    "pytest/src/_pytest/faulthandler.py": {
+      "module_name": "pytest.src._pytest.faulthandler",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/faulthandler.py",
+      "digest": "253f8eaa7e6f29232bad609ac265ef880e076ef0d1ca52b1d0155d24edf3ec3a"
+    },
+    "pytest/src/_pytest/python_api.py": {
+      "module_name": "pytest.src._pytest.python_api",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/python_api.py",
+      "digest": "532f4834e7379f5a93e87d8dba3409e830a163a74028bbee3e70ddd708de0fe9"
+    },
+    "pytest/testing/example_scripts/dataclasses/test_compare_dataclasses_with_custom_eq.py": {
+      "module_name": "pytest.testing.example_scripts.dataclasses.test_compare_dataclasses_with_custom_eq",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.dataclasses",
+      "relative_path": "pytest/testing/example_scripts/dataclasses/test_compare_dataclasses_with_custom_eq.py",
+      "digest": "3f21d31013abe8b20b26335de5fee21272aeb2dd134415e5e519204513a645c8"
+    },
+    "pytest/testing/example_scripts/fixtures/custom_item/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.custom_item.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.custom_item",
+      "relative_path": "pytest/testing/example_scripts/fixtures/custom_item/conftest.py",
+      "digest": "4dc298bdbfdddf4086dc0f8247df01cdbea9fcb170939a3747544f17124a51cc"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg/test_spam.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest.pkg.test_spam",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest.pkg",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg/test_spam.py",
+      "digest": "647c798521be08a32ecdceff9da4b7c810fd494459a7708fcce2cabab4666377"
+    },
+    "pytest/testing/example_scripts/customdirectory/tests/test_second.py": {
+      "module_name": "pytest.testing.example_scripts.customdirectory.tests.test_second",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.customdirectory.tests",
+      "relative_path": "pytest/testing/example_scripts/customdirectory/tests/test_second.py",
+      "digest": "199a555ef6bb3d6fb76482af6e2b916c6c1a560763a428139b518b1a92d48436"
+    },
+    "pytest/testing/example_scripts/dataclasses/test_compare_recursive_dataclasses.py": {
+      "module_name": "pytest.testing.example_scripts.dataclasses.test_compare_recursive_dataclasses",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.dataclasses",
+      "relative_path": "pytest/testing/example_scripts/dataclasses/test_compare_recursive_dataclasses.py",
+      "digest": "9a8973b603f64785083b7a485b4756a7a9b0907238c4256887d1d7d40b3a0a4e"
+    },
+    "pytest/testing/example_scripts/marks/marks_considered_keywords/test_marks_as_keywords.py": {
+      "module_name": "pytest.testing.example_scripts.marks.marks_considered_keywords.test_marks_as_keywords",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.marks.marks_considered_keywords",
+      "relative_path": "pytest/testing/example_scripts/marks/marks_considered_keywords/test_marks_as_keywords.py",
+      "digest": "d14dde5b8bdc5218d598fe403be0f05626c42c77702f28caff59b47c7446f602"
+    },
+    "pytest/testing/test_junitxml.py": {
+      "module_name": "pytest.testing.test_junitxml",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_junitxml.py",
+      "digest": "32ba2f2d1b74406d703ae5290b1c910f03fe74a2a26e334b16a3398a3ebbd034"
+    },
+    "pytest/testing/test_stepwise.py": {
+      "module_name": "pytest.testing.test_stepwise",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_stepwise.py",
+      "digest": "df16ad4191f4c5f73944c0500249db115a4aca98f41c509ce8562c84ba7fd30d"
+    },
+    "pytest/testing/plugins_integration/pytest_mock_integration.py": {
+      "module_name": "pytest.testing.plugins_integration.pytest_mock_integration",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.plugins_integration",
+      "relative_path": "pytest/testing/plugins_integration/pytest_mock_integration.py",
+      "digest": "3b16689371c317c5cd1064af1e18cac0b1ce3b5cae23665fe95215ba3de2eb68"
+    },
+    "pytest/src/_pytest/_io/__init__.py": {
+      "module_name": "pytest.src._pytest._io",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._io",
+      "relative_path": "pytest/src/_pytest/_io/__init__.py",
+      "digest": "1a2b0ff393d50896d04e8a0b7df6341042c195e549e9ae10213de1fcbf3cb187"
+    },
+    "pytest/src/_pytest/mark/__init__.py": {
+      "module_name": "pytest.src._pytest.mark",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.mark",
+      "relative_path": "pytest/src/_pytest/mark/__init__.py",
+      "digest": "a32c3517a7f1bdbc7396e580124d4721aab853de5ddbc17efce6163299bc2006"
+    },
+    "pytest/src/_pytest/mark/expression.py": {
+      "module_name": "pytest.src._pytest.mark.expression",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.mark",
+      "relative_path": "pytest/src/_pytest/mark/expression.py",
+      "digest": "d2615cfd0c2fafe05ebfc683e6a15aa558ddcf632bf10a170d9a9f9ab5fceb3d"
+    },
+    "pytest/testing/example_scripts/warnings/test_group_warnings_by_message_summary/test_2.py": {
+      "module_name": "pytest.testing.example_scripts.warnings.test_group_warnings_by_message_summary.test_2",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.warnings.test_group_warnings_by_message_summary",
+      "relative_path": "pytest/testing/example_scripts/warnings/test_group_warnings_by_message_summary/test_2.py",
+      "digest": "7a87d6ec5598fc4d01db74b1f18e9552cf5e597bc13407bf563854cc27662339"
+    },
+    "pytest/testing/test_error_diffs.py": {
+      "module_name": "pytest.testing.test_error_diffs",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_error_diffs.py",
+      "digest": "92dabce955aba7adca6aabec6dc85976518564a9db3a40f12d645761eabf733b"
+    },
+    "examples/phase3_demo/test_syntax_error.py": {
+      "module_name": "examples.phase3_demo.test_syntax_error",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "examples.phase3_demo",
+      "relative_path": "examples/phase3_demo/test_syntax_error.py",
+      "digest": "c9e4dd36f4ae9b9897e599b9397d45fd011d92a219ec223d36ed14e9ebdb6f0d"
+    },
+    "pytest/testing/test_setuponly.py": {
+      "module_name": "pytest.testing.test_setuponly",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_setuponly.py",
+      "digest": "c5093bc403fb0a32969dd1fa13b81e953d8005531e020c15bb377f743608aa14"
+    },
+    "pytest/testing/test_assertrewrite.py": {
+      "module_name": "pytest.testing.test_assertrewrite",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_assertrewrite.py",
+      "digest": "852d93fd80d0c9c16466049aea9135f4d30e942c04a282852fc9083709e6a7ed"
+    },
+    "pytest/doc/en/example/assertion/global_testmodule_config/test_hello_world.py": {
+      "module_name": "pytest.doc.en.example.assertion.global_testmodule_config.test_hello_world",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.assertion.global_testmodule_config",
+      "relative_path": "pytest/doc/en/example/assertion/global_testmodule_config/test_hello_world.py",
+      "digest": "33a33a5b29241cbc5679323ebc9780de7d284efef7b268ea525695f2193ae3c7"
+    },
+    "pytest/src/_pytest/_io/pprint.py": {
+      "module_name": "pytest.src._pytest._io.pprint",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._io",
+      "relative_path": "pytest/src/_pytest/_io/pprint.py",
+      "digest": "018ec8ddb7091a5ed1754912a56c01b9e76d9410d936ece7f18c0d531f5f5cf4"
+    },
+    "pytest/doc/en/example/assertion/test_setup_flow_example.py": {
+      "module_name": "pytest.doc.en.example.assertion.test_setup_flow_example",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.assertion",
+      "relative_path": "pytest/doc/en/example/assertion/test_setup_flow_example.py",
+      "digest": "370e8c57fb53300c4727a52cf0709a6392d0544784e0bd8e16a84d08bc36f335"
+    },
+    "pytest/testing/freeze/tests/test_trivial.py": {
+      "module_name": "pytest.testing.freeze.tests.test_trivial",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.freeze.tests",
+      "relative_path": "pytest/testing/freeze/tests/test_trivial.py",
+      "digest": "a5d0d7a67a27f5a9c662d871d387746ecfd45843dcf4de2a99015b901455ab8c"
+    },
+    "pytest/testing/test_setupplan.py": {
+      "module_name": "pytest.testing.test_setupplan",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_setupplan.py",
+      "digest": "01072077f8baa812adcaf843991efa8ab2a587cd2445fa0e78d50153d60e0e27"
+    },
+    "pytest/src/_pytest/nodes.py": {
+      "module_name": "pytest.src._pytest.nodes",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/nodes.py",
+      "digest": "0718a3c76f30bc8c3a6b90513de1fa511980d26ab0dca89ef8708a85a216fbc9"
+    },
+    "py_worker/tests/__init__.py": {
+      "module_name": "py_worker.tests",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "py_worker.tests",
+      "relative_path": "py_worker/tests/__init__.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "src/veri/__init__.py": {
+      "module_name": "src.veri",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "src.veri",
+      "relative_path": "src/veri/__init__.py",
+      "digest": "23169b2206af06b81c3a8c9eafb4366303d2708e0384641a81a46272d47e685f"
+    },
+    "pytest/testing/test_assertion.py": {
+      "module_name": "pytest.testing.test_assertion",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_assertion.py",
+      "digest": "43d6debe7db1d569fdd5226c478f842c920c9d19424149f5ea88e218e6c71db5"
+    },
+    "pytest/doc/en/example/fixtures/test_fixtures_order_dependencies.py": {
+      "module_name": "pytest.doc.en.example.fixtures.test_fixtures_order_dependencies",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.fixtures",
+      "relative_path": "pytest/doc/en/example/fixtures/test_fixtures_order_dependencies.py",
+      "digest": "6fd8afd5213b66b06ccf59352795a46f0ba2094a244133955a47c9ec67e29e9c"
+    },
+    "pytest/src/_pytest/recwarn.py": {
+      "module_name": "pytest.src._pytest.recwarn",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/recwarn.py",
+      "digest": "61e0a32291ef8c055c70f5cee716c5c1902b043630f3990b16f7279043a988fa"
+    },
+    "pytest/bench/manyparam.py": {
+      "module_name": "pytest.bench.manyparam",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.bench",
+      "relative_path": "pytest/bench/manyparam.py",
+      "digest": "14045eb377d7c784a6799f3fcb70af537a4e8db92a1ec35f22c4d25059335e33"
+    },
+    "pytest/doc/en/example/customdirectory/tests/test_second.py": {
+      "module_name": "pytest.doc.en.example.customdirectory.tests.test_second",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.customdirectory.tests",
+      "relative_path": "pytest/doc/en/example/customdirectory/tests/test_second.py",
+      "digest": "e4e8e3039547ce31f10e9856746d1748e389f922515fe7df21b1a43a92335dd9"
+    },
+    "pytest/src/_pytest/_code/source.py": {
+      "module_name": "pytest.src._pytest._code.source",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._code",
+      "relative_path": "pytest/src/_pytest/_code/source.py",
+      "digest": "6cc7f0d89fe37ed6e53a0dc0063e6f14cc45f99236e674dace9346622cc76002"
+    },
+    "pytest/src/_pytest/cacheprovider.py": {
+      "module_name": "pytest.src._pytest.cacheprovider",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/cacheprovider.py",
+      "digest": "a87970efc46449b17d9b016e2631fa5ad4935988c6bfed956df9cbedd57f6565"
+    },
+    "pytest/src/_pytest/python.py": {
+      "module_name": "pytest.src._pytest.python",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/python.py",
+      "digest": "b6d39ab986b93c41e1187650063e013cb110a51f501fb830ce06145f01cccea4"
+    },
+    "pytest/testing/test_argcomplete.py": {
+      "module_name": "pytest.testing.test_argcomplete",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_argcomplete.py",
+      "digest": "845a825d0e668ee7f96de0088f5468702cfa043b2e1b912562a58f69d15821dd"
+    },
+    "pytest/doc/en/example/assertion/test_failures.py": {
+      "module_name": "pytest.doc.en.example.assertion.test_failures",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.assertion",
+      "relative_path": "pytest/doc/en/example/assertion/test_failures.py",
+      "digest": "cdd1dd072ebd967524cc2a7a7d8d050e9fe73babc1554b3260246da59efbe0bc"
+    },
+    "examples/phase3_demo/conftest.py": {
+      "module_name": "examples.phase3_demo.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "examples.phase3_demo",
+      "relative_path": "examples/phase3_demo/conftest.py",
+      "digest": "7ace5556321eec9b80156a3f337f101629d8aa9a14c7e85cb1d048b81f1c97b0"
+    },
+    "pytest/src/_pytest/assertion/rewrite.py": {
+      "module_name": "pytest.src._pytest.assertion.rewrite",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.assertion",
+      "relative_path": "pytest/src/_pytest/assertion/rewrite.py",
+      "digest": "4a1c29dc0040421f7f2e7e5ea8f1313c1564041a3d26cbf8e1bb37630650a540"
+    },
+    "pytest/testing/test_pluginmanager.py": {
+      "module_name": "pytest.testing.test_pluginmanager",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_pluginmanager.py",
+      "digest": "096936ddcc2ba03b524a4a8a5c04e1f52d322bf77672594a2bfa708c00db19fc"
+    },
+    "pytest/scripts/update-plugin-list.py": {
+      "module_name": "pytest.scripts.update-plugin-list",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.scripts",
+      "relative_path": "pytest/scripts/update-plugin-list.py",
+      "digest": "538433891c69fc348cc7336e1fc13013f65a731aa5173f60dd8824f903ad4497"
+    },
+    "pytest/testing/test_legacypath.py": {
+      "module_name": "pytest.testing.test_legacypath",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_legacypath.py",
+      "digest": "12d5cbaa38ba12e86c89703dd8d957e93575454107e8f60bd42f6a6e7a0646b9"
+    },
+    "pytest/src/_pytest/debugging.py": {
+      "module_name": "pytest.src._pytest.debugging",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/debugging.py",
+      "digest": "4de2164b15f4d79bd2240841ec1281a67c16e47e674a0a275951a942b652963c"
+    },
+    "pytest/testing/example_scripts/dataclasses/test_compare_dataclasses_field_comparison_off.py": {
+      "module_name": "pytest.testing.example_scripts.dataclasses.test_compare_dataclasses_field_comparison_off",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.dataclasses",
+      "relative_path": "pytest/testing/example_scripts/dataclasses/test_compare_dataclasses_field_comparison_off.py",
+      "digest": "c51c8fc40c37f703eee8b9fb14e1333ceb6a2443851fec3235b56fd2f4a275c7"
+    },
+    "pytest/testing/test_warning_types.py": {
+      "module_name": "pytest.testing.test_warning_types",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_warning_types.py",
+      "digest": "16cf8728ee106582154e08778fc861c8cd3d7b32a378a9687bb730d8b8483cd3"
+    },
+    "scripts/generate_benchmark_summary.py": {
+      "module_name": "scripts.generate_benchmark_summary",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "scripts",
+      "relative_path": "scripts/generate_benchmark_summary.py",
+      "digest": "d5a5281b37d6749a72336465e9c0efd7437bb08ac9bb6f6dfea120b8710090d7"
+    },
+    "pytest/testing/test_pastebin.py": {
+      "module_name": "pytest.testing.test_pastebin",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_pastebin.py",
+      "digest": "58b9cc2fd53bce7ed5ace5f998f662708670e98ee5083e758d086120bffa8985"
+    },
+    "pytest/testing/example_scripts/fixtures/test_fixture_named_request.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.test_fixture_named_request",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures",
+      "relative_path": "pytest/testing/example_scripts/fixtures/test_fixture_named_request.py",
+      "digest": "b64969f94d9ac961d4f9882f872a3a7dc3d08f30cb3300331329c56459cceb0f"
+    },
+    "pytest/testing/example_scripts/collect/collect_init_tests/tests/__init__.py": {
+      "module_name": "pytest.testing.example_scripts.collect.collect_init_tests.tests",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.collect.collect_init_tests.tests",
+      "relative_path": "pytest/testing/example_scripts/collect/collect_init_tests/tests/__init__.py",
+      "digest": "496370d7d315fb4cd7733dc41306c0fb31c41154ae079d74ccc429c643110114"
+    },
+    "pytest/src/_pytest/_py/error.py": {
+      "module_name": "pytest.src._pytest._py.error",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest._py",
+      "relative_path": "pytest/src/_pytest/_py/error.py",
+      "digest": "fa43ca238f1a628f03ad79932a78cdba6a44f9e324b338cad436ba462997b24f"
+    },
+    "examples/phase3_demo/test_calculator.py": {
+      "module_name": "examples.phase3_demo.test_calculator",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "examples.phase3_demo",
+      "relative_path": "examples/phase3_demo/test_calculator.py",
+      "digest": "2d1b9a89d7d3e03489b5f93d5013e8eb1e456781062528f34a635388c56a7909"
+    },
+    "pytest/testing/deprecated_test.py": {
+      "module_name": "pytest.testing.deprecated_test",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/deprecated_test.py",
+      "digest": "c7eb35bf46664f766719c646ca38a769e538735ee1fb67e68235facbebe91d80"
+    },
+    "scripts/setup_benchmark_repos.py": {
+      "module_name": "scripts.setup_benchmark_repos",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "scripts",
+      "relative_path": "scripts/setup_benchmark_repos.py",
+      "digest": "d21b22310ef98fc6180af0e1818ddad06a698fa34d4039f130d2acbadf067a95"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2/test_in_sub2.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub2.test_in_sub2",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub2",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2/test_in_sub2.py",
+      "digest": "2259aa9ce2c5ea571b746ddad23592e9e1ac055f03dc794663d93ba26318b8d3"
+    },
+    "examples/phase13_test.py": {
+      "module_name": "examples.phase13_test",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "examples",
+      "relative_path": "examples/phase13_test.py",
+      "digest": "8589a928e2f5c23eae7bdf0595be60c5f4634fd7ef444e82066f2d5076a87464"
+    },
+    "pytest/src/_pytest/stash.py": {
+      "module_name": "pytest.src._pytest.stash",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/stash.py",
+      "digest": "ce2616395fdbea103075a9a2a13ec7bf6246a046f920fe4eaf7d1cfbdc384f0a"
+    },
+    "pytest/testing/example_scripts/__init__.py": {
+      "module_name": "pytest.testing.example_scripts",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts",
+      "relative_path": "pytest/testing/example_scripts/__init__.py",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "pytest/testing/io/test_terminalwriter.py": {
+      "module_name": "pytest.testing.io.test_terminalwriter",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.io",
+      "relative_path": "pytest/testing/io/test_terminalwriter.py",
+      "digest": "fcbaf790b225e92d20a99f4937ebb65be7f98fbe7ab859e686304c51cd38e274"
+    },
+    "pytest/testing/test_parseopt.py": {
+      "module_name": "pytest.testing.test_parseopt",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_parseopt.py",
+      "digest": "4a14730308b04da5452f4d5825a0881b2a3f17a488c19d9558db71cec59bd05d"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub1.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub1",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1/conftest.py",
+      "digest": "4c62b32f0751c97ab12a108a965b4ed24d8ddcbd96bd88184477a9974969e252"
+    },
+    "pytest/testing/test_conftest.py": {
+      "module_name": "pytest.testing.test_conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_conftest.py",
+      "digest": "18b254e6fee2cb70e6f32af2037125876a5635fdb01aca5396e73bb35787e993"
+    },
+    "pytest/testing/test_recwarn.py": {
+      "module_name": "pytest.testing.test_recwarn",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_recwarn.py",
+      "digest": "31349cc20fb8d235714306653cd67b850f3e06538fa7c193c76b304bf4371f2c"
+    },
+    "pytest/testing/example_scripts/collect/package_init_given_as_arg/pkg/test_foo.py": {
+      "module_name": "pytest.testing.example_scripts.collect.package_init_given_as_arg.pkg.test_foo",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.collect.package_init_given_as_arg.pkg",
+      "relative_path": "pytest/testing/example_scripts/collect/package_init_given_as_arg/pkg/test_foo.py",
+      "digest": "d76597cc236d966a6d1c168e43197c654f51f85c2ba9e8bfd2fcc74ce09c4d28"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_module/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_module.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_module",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_module/conftest.py",
+      "digest": "96196ec68ba9157df790018c2a1e0569743f59cf34c3a27ab23449b14806f184"
+    },
+    "pytest/testing/test_skipping.py": {
+      "module_name": "pytest.testing.test_skipping",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_skipping.py",
+      "digest": "0565ef6af0df25936a6bef4f151e27706ab53cf74fd5db7cd4e9991ad71a39d7"
+    },
+    "pytest/src/_pytest/helpconfig.py": {
+      "module_name": "pytest.src._pytest.helpconfig",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/helpconfig.py",
+      "digest": "f6c743e786646741a52557337b2fe9a3bcdcabd29e58676c83c59ef2ee907b48"
+    },
+    "pytest/src/_pytest/scope.py": {
+      "module_name": "pytest.src._pytest.scope",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/scope.py",
+      "digest": "b18585badb8b756eb48aa6582d4b5adb708515abbcb4a1106753f75c1a002627"
+    },
+    "pytest/testing/example_scripts/acceptance/fixture_mock_integration.py": {
+      "module_name": "pytest.testing.example_scripts.acceptance.fixture_mock_integration",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.acceptance",
+      "relative_path": "pytest/testing/example_scripts/acceptance/fixture_mock_integration.py",
+      "digest": "424857e07420e66283a9890948414b684876a4219f33efd8f9987155af7b3e3e"
+    },
+    "examples/phase3_demo/test_basic.py": {
+      "module_name": "examples.phase3_demo.test_basic",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "examples.phase3_demo",
+      "relative_path": "examples/phase3_demo/test_basic.py",
+      "digest": "f3b9270876e546c4dde54822110148a6fc281f8b5e0614cf260f0547791a69aa"
+    },
+    "py_worker/tests/test_paths.py": {
+      "module_name": "py_worker.tests.test_paths",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "py_worker.tests",
+      "relative_path": "py_worker/tests/test_paths.py",
+      "digest": "27c749714c255f4486475172fd940f540f916c087c29b8b0d7d2d1e06a87271c"
+    },
+    "pytest/bench/unit_test.py": {
+      "module_name": "pytest.bench.unit_test",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.bench",
+      "relative_path": "pytest/bench/unit_test.py",
+      "digest": "f7086ec6f4bc403bd3c85dae3a89160861dc5d9449e61de242c7c366d5482238"
+    },
+    "pytest/src/_pytest/config/findpaths.py": {
+      "module_name": "pytest.src._pytest.config.findpaths",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.config",
+      "relative_path": "pytest/src/_pytest/config/findpaths.py",
+      "digest": "f81bd08b8e39752dc5b7dbf797da9abf1de169080f8d98178bf53f2476491e9b"
+    },
+    "pytest/src/_pytest/config/exceptions.py": {
+      "module_name": "pytest.src._pytest.config.exceptions",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.config",
+      "relative_path": "pytest/src/_pytest/config/exceptions.py",
+      "digest": "212f97528a70020b01786786614594e961c9471979df960e37e47507eeb015ab"
+    },
+    "pytest/testing/example_scripts/collect/package_infinite_recursion/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.collect.package_infinite_recursion.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.collect.package_infinite_recursion",
+      "relative_path": "pytest/testing/example_scripts/collect/package_infinite_recursion/conftest.py",
+      "digest": "ced3b5624220a382b4bee5a755175c1bb2c0c8d41c2c544a9a41c0c34e7c78e0"
+    },
+    "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub2.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub2",
+      "relative_path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2/conftest.py",
+      "digest": "c3b7cb2d410a90e9ba2e5aef0a92257a358e6663032d83358f859532947806fe"
+    },
+    "pytest/testing/example_scripts/unittest/test_setup_skip.py": {
+      "module_name": "pytest.testing.example_scripts.unittest.test_setup_skip",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.unittest",
+      "relative_path": "pytest/testing/example_scripts/unittest/test_setup_skip.py",
+      "digest": "867fa7f3d40d3a2521253275725e47ae63b09f9f30dddb739c5fd338423b6db3"
+    },
+    "pytest/testing/example_scripts/issue88_initial_file_multinodes/test_hello.py": {
+      "module_name": "pytest.testing.example_scripts.issue88_initial_file_multinodes.test_hello",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.issue88_initial_file_multinodes",
+      "relative_path": "pytest/testing/example_scripts/issue88_initial_file_multinodes/test_hello.py",
+      "digest": "dbe909f1f5a5ae63c2dad399a26f72d24c8f5c63da79b6dd8c3e6a4cc3e72e9a"
+    },
+    "pytest/testing/logging/test_formatter.py": {
+      "module_name": "pytest.testing.logging.test_formatter",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.logging",
+      "relative_path": "pytest/testing/logging/test_formatter.py",
+      "digest": "58d9ac26978eae9321eff2d627b044c5bed55edfd78f6a53dbdb441a7d8f9f9c"
+    },
+    "pytest/src/_pytest/outcomes.py": {
+      "module_name": "pytest.src._pytest.outcomes",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/outcomes.py",
+      "digest": "2e301373ab0e4969b15d676890227f8eefc9fe15e4ba6811c4db69716860bfcc"
+    },
+    "pytest/src/_pytest/assertion/__init__.py": {
+      "module_name": "pytest.src._pytest.assertion",
+      "is_package": true,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.assertion",
+      "relative_path": "pytest/src/_pytest/assertion/__init__.py",
+      "digest": "82990f8d58d29e28ad2860a613ee6e7ceadd198ca4e9ccc82df1f80bae61723d"
+    },
+    "pytest/testing/python/integration.py": {
+      "module_name": "pytest.testing.python.integration",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.python",
+      "relative_path": "pytest/testing/python/integration.py",
+      "digest": "f72f672a44b5a276433155149baf5806cb392c9338cc4c2432aec985ab3c4f33"
+    },
+    "pytest/testing/test_terminal.py": {
+      "module_name": "pytest.testing.test_terminal",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_terminal.py",
+      "digest": "efba74fc5174ed7315c6f6f6a4fd87cb225f7906c09464d9da775d34bfe814c7"
+    },
+    "pytest/testing/test_link_resolve.py": {
+      "module_name": "pytest.testing.test_link_resolve",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_link_resolve.py",
+      "digest": "f45f98791c779d3f95a778247fd401de7c7536707a3c65d1b81cfe90cf484d2e"
+    },
+    "pytest/testing/test_pytester.py": {
+      "module_name": "pytest.testing.test_pytester",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_pytester.py",
+      "digest": "d1ad42a301e747e3ce28cc1a835cbd9e27bc71efdbee93104886ba0fa413df7c"
+    },
+    "pytest/testing/test_findpaths.py": {
+      "module_name": "pytest.testing.test_findpaths",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_findpaths.py",
+      "digest": "c804440182875be851d81f9fb4a4dfc487901e88730d71c247439e500343e953"
+    },
+    "pytest/src/_pytest/_argcomplete.py": {
+      "module_name": "pytest.src._pytest._argcomplete",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/_argcomplete.py",
+      "digest": "77b825dca548e9872fead76682b4d2d0a0fb649984acbf0f90e1ad5ff35140fa"
+    },
+    "pytest/testing/example_scripts/config/collect_pytest_prefix/test_foo.py": {
+      "module_name": "pytest.testing.example_scripts.config.collect_pytest_prefix.test_foo",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.config.collect_pytest_prefix",
+      "relative_path": "pytest/testing/example_scripts/config/collect_pytest_prefix/test_foo.py",
+      "digest": "d76597cc236d966a6d1c168e43197c654f51f85c2ba9e8bfd2fcc74ce09c4d28"
+    },
+    "pytest/testing/example_scripts/issue_519.py": {
+      "module_name": "pytest.testing.example_scripts.issue_519",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts",
+      "relative_path": "pytest/testing/example_scripts/issue_519.py",
+      "digest": "fd2feb40710a32d82fd946e92bec8f77c5d3c134fb9a1e8c6af6147868ffcd44"
+    },
+    "pytest/testing/plugins_integration/pytest_trio_integration.py": {
+      "module_name": "pytest.testing.plugins_integration.pytest_trio_integration",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.plugins_integration",
+      "relative_path": "pytest/testing/plugins_integration/pytest_trio_integration.py",
+      "digest": "cc3da97d7241f62ce0bc794cf71e8b085d31564862b5368d19ab04750772880a"
+    },
+    "pytest/src/_pytest/assertion/truncate.py": {
+      "module_name": "pytest.src._pytest.assertion.truncate",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest.assertion",
+      "relative_path": "pytest/src/_pytest/assertion/truncate.py",
+      "digest": "70dfb3559411174bed5348aab24dde3159a9f6ffaa63ffb38b6c009a054d4878"
+    },
+    "pytest/testing/example_scripts/dataclasses/test_compare_dataclasses_verbose.py": {
+      "module_name": "pytest.testing.example_scripts.dataclasses.test_compare_dataclasses_verbose",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.dataclasses",
+      "relative_path": "pytest/testing/example_scripts/dataclasses/test_compare_dataclasses_verbose.py",
+      "digest": "16f443839645ec5f7e46afa1184264904a43e9bdd46f73e9b4a1017e1d474966"
+    },
+    "pytest/testing/test_compat.py": {
+      "module_name": "pytest.testing.test_compat",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_compat.py",
+      "digest": "f2e1c04b2bc3d7ba1405e8208273a01215d86023e74c46b0042ad2ebecdc2da7"
+    },
+    "pytest/testing/test_faulthandler.py": {
+      "module_name": "pytest.testing.test_faulthandler",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_faulthandler.py",
+      "digest": "5fa193b3be5120d09cd34b0aa2c5b6dd93bd2d5a5262656ffff5058d524d263e"
+    },
+    "pytest/testing/test_scope.py": {
+      "module_name": "pytest.testing.test_scope",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_scope.py",
+      "digest": "fb1c8889ef9b9294e2a8c8705ac80c2aa4cac1962de49d07eb28eb05df90cf09"
+    },
+    "pytest/testing/example_scripts/customdirectory/tests/test_first.py": {
+      "module_name": "pytest.testing.example_scripts.customdirectory.tests.test_first",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.customdirectory.tests",
+      "relative_path": "pytest/testing/example_scripts/customdirectory/tests/test_first.py",
+      "digest": "3572ab480b2a08d912f14041accda1eec16d38e580149a8befca7c4340053c59"
+    },
+    "pytest/scripts/release.py": {
+      "module_name": "pytest.scripts.release",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.scripts",
+      "relative_path": "pytest/scripts/release.py",
+      "digest": "7e4c53768b1b776361c36d1b9355211645bdbd2334abc241fc3fe512efceff1f"
+    },
+    "pytest/testing/example_scripts/conftest_usageerror/conftest.py": {
+      "module_name": "pytest.testing.example_scripts.conftest_usageerror.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.conftest_usageerror",
+      "relative_path": "pytest/testing/example_scripts/conftest_usageerror/conftest.py",
+      "digest": "d798326c94b2120150c78ad00d8e4b021d7db2674f55e4916be42e2fb85068e8"
+    },
+    "pytest/testing/freeze/runtests_script.py": {
+      "module_name": "pytest.testing.freeze.runtests_script",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.freeze",
+      "relative_path": "pytest/testing/freeze/runtests_script.py",
+      "digest": "aadeeafd45e6652086eb4d0ed4bea4c33566a9bbf1fb77376f9f41c87e39217b"
+    },
+    "py_worker/veri_worker.py": {
+      "module_name": "py_worker.veri_worker",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "py_worker",
+      "relative_path": "py_worker/veri_worker.py",
+      "digest": "b62f628bdf266935ff2ff86ad9b6ec3b0f702a11b30edbac75af54277483b6ee"
+    },
+    "scripts/bench.py": {
+      "module_name": "scripts.bench",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "scripts",
+      "relative_path": "scripts/bench.py",
+      "digest": "3d7813c6f02821c63cb0b165df2e920d0a51e28840c41d60535f415791220c80"
+    },
+    "pytest/testing/example_scripts/customdirectory/tests/test_third.py": {
+      "module_name": "pytest.testing.example_scripts.customdirectory.tests.test_third",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.customdirectory.tests",
+      "relative_path": "pytest/testing/example_scripts/customdirectory/tests/test_third.py",
+      "digest": "29774bc803e1abd61b787842d996e84ad7904f30e79c544695ced5f585e7e7c2"
+    },
+    "pytest/src/_pytest/logging.py": {
+      "module_name": "pytest.src._pytest.logging",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/logging.py",
+      "digest": "42cd11d8b6da658e4dab247b5885574f1a0b6df61a80cefff14dc2afd797a967"
+    },
+    "pytest/testing/conftest.py": {
+      "module_name": "pytest.testing.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/conftest.py",
+      "digest": "d5084285964678b80652c82d76654adc013eb7e5dfcfbe313b493b739f684eb1"
+    },
+    "pytest/doc/en/example/nonpython/conftest.py": {
+      "module_name": "pytest.doc.en.example.nonpython.conftest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example.nonpython",
+      "relative_path": "pytest/doc/en/example/nonpython/conftest.py",
+      "digest": "4019101c5019580e30ae3d4d495366ef36f3ca4dca9a2975a6a5063944ad84f2"
+    },
+    "pytest/testing/example_scripts/collect/package_infinite_recursion/tests/test_basic.py": {
+      "module_name": "pytest.testing.example_scripts.collect.package_infinite_recursion.tests.test_basic",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.collect.package_infinite_recursion.tests",
+      "relative_path": "pytest/testing/example_scripts/collect/package_infinite_recursion/tests/test_basic.py",
+      "digest": "b87ed23b1f60fd09407467dd55b638dfc554f7a1d31470650414fbb16933c1ce"
+    },
+    "pytest/testing/test_config.py": {
+      "module_name": "pytest.testing.test_config",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_config.py",
+      "digest": "78b648a4e2fe5c4a05fb841855696462d3448b7be864d9b3beff89474c3669d1"
+    },
+    "pytest/testing/example_scripts/tmpdir/tmp_path_fixture.py": {
+      "module_name": "pytest.testing.example_scripts.tmpdir.tmp_path_fixture",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.tmpdir",
+      "relative_path": "pytest/testing/example_scripts/tmpdir/tmp_path_fixture.py",
+      "digest": "06fc3c0561739b079f2e63176b97cdcde285f894853bb3d2f810aea4358ae9cc"
+    },
+    "pytest/src/_pytest/main.py": {
+      "module_name": "pytest.src._pytest.main",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/main.py",
+      "digest": "fc991a6a38a4f35e86b9e215e0a78119075f59d6656ffef543b6f40a479dc99f"
+    },
+    "pytest/testing/test_unittest.py": {
+      "module_name": "pytest.testing.test_unittest",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_unittest.py",
+      "digest": "b14572a19ce68145b9c8ecb65569f66366b3f590ed5f6e45c4037ec381e69a11"
+    },
+    "pytest/testing/test_collect_imported_tests.py": {
+      "module_name": "pytest.testing.test_collect_imported_tests",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_collect_imported_tests.py",
+      "digest": "916f8babca1f416c104041f50d5f23a78b4b02c7dcc1a31f60b5a42380ec9387"
+    },
+    "pytest/testing/code/test_excinfo.py": {
+      "module_name": "pytest.testing.code.test_excinfo",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.code",
+      "relative_path": "pytest/testing/code/test_excinfo.py",
+      "digest": "2a34b57ad9ee66affaf6826de1e7811d5b0155869e222b9151d7b0974ca10273"
+    },
+    "pytest/testing/example_scripts/unittest/test_unittest_plain_async.py": {
+      "module_name": "pytest.testing.example_scripts.unittest.test_unittest_plain_async",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.example_scripts.unittest",
+      "relative_path": "pytest/testing/example_scripts/unittest/test_unittest_plain_async.py",
+      "digest": "b60f8299c03a5cce995c022f9b4758e4966b7278ead3d567b3dcb082367c5095"
+    },
+    "pytest/testing/plugins_integration/simple_integration.py": {
+      "module_name": "pytest.testing.plugins_integration.simple_integration",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing.plugins_integration",
+      "relative_path": "pytest/testing/plugins_integration/simple_integration.py",
+      "digest": "b2e072c6549abc436cc4c9c221b7266ae676ec18b465fde7223e46054451fc29"
+    },
+    "pytest/doc/en/example/multipython.py": {
+      "module_name": "pytest.doc.en.example.multipython",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.doc.en.example",
+      "relative_path": "pytest/doc/en/example/multipython.py",
+      "digest": "f52f2ffcdfd43435c7ff65aee9c73c39577212bf8b6e05208e3feb4d9133aa2a"
+    },
+    "pytest/src/_pytest/runner.py": {
+      "module_name": "pytest.src._pytest.runner",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.src._pytest",
+      "relative_path": "pytest/src/_pytest/runner.py",
+      "digest": "ba9c99bc9c6ec04e278b7555daf514ba2edd1dec104ddf914eef21f439faa99c"
+    },
+    "pytest/testing/_py/test_local.py": {
+      "module_name": "pytest.testing._py.test_local",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing._py",
+      "relative_path": "pytest/testing/_py/test_local.py",
+      "digest": "a0973057e484a7bb3ad37651b6529f4caeab1d8a74d94965d18947927f50daf5"
+    },
+    "pytest/testing/test_debugging.py": {
+      "module_name": "pytest.testing.test_debugging",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "pytest.testing",
+      "relative_path": "pytest/testing/test_debugging.py",
+      "digest": "0e776fe5c5f764321190c0a2cd8f0228a8e9dac0e3e343ce6ad81e8c60c6fdb0"
+    },
+    "py_worker/tests/test_schema.py": {
+      "module_name": "py_worker.tests.test_schema",
+      "is_package": false,
+      "is_namespace": false,
+      "parent_package": "py_worker.tests",
+      "relative_path": "py_worker/tests/test_schema.py",
+      "digest": "4c810e96a5cfd83449459e738e229c18c66b5a452a8d911d9a43855550a7fc07"
+    }
+  },
+  "packages": [
+    {
+      "name": "examples.phase3_demo",
+      "path": "examples/phase3_demo",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "examples.phase8_demo",
+      "path": "examples/phase8_demo",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "examples",
+      "path": "examples",
+      "is_namespace": true,
+      "subpackages": [
+        "examples.phase3_demo",
+        "examples.phase8_demo"
+      ]
+    },
+    {
+      "name": "pytest.bench",
+      "path": "pytest/bench",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.doc.en.example.assertion.global_testmodule_config",
+      "path": "pytest/doc/en/example/assertion/global_testmodule_config",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.doc.en.example.assertion",
+      "path": "pytest/doc/en/example/assertion",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.doc.en.example.assertion.global_testmodule_config"
+      ]
+    },
+    {
+      "name": "pytest.doc.en.example.customdirectory.tests",
+      "path": "pytest/doc/en/example/customdirectory/tests",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.doc.en.example.customdirectory",
+      "path": "pytest/doc/en/example/customdirectory",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.doc.en.example.customdirectory.tests"
+      ]
+    },
+    {
+      "name": "pytest.doc.en.example.fixtures",
+      "path": "pytest/doc/en/example/fixtures",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.doc.en.example.nonpython",
+      "path": "pytest/doc/en/example/nonpython",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.doc.en.example",
+      "path": "pytest/doc/en/example",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.doc.en.example.assertion",
+        "pytest.doc.en.example.customdirectory",
+        "pytest.doc.en.example.fixtures",
+        "pytest.doc.en.example.nonpython"
+      ]
+    },
+    {
+      "name": "pytest.doc.en",
+      "path": "pytest/doc/en",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.doc.en.example"
+      ]
+    },
+    {
+      "name": "pytest.doc",
+      "path": "pytest/doc",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.doc.en"
+      ]
+    },
+    {
+      "name": "pytest.extra",
+      "path": "pytest/extra",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.scripts",
+      "path": "pytest/scripts",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.src.pytest",
+      "path": "pytest/src/pytest",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.src._pytest.assertion",
+      "path": "pytest/src/_pytest/assertion",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.src._pytest.config",
+      "path": "pytest/src/_pytest/config",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.src._pytest.mark",
+      "path": "pytest/src/_pytest/mark",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.src._pytest._code",
+      "path": "pytest/src/_pytest/_code",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.src._pytest._io",
+      "path": "pytest/src/_pytest/_io",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.src._pytest._py",
+      "path": "pytest/src/_pytest/_py",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.src._pytest",
+      "path": "pytest/src/_pytest",
+      "is_namespace": false,
+      "subpackages": [
+        "pytest.src._pytest.assertion",
+        "pytest.src._pytest.config",
+        "pytest.src._pytest.mark",
+        "pytest.src._pytest._code",
+        "pytest.src._pytest._io",
+        "pytest.src._pytest._py"
+      ]
+    },
+    {
+      "name": "pytest.src",
+      "path": "pytest/src",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.src.pytest",
+        "pytest.src._pytest"
+      ]
+    },
+    {
+      "name": "pytest.testing.code",
+      "path": "pytest/testing/code",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.examples",
+      "path": "pytest/testing/examples",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.acceptance",
+      "path": "pytest/testing/example_scripts/acceptance",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.collect.collect_init_tests.tests",
+      "path": "pytest/testing/example_scripts/collect/collect_init_tests/tests",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.collect.collect_init_tests",
+      "path": "pytest/testing/example_scripts/collect/collect_init_tests",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.collect.collect_init_tests.tests"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.collect.package_infinite_recursion.tests",
+      "path": "pytest/testing/example_scripts/collect/package_infinite_recursion/tests",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.collect.package_infinite_recursion",
+      "path": "pytest/testing/example_scripts/collect/package_infinite_recursion",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.collect.package_infinite_recursion.tests"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.collect.package_init_given_as_arg.pkg",
+      "path": "pytest/testing/example_scripts/collect/package_init_given_as_arg/pkg",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.collect.package_init_given_as_arg",
+      "path": "pytest/testing/example_scripts/collect/package_init_given_as_arg",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.collect.package_init_given_as_arg.pkg"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.collect",
+      "path": "pytest/testing/example_scripts/collect",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.collect.collect_init_tests",
+        "pytest.testing.example_scripts.collect.package_infinite_recursion",
+        "pytest.testing.example_scripts.collect.package_init_given_as_arg"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.config.collect_pytest_prefix",
+      "path": "pytest/testing/example_scripts/config/collect_pytest_prefix",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.config",
+      "path": "pytest/testing/example_scripts/config",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.config.collect_pytest_prefix"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.conftest_usageerror",
+      "path": "pytest/testing/example_scripts/conftest_usageerror",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.customdirectory.tests",
+      "path": "pytest/testing/example_scripts/customdirectory/tests",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.customdirectory",
+      "path": "pytest/testing/example_scripts/customdirectory",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.customdirectory.tests"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.dataclasses",
+      "path": "pytest/testing/example_scripts/dataclasses",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.doctest.main_py",
+      "path": "pytest/testing/example_scripts/doctest/main_py",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.doctest",
+      "path": "pytest/testing/example_scripts/doctest",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.doctest.main_py"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures.custom_item.foo",
+      "path": "pytest/testing/example_scripts/fixtures/custom_item/foo",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures.custom_item",
+      "path": "pytest/testing/example_scripts/fixtures/custom_item",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.fixtures.custom_item.foo"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub1",
+      "path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub1",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub2",
+      "path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir/sub2",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir",
+      "path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_conftest_funcargs_only_available_in_subdir",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub1",
+        "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir.sub2"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest.pkg",
+      "path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest/pkg",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest",
+      "path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_conftest",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest.pkg"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_module",
+      "path": "pytest/testing/example_scripts/fixtures/fill_fixtures/test_extend_fixture_conftest_module",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures.fill_fixtures",
+      "path": "pytest/testing/example_scripts/fixtures/fill_fixtures",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.fixtures.fill_fixtures.test_conftest_funcargs_only_available_in_subdir",
+        "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_conftest",
+        "pytest.testing.example_scripts.fixtures.fill_fixtures.test_extend_fixture_conftest_module"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.fixtures",
+      "path": "pytest/testing/example_scripts/fixtures",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.fixtures.custom_item",
+        "pytest.testing.example_scripts.fixtures.fill_fixtures"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.issue88_initial_file_multinodes",
+      "path": "pytest/testing/example_scripts/issue88_initial_file_multinodes",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.marks.marks_considered_keywords",
+      "path": "pytest/testing/example_scripts/marks/marks_considered_keywords",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.marks",
+      "path": "pytest/testing/example_scripts/marks",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.marks.marks_considered_keywords"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.perf_examples.collect_stats",
+      "path": "pytest/testing/example_scripts/perf_examples/collect_stats",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.perf_examples",
+      "path": "pytest/testing/example_scripts/perf_examples",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.perf_examples.collect_stats"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts.tmpdir",
+      "path": "pytest/testing/example_scripts/tmpdir",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.unittest",
+      "path": "pytest/testing/example_scripts/unittest",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.warnings.test_group_warnings_by_message_summary",
+      "path": "pytest/testing/example_scripts/warnings/test_group_warnings_by_message_summary",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.example_scripts.warnings",
+      "path": "pytest/testing/example_scripts/warnings",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.example_scripts.warnings.test_group_warnings_by_message_summary"
+      ]
+    },
+    {
+      "name": "pytest.testing.example_scripts",
+      "path": "pytest/testing/example_scripts",
+      "is_namespace": false,
+      "subpackages": [
+        "pytest.testing.example_scripts.acceptance",
+        "pytest.testing.example_scripts.collect",
+        "pytest.testing.example_scripts.config",
+        "pytest.testing.example_scripts.conftest_usageerror",
+        "pytest.testing.example_scripts.customdirectory",
+        "pytest.testing.example_scripts.dataclasses",
+        "pytest.testing.example_scripts.doctest",
+        "pytest.testing.example_scripts.fixtures",
+        "pytest.testing.example_scripts.issue88_initial_file_multinodes",
+        "pytest.testing.example_scripts.marks",
+        "pytest.testing.example_scripts.perf_examples",
+        "pytest.testing.example_scripts.tmpdir",
+        "pytest.testing.example_scripts.unittest",
+        "pytest.testing.example_scripts.warnings"
+      ]
+    },
+    {
+      "name": "pytest.testing.freeze.tests",
+      "path": "pytest/testing/freeze/tests",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.freeze",
+      "path": "pytest/testing/freeze",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.freeze.tests"
+      ]
+    },
+    {
+      "name": "pytest.testing.io",
+      "path": "pytest/testing/io",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.logging",
+      "path": "pytest/testing/logging",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.plugins_integration",
+      "path": "pytest/testing/plugins_integration",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing.python",
+      "path": "pytest/testing/python",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing._py",
+      "path": "pytest/testing/_py",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "pytest.testing",
+      "path": "pytest/testing",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.testing.code",
+        "pytest.testing.examples",
+        "pytest.testing.example_scripts",
+        "pytest.testing.freeze",
+        "pytest.testing.io",
+        "pytest.testing.logging",
+        "pytest.testing.plugins_integration",
+        "pytest.testing.python",
+        "pytest.testing._py"
+      ]
+    },
+    {
+      "name": "pytest",
+      "path": "pytest",
+      "is_namespace": true,
+      "subpackages": [
+        "pytest.bench",
+        "pytest.doc",
+        "pytest.extra",
+        "pytest.scripts",
+        "pytest.src",
+        "pytest.testing"
+      ]
+    },
+    {
+      "name": "py_worker.tests",
+      "path": "py_worker/tests",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "py_worker",
+      "path": "py_worker",
+      "is_namespace": true,
+      "subpackages": [
+        "py_worker.tests"
+      ]
+    },
+    {
+      "name": "scripts",
+      "path": "scripts",
+      "is_namespace": true,
+      "subpackages": []
+    },
+    {
+      "name": "src.veri",
+      "path": "src/veri",
+      "is_namespace": false,
+      "subpackages": []
+    },
+    {
+      "name": "src",
+      "path": "src",
+      "is_namespace": true,
+      "subpackages": [
+        "src.veri"
+      ]
+    }
+  ]
+}
