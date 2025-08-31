@@ -443,11 +443,7 @@ fn run_veri_engine(
     // Fallback: if nothing selected but tests exist, run all tests
     if nodeids_to_run.is_empty() && !tests_index.tests.is_empty() {
         println!("ℹ️  No impacted tests detected; defaulting to run all tests");
-        nodeids_to_run = tests_index
-            .tests
-            .iter()
-            .map(|t| t.nodeid.clone())
-            .collect();
+        nodeids_to_run = tests_index.tests.iter().map(|t| t.nodeid.clone()).collect();
     }
 
     if nodeids_to_run.is_empty() {
@@ -940,6 +936,7 @@ fn parse_worker_count(workers: &Option<String>) -> Result<usize> {
 }
 
 /// Execute tests in parallel using scheduler and worker pool
+#[allow(clippy::too_many_arguments)]
 fn execute_tests_parallel(
     nodeids: &[String],
     tests_index: &veri_core::python_worker::TestsIndex,
@@ -1083,8 +1080,10 @@ fn execute_tests_parallel(
         // Update aggregated_timings incrementally
         for r in &results {
             for t in &r.per_test {
-                let entry = timings.aggregated_timings.entry(t.nodeid.clone()).or_insert(
-                    veri_core::schemas::AggregatedTiming {
+                let entry = timings
+                    .aggregated_timings
+                    .entry(t.nodeid.clone())
+                    .or_insert(veri_core::schemas::AggregatedTiming {
                         nodeid: t.nodeid.clone(),
                         run_count: 0,
                         avg_duration: 0.0,
@@ -1094,8 +1093,7 @@ fn execute_tests_parallel(
                         p95_duration: 0.0,
                         last_duration: 0.0,
                         stability: 1.0,
-                    },
-                );
+                    });
                 let d = (t.duration_ms as f64) / 1000.0;
                 entry.run_count += 1;
                 // Incremental average

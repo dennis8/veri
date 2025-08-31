@@ -718,7 +718,7 @@ impl WorkerPool {
     ) {
         thread::spawn(move || {
             let reader = BufReader::new(stdout);
-            for line in reader.lines().flatten() {
+            for line in reader.lines().map_while(Result::ok) {
                 if let Ok(val) = serde_json::from_str::<Value>(&line) {
                     let t = val.get("t").and_then(|v| v.as_str()).unwrap_or("");
                     match t {
@@ -807,7 +807,7 @@ impl WorkerPool {
     ) {
         thread::spawn(move || {
             let reader = BufReader::new(stderr);
-            for line in reader.lines().flatten() {
+            for line in reader.lines().map_while(Result::ok) {
                 warn!("Worker {} stderr: {}", worker_id, line);
             }
         });

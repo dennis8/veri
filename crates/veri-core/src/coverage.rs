@@ -329,11 +329,22 @@ impl CoverageCollector {
                 if !combine_ok {
                     // Fallback to system coverage if uv unavailable
                     let _ = Command::new("python")
-                        .args(["-m", "coverage", "combine", &self.cache_dir.to_string_lossy()])
+                        .args([
+                            "-m",
+                            "coverage",
+                            "combine",
+                            &self.cache_dir.to_string_lossy(),
+                        ])
                         .current_dir(&self.work_dir)
                         .status();
                     let _ = Command::new("python")
-                        .args(["-m", "coverage", "json", "-o", &coverage_json.to_string_lossy()])
+                        .args([
+                            "-m",
+                            "coverage",
+                            "json",
+                            "-o",
+                            &coverage_json.to_string_lossy(),
+                        ])
                         .current_dir(&self.work_dir)
                         .status();
                 }
@@ -364,7 +375,11 @@ impl CoverageCollector {
         }
         // Try crate-relative ../../py_worker
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        if let Some(c) = manifest_dir.parent().and_then(|p| p.parent()).map(|p| p.join("py_worker")) {
+        if let Some(c) = manifest_dir
+            .parent()
+            .and_then(|p| p.parent())
+            .map(|p| p.join("py_worker"))
+        {
             if c.exists() {
                 return Some(c);
             }
