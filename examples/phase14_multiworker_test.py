@@ -1,6 +1,6 @@
 """
 Phase 14: Multi-worker smoke tests
-Runs veri in experimental multi-worker mode on a trivial test suite.
+Runs veri with multiple workers on a trivial test suite.
 """
 
 import os
@@ -20,8 +20,7 @@ def test_ok():
         )
 
         env = os.environ.copy()
-        # Ensure experimental pool is enabled and allowlist is disabled for the smoke
-        env["VERI_EXPERIMENTAL_WORKERPOOL"] = "1"
+        # Disable allowlist for the smoke; pool is always enabled
         # Prepend repo .bin to PATH so `veri` resolves to dev binary
         env["PATH"] = str(Path(__file__).resolve().parents[1] / ".bin") + os.pathsep + env.get("PATH", "")
 
@@ -33,4 +32,3 @@ def test_ok():
             env=env,
         )
         assert result.returncode in (0, 1), result.stdout + "\n" + result.stderr
-

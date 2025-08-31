@@ -151,8 +151,8 @@ jobs:
           uv tool install veri
           uv sync  # or: pip install -r requirements.txt
       
-      - name: Run tests
-        run: veri --cov --junit-xml reports/junit.xml
+      - name: Run tests (unified worker pool)
+        run: veri --workers auto --cov --junit-xml reports/junit.xml
 ```
 
 #### Parallel CI with Sharding
@@ -167,6 +167,11 @@ steps:
     
   - name: Run shard
     run: veri shard --ci ${{ matrix.shard }} --junit-xml junit-${{ matrix.shard }}.xml
+
+### Execution Model (at a glance)
+
+- veri always executes through a Python worker pool. Set `--workers 1` for single‑process runs or `--workers auto`/`N` for parallel.
+- Output includes an outcome rollup: `Summary: <passed> passed, <skipped> skipped, <failed> failed, <error> error (<total> total)`.
 ```
 
 ## Configuration

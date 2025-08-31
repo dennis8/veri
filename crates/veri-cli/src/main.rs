@@ -535,13 +535,8 @@ fn run_veri_engine(
 
     println!("🎯 Running {} selected tests", nodeids_to_run.len());
 
-    // Parse worker count
-    let requested_workers = parse_worker_count(&cli.workers)?;
-    let worker_count = if std::env::var_os("VERI_EXPERIMENTAL_WORKERPOOL").is_some() {
-        requested_workers
-    } else {
-        1usize
-    };
+    // Always use the worker pool (worker_count may be 1)
+    let worker_count = parse_worker_count(&cli.workers)?;
 
     // Configure test run options
     let run_options = TestRunOptions {
@@ -551,7 +546,7 @@ fn run_veri_engine(
         exitfirst: cli.exitfirst,
         maxfail: cli.maxfail,
         junit_xml: cli.junit_xml.clone(),
-        workers: Some("1".to_string()), // Each worker handles their batch sequentially
+        workers: Some(worker_count.to_string()),
         ignore: cli.ignore.clone(),
         coverage: cli.cov,
         coverage_xml: cli.cov || cli.cov_merge_full,
@@ -595,58 +590,18 @@ fn run_veri_engine(
         collector.initialize_coverage(&nodeids_to_run)?;
     }
 
-    // Execute tests using scheduler and worker pool if we have multiple workers
+    // Execute tests using the scheduler and worker pool
     let start_time = std::time::Instant::now();
-    let test_result = if worker_count == 1 || nodeids_to_run.len() == 1 {
-        // Single worker execution - use direct approach
-        let exec = worker.run_tests(&nodeids_to_run, &run_options)?;
-        if exec.exit_code != 0 {
-            println!("\n--- Worker stdout (tail) ---");
-            for line in exec.stdout.lines().rev().take(50).collect::<Vec<_>>().into_iter().rev() {
-                println!("{}", line);
-            }
-            eprintln!("\n--- Worker stderr (tail) ---");
-            for line in exec.stderr.lines().rev().take(50).collect::<Vec<_>>().into_iter().rev() {
-                eprintln!("{}", line);
-            }
-
-            // Fallback: if execution failed with usage error, retry via pytest engine
-            if exec.exit_code == 4 {
-                println!("\nℹ️  Retrying via pytest engine due to execution error (code 4)...");
-                return run_pytest_engine(cli, config);
-            }
-        }
-
-        // Outcome rollup for single-worker path
-        if !exec.per_test.is_empty() {
-            let mut passed=0u32; let mut skipped=0u32; let mut failed=0u32; let mut error=0u32;
-            for t in &exec.per_test { match t.outcome.as_str() { "passed"=>passed+=1, "skipped"=>skipped+=1, "failed"=>failed+=1, "error"=>error+=1, _=>{} } }
-            let total = exec.per_test.len();
-            println!(
-                "Summary: {} passed, {} skipped, {} failed, {} error ({} total)",
-                passed, skipped, failed, error, total
-            );
-        }
-        match exec.exit_code {
-            0 => Ok(ExitCode::Success),
-            1 => Ok(ExitCode::TestFailure),
-            2 => Ok(ExitCode::Interrupted),
-            4 => Ok(ExitCode::UsageError),
-            _ => Ok(ExitCode::InternalError),
-        }
-    } else {
-        // Multi-worker execution - use scheduler and worker pool
-        execute_tests_parallel(
-            &nodeids_to_run,
-            &tests_index,
-            worker_count,
-            &run_options,
-            &work_dir,
-            &cache_dir,
-            cli.verbose > 0,
-            config,
-        )
-    };
+    let test_result = execute_tests_parallel(
+        &nodeids_to_run,
+        &tests_index,
+        worker_count,
+        &run_options,
+        &work_dir,
+        &cache_dir,
+        cli.verbose > 0,
+        config,
+    );
 
     let execution_duration = start_time.elapsed();
 
@@ -1037,6 +992,30 @@ fn parse_worker_count(workers: &Option<String>) -> Result<usize> {
             }
         }
         None => Ok(num_cpus::get().max(1)),
+    }
+}
+
+/// Helper used for tests and documenting routing: we always go through the
+/// worker pool, even for a single worker and a single selected test.
+fn should_use_pool(_worker_count: usize, _selected_len: usize) -> bool {
+    true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_worker_count_auto_nonzero() {
+        let wc = parse_worker_count(&Some("auto".to_string())).expect("parse auto");
+        assert!(wc > 0, "auto should resolve to > 0 workers");
+    }
+
+    #[test]
+    fn test_should_use_pool_always_true() {
+        assert!(should_use_pool(1, 1));
+        assert!(should_use_pool(1, 0));
+        assert!(should_use_pool(4, 100));
     }
 }
 
@@ -1438,10 +1417,11 @@ fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Res
                 ci_reporter.init_junit(junit_path)?;
             }
 
-            // Execute tests for this shard
+            // Execute tests for this shard via worker pool (1 worker)
+            println!("🚀 Executing {} tests...", nodeids.len());
+            let start_time = std::time::Instant::now();
             let worker = PythonWorker::new(&work_dir, &cache_dir);
-
-            // Configure test run options
+            let tests_index = worker.collect_tests(&[], &[])?;
             let run_options = veri_core::python_worker::TestRunOptions {
                 verbose: cli_args.verbose > 0,
                 quiet: cli_args.quiet,
@@ -1449,7 +1429,7 @@ fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Res
                 exitfirst: cli_args.exitfirst,
                 maxfail: cli_args.maxfail,
                 junit_xml: config.junit_xml.clone(),
-                workers: Some("1".to_string()), // Single worker for shard execution
+                workers: Some("1".to_string()),
                 ignore: cli_args.ignore.clone(),
                 coverage: config.cov.unwrap_or(false),
                 coverage_xml: config.cov.unwrap_or(false) || config.cov_merge_full.unwrap_or(false),
@@ -1463,58 +1443,28 @@ fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Res
                     "*/.venv/*".to_string(),
                 ],
             };
-
-            println!("🚀 Executing {} tests...", nodeids.len());
-            let start_time = std::time::Instant::now();
-
-            // Run the tests
-            let exec = worker.run_tests(&nodeids, &run_options)?;
+            let exit = execute_tests_parallel(
+                &nodeids,
+                &tests_index,
+                1,
+                &run_options,
+                &work_dir,
+                &cache_dir,
+                cli_args.verbose > 0,
+                config,
+            )?;
             let duration = start_time.elapsed().as_secs_f64();
 
             // Emit summary event if JSONL enabled
-            if let Some(stream) = ci_reporter.event_stream() {
-                // Parse exit code to test results (simplified)
-                let (passed, failed, error) = match exec.exit_code {
-                    0 => (nodeids.len() as u32, 0, 0),
-                    1 => (0, nodeids.len() as u32, 0), // Simplified: assume all failed
-                    _ => (0, 0, nodeids.len() as u32), // Simplified: assume all error
-                };
-
-                stream.emit_summary(
-                    duration,
-                    nodeids.len() as u32,
-                    passed,
-                    failed,
-                    0,
-                    error,
-                    exec.exit_code,
-                )?;
-            }
+            if let Some(stream) = ci_reporter.event_stream() { stream.emit_summary(duration, nodeids.len() as u32, 0, 0, 0, 0, exit as i32)?; }
 
             // Finalize reporting
             ci_reporter.finalize()?;
 
             println!("✅ Shard {} completed in {:.1}s", shard_id, duration);
 
-            // Return appropriate exit code
-            if exec.exit_code != 0 {
-                println!("\n--- Worker stdout (tail) ---");
-                for line in exec.stdout.lines().rev().take(50).collect::<Vec<_>>().into_iter().rev() {
-                    println!("{}", line);
-                }
-                eprintln!("\n--- Worker stderr (tail) ---");
-                for line in exec.stderr.lines().rev().take(50).collect::<Vec<_>>().into_iter().rev() {
-                    eprintln!("{}", line);
-                }
-            }
-
-            match exec.exit_code {
-                0 => Ok(ExitCode::Success),
-                1 => Ok(ExitCode::TestFailure),
-                2 => Ok(ExitCode::Interrupted),
-                4 => Ok(ExitCode::UsageError),
-                _ => Ok(ExitCode::InternalError),
-            }
+            // Return outcome from parallel executor
+            Ok(exit)
         }
     }
 }

@@ -118,7 +118,7 @@ Notes:
 - Keep `--workers [auto|N]`. When N>1, enable `WorkerPool`; else single worker path stays.
 - Add advanced (config or env) knobs:
   - `worker.startup_timeout`, `worker.heartbeat_interval`, `worker.execution_timeout`, `worker.max_restarts`.
-  - `VERI_EXPERIMENTAL_WORKERPOOL=1` gate during rollout (remove once stable).
+- Execution now always uses the worker pool (workers can be set to 1 for single‑process execution). The old experimental gate has been removed.
 
 ---
 

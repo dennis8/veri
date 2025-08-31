@@ -161,92 +161,6 @@ impl PythonWorker {
         Ok(markers_index)
     }
 
-    /// Execute specific tests by nodeid
-    pub fn run_tests(&self, nodeids: &[String], options: &TestRunOptions) -> Result<TestExecOutput> {
-        let mut args = vec![
-            "-m".to_string(),
-            "veri_worker".to_string(),
-            "run".to_string(),
-            "--work-dir".to_string(),
-            self.work_dir.to_string_lossy().to_string(),
-        ];
-
-        // Add nodeids
-        if !nodeids.is_empty() {
-            args.push("--nodeids".to_string());
-            args.extend(nodeids.iter().cloned());
-        }
-
-        // Add options
-        if options.verbose {
-            args.push("--verbose".to_string());
-        }
-        if options.quiet {
-            args.push("--quiet".to_string());
-        }
-        if options.no_capture {
-            args.push("--no-capture".to_string());
-        }
-        if options.exitfirst {
-            args.push("--exitfirst".to_string());
-        }
-        if let Some(maxfail) = options.maxfail {
-            args.push("--maxfail".to_string());
-            args.push(maxfail.to_string());
-        }
-        // Add ignores
-        for ig in &options.ignore {
-            args.push("--ignore".to_string());
-            args.push(ig.clone());
-        }
-        if let Some(junit_xml) = &options.junit_xml {
-            args.push("--junit-xml".to_string());
-            args.push(junit_xml.to_string_lossy().to_string());
-        }
-        if let Some(workers) = &options.workers {
-            args.push("--workers".to_string());
-            args.push(workers.clone());
-        }
-
-        // Add coverage options
-        if options.coverage {
-            args.push("--coverage".to_string());
-        }
-        if options.coverage_xml {
-            args.push("--coverage-xml".to_string());
-        }
-        if options.coverage_html {
-            args.push("--coverage-html".to_string());
-        }
-        if !options.coverage_source_dirs.is_empty() {
-            args.push("--coverage-source-dirs".to_string());
-            args.extend(options.coverage_source_dirs.iter().cloned());
-        }
-        if !options.coverage_omit.is_empty() {
-            args.push("--coverage-omit".to_string());
-            args.extend(options.coverage_omit.iter().cloned());
-        }
-
-        // Execute Python worker
-        let output = self
-            .run_python_command(&args)
-            .context("Failed to run Python worker for test execution")?;
-
-        // Attempt to read per-test results written by the worker run mode
-        let per_path = self.cache_dir.join("last_per_test.json");
-        let per_test: Vec<PythonPerTest> = match std::fs::read_to_string(&per_path) {
-            Ok(txt) => serde_json::from_str(&txt).unwrap_or_default(),
-            Err(_) => Vec::new(),
-        };
-
-        Ok(TestExecOutput {
-            exit_code: output.status.code().unwrap_or(3),
-            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-            per_test,
-        })
-    }
-
     /// Hand off completely to pytest (--engine pytest mode)
     pub fn run_pytest_engine(&self, pytest_args: &[String]) -> Result<i32> {
         let mut args = vec![
@@ -572,19 +486,4 @@ pub struct TestRunOptions {
     pub coverage_omit: Vec<String>,
 }
 
-/// Result of executing tests via the Python worker
-#[derive(Debug, Clone)]
-pub struct TestExecOutput {
-    pub exit_code: i32,
-    pub stdout: String,
-    pub stderr: String,
-    // Present when running via non-worker-mode run path (best-effort)
-    pub per_test: Vec<PythonPerTest>,
-}
-
-#[derive(Debug, Clone, serde::Deserialize)]
-pub struct PythonPerTest {
-    pub nodeid: String,
-    pub outcome: String,
-    pub duration_ms: u64,
-}
+// (No direct single-run helper; all execution uses the worker pool.)

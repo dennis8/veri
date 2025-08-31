@@ -416,14 +416,25 @@ impl WatchSession {
             });
         }
 
-        // Run the selected tests
-        let (exit_code, _stdout, _stderr) = match worker.run_tests(&selection.selected_nodeids, test_run_options) {
-            Ok(exec) => (exec.exit_code, exec.stdout, exec.stderr),
-            Err(e) => {
-                warn!("Test execution failed: {}", e);
-                (-1, String::new(), String::new()) // Indicate execution failure
-            }
+        // Run the selected tests via worker pool (single worker)
+        let pool_cfg = crate::worker_pool::WorkerPoolConfig { 
+            worker_count: 1,
+            work_dir: self.work_dir.clone(),
+            cache_dir: self.cache_dir.clone(),
+            ..Default::default()
         };
+        let mut pool = crate::worker_pool::WorkerPool::new(pool_cfg);
+        pool.start()?;
+        let batch = crate::scheduler::TestBatch {
+            worker_id: 0,
+            nodeids: selection.selected_nodeids.clone(),
+            estimated_duration_ms: 0,
+            contains_last_failed: false,
+        };
+        pool.submit_batch("watch_batch".to_string(), batch, test_run_options.clone())?;
+        let results = pool.wait_for_completion(Some(std::time::Duration::from_secs(600)))?;
+        let exit_code = if results.iter().any(|r| r.exit_code != 0) { 1 } else { 0 };
+        pool.shutdown()?;
 
         Ok(TestRunResult {
             duration: start_time.elapsed(),

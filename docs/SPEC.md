@@ -467,3 +467,12 @@ coverage:
 ```
 
 This specification covers the complete CLI interface, configuration system, and integration patterns for veri. For more detailed examples and migration guides, see [MIGRATION.md](MIGRATION.md).
+### Execution Model
+
+veri always executes tests through a Python worker pool. The pool supports `workers = 1` (single-process) and `workers > 1` (parallel), but orchestration and reporting are unified:
+
+- The scheduler creates batches; the pool executes them via a JSONL protocol; the CLI aggregates and prints a unified summary.
+- Workers are launched via `uv run --project py_worker` and execute a cached worker script with absolute paths for consistent imports.
+- The final line reports per‑outcome counts for all runs: `Summary: <passed> passed, <skipped> skipped, <failed> failed, <error> error (<total> total)`.
+
+If plugin incompatibilities are detected and allowlisting is enforced, veri can fall back to the pytest engine via `--engine pytest`.

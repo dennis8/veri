@@ -40,8 +40,10 @@ veri -w
 # Run with coverage
 veri --cov
 
-# Parallel execution
+# Unified execution model (worker pool)
 veri --workers auto
+## You’ll see a final summary like:
+# Summary: 857 passed, 11 skipped, 0 failed, 0 error (868 total)
 ```
 
 ## 🎯 Why veri?

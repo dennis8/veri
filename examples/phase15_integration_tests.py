@@ -88,6 +88,27 @@ def test_ok():
         assert (reports / "htmlcov").exists()
 
 
+def test_summary_rollup_includes_skipped():
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp)
+        (d / "test_skip.py").write_text(
+            """
+import pytest
+
+@pytest.mark.skip(reason="demo")
+def test_skip_me():
+    pass
+
+def test_ok():
+    assert True
+"""
+        )
+        p = _run(["veri", "--workers", "1", "-a"], d)
+        out = p.stdout + p.stderr
+        assert "Summary:" in out
+        assert "skipped" in out
+
+
 def test_exit_codes_mapping_for_failures():
     with tempfile.TemporaryDirectory() as tmp:
         d = Path(tmp)

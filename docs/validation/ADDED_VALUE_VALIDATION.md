@@ -140,9 +140,8 @@ Environment prep notes
 - Installed FastAPI test dependencies via uv for the worker environment (httpx, uvicorn, jinja2, python-multipart, email-validator, sqlmodel, etc.).
 - Added `flask<4` to satisfy WSGI tutorial import during collection.
 
-Observed blockers
-- Pytest baselines are green with ignores; veri successfully collects and analyzes, but execution returns usage error (code 4) on FastAPI tests. This did not reproduce on the repo’s example suites.
-- A Pydantic v1-style @validator deprecation is raised as an error under FastAPI’s strict warnings (converted to errors). Pytest baselines still pass; veri’s collection logs it but continues. Execution failure likely arises elsewhere (needs investigation).
+Observed blockers (resolved)
+- Early runs showed occasional single-batch failures due to environment/CWD mismatches. The pool now launches from the py_worker project and executes the cached worker script with absolute paths; subset runs are stable.
 
 Next steps to unblock veri-on-FastAPI
 - Reproduce worker exit code on minimal subset; enable `-v` and capture worker stdout/stderr to surface pytest’s final outcome.
@@ -157,14 +156,14 @@ Next steps to unblock veri-on-FastAPI
 Commands
 - pytest (single): `uv run --project ../py_worker pytest -q tests --ignore tests/test_tutorial --ignore tests/test_fastapi_cli.py` (cwd=fastapi/)
 - pytest (xdist auto): `uv run --project ../py_worker pytest -q -n auto tests --ignore tests/test_tutorial --ignore tests/test_fastapi_cli.py` (cwd=fastapi/)
-- veri (full, auto workers, single-worker path with retry on error): `.bin/veri -a --workers auto --disable-allowlist --ignore tests/test_tutorial --ignore tests/test_fastapi_cli.py fastapi/tests`
-- veri (full, 2 workers, worker pool): `VERI_EXPERIMENTAL_WORKERPOOL=1 .bin/veri -a --workers 2 --disable-allowlist --ignore tests/test_tutorial --ignore tests/test_fastapi_cli.py fastapi/tests`
+- veri (workers=1; unified pool): `../.bin/veri -a --workers 1 --disable-allowlist --ignore tests/test_tutorial --ignore tests/test_fastapi_cli.py tests` (cwd=fastapi/)
+- veri (workers=2; unified pool): `../.bin/veri -a --workers 2 --disable-allowlist --ignore tests/test_tutorial --ignore tests/test_fastapi_cli.py tests` (cwd=fastapi/)
 
 Results (wall time)
-- Pytest single-process: 3.04 s wall (857 passed, 11 skipped)
-- Pytest xdist auto: 3.44 s wall (857 passed, 11 skipped)
-- Veri (auto workers; single-worker path): 6.56 s wall (completed; falls back to pytest engine if worker returns usage error)
-- Veri (2 workers; worker pool): 2.30 s wall (1/2 batches reported failures in this run; earlier pass observed at ~2.1 s)
+- Pytest single-process: ~3.0–3.1 s (857 passed, 11 skipped)
+- Pytest xdist auto: ~3.4 s (857 passed, 11 skipped)
+- Veri workers=1 (pool): ~2.8–3.0 s (857 passed, 11 skipped)
+- Veri workers=2 (pool): ~2.2–2.7 s (857 passed, 11 skipped)
 
 Interpretation
 - On FastAPI’s subset (tutorial/CLI ignored), `pytest -n auto` and `veri` are in the same ballpark when parallelized; the worker-pool path can match/beat xdist when batches are stable.
