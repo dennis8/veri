@@ -530,3 +530,42 @@ impl Default for ModuleMap {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::fs;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    #[test]
+    fn builds_simple_import_graph() {
+        let work_dir = TempDir::new().expect("work dir");
+        let cache_dir = TempDir::new().expect("cache dir");
+
+        fs::write(work_dir.path().join("a.py"), "import b\n").unwrap();
+        fs::write(work_dir.path().join("b.py"), "def foo():\n    return 42\n").unwrap();
+
+        let py_worker = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../py_worker")
+            .canonicalize()
+            .unwrap();
+        let existing = env::var("PYTHONPATH").unwrap_or_default();
+        let new_path = if existing.is_empty() {
+            py_worker.to_string_lossy().to_string()
+        } else {
+            format!("{}:{}", py_worker.display(), existing)
+        };
+        env::set_var("PYTHONPATH", new_path);
+
+        let mut builder = ImportGraphBuilder::new(work_dir.path(), cache_dir.path());
+        let (imports_graph, _, _) = builder.build_graphs().expect("build graphs");
+
+        assert_eq!(imports_graph.edges.len(), 1);
+        let edge = &imports_graph.edges[0];
+        assert_eq!(edge.from_module, "a");
+        assert_eq!(edge.to_module, "b");
+        assert!(matches!(edge.import_type, ImportType::Import));
+    }
+}

@@ -493,3 +493,84 @@ impl TestPlanner {
         output.join("\n")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::python_worker::TestNode;
+    use std::collections::HashMap;
+    use tempfile::TempDir;
+
+    #[test]
+    fn selects_changed_test_file() {
+        let work_dir = TempDir::new().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        let planner = TestPlanner::new(work_dir.path(), cache_dir.path());
+
+        let tests_index = TestsIndex {
+            version: "1.0".to_string(),
+            generated_at: "now".to_string(),
+            python_version: "3.11".to_string(),
+            pytest_version: "8.0".to_string(),
+            tests: vec![
+                TestNode {
+                    nodeid: "test_sample.py::test_ok".to_string(),
+                    path: "test_sample.py".to_string(),
+                    line: 1,
+                    function: "test_ok".to_string(),
+                    class: None,
+                    module: "test_sample".to_string(),
+                    markers: vec![],
+                    fixtures: vec![],
+                    parametrize: None,
+                },
+                TestNode {
+                    nodeid: "other.py::test_other".to_string(),
+                    path: "other.py".to_string(),
+                    line: 1,
+                    function: "test_other".to_string(),
+                    class: None,
+                    module: "other".to_string(),
+                    markers: vec![],
+                    fixtures: vec![],
+                    parametrize: None,
+                },
+            ],
+            collection_errors: vec![],
+        };
+
+        let revdeps = ReverseDepsGraph {
+            version: "1.0".to_string(),
+            generated_at: "now".to_string(),
+            reverse_deps: HashMap::new(),
+        };
+
+        let module_map = ModuleMap {
+            version: "1.0".to_string(),
+            generated_at: "now".to_string(),
+            modules: HashMap::new(),
+            packages: vec![],
+        };
+
+        let imports_graph = ImportsGraph {
+            version: "1.0".to_string(),
+            generated_at: "now".to_string(),
+            edges: vec![],
+            dynamic_imports: vec![],
+            unresolved_imports: vec![],
+        };
+
+        let selection = planner
+            .plan_test_selection(
+                &["test_sample.py".to_string()],
+                &tests_index,
+                &revdeps,
+                &module_map,
+                &imports_graph,
+            )
+            .unwrap();
+
+        assert_eq!(selection.selected_nodeids, vec!["test_sample.py::test_ok"]);
+        assert!(!selection.should_broaden);
+    }
+}

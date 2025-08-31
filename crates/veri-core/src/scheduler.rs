@@ -523,4 +523,70 @@ mod tests {
         assert_eq!(batches[0].nodeids.len(), 1);
         assert_eq!(batches[0].nodeids[0], "test_example.py::test_function");
     }
+
+    #[test]
+    fn schedules_failures_first() {
+        let config = SchedulerConfig {
+            strategy: SchedulingStrategy::FailFirst,
+            worker_count: 1,
+            ..Default::default()
+        };
+        let mut scheduler = TestScheduler::new(config);
+        scheduler.timings.insert(
+            "test_ok".to_string(),
+            TestTiming {
+                nodeid: "test_ok".to_string(),
+                duration_ms: 100,
+                last_outcome: TestOutcome::Passed,
+                stability_score: 1.0,
+            },
+        );
+        scheduler.timings.insert(
+            "test_fail".to_string(),
+            TestTiming {
+                nodeid: "test_fail".to_string(),
+                duration_ms: 100,
+                last_outcome: TestOutcome::Failed,
+                stability_score: 1.0,
+            },
+        );
+        scheduler.last_failed.insert("test_fail".to_string());
+
+        let tests_index = TestsIndex {
+            version: "1.0".to_string(),
+            generated_at: "now".to_string(),
+            python_version: "3".to_string(),
+            pytest_version: "7".to_string(),
+            tests: vec![
+                TestNode {
+                    nodeid: "test_ok".to_string(),
+                    path: "test_ok.py".to_string(),
+                    line: 1,
+                    function: "test_ok".to_string(),
+                    class: None,
+                    module: "test_ok".to_string(),
+                    markers: vec![],
+                    fixtures: vec![],
+                    parametrize: None,
+                },
+                TestNode {
+                    nodeid: "test_fail".to_string(),
+                    path: "test_fail.py".to_string(),
+                    line: 1,
+                    function: "test_fail".to_string(),
+                    class: None,
+                    module: "test_fail".to_string(),
+                    markers: vec![],
+                    fixtures: vec![],
+                    parametrize: None,
+                },
+            ],
+            collection_errors: vec![],
+        };
+
+        let nodeids = vec!["test_ok".to_string(), "test_fail".to_string()];
+        let batches = scheduler.schedule_tests(&nodeids, &tests_index).unwrap();
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].nodeids[0], "test_fail");
+    }
 }

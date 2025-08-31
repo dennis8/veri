@@ -9,8 +9,8 @@ use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
-use std::path::{Path, PathBuf};
 use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
@@ -47,7 +47,7 @@ impl Default for WorkerPoolConfig {
             startup_timeout: Duration::from_secs(30),
             execution_timeout: Duration::from_secs(300), // 5 minutes
             heartbeat_interval: Duration::from_secs(10),
-            max_idle_time: Duration::from_secs(600),     // 10 minutes
+            max_idle_time: Duration::from_secs(600), // 10 minutes
             enable_recycling: true,
             work_dir: std::env::current_dir().unwrap_or_default(),
             cache_dir: std::env::current_dir()
@@ -186,9 +186,16 @@ pub struct BatchResult {
 
 #[derive(Debug)]
 enum WorkerEvent {
-    HelloOk { worker_id: usize },
-    HealthOk { worker_id: usize },
-    TestResults { worker_id: usize, response: WorkerResponse },
+    HelloOk {
+        worker_id: usize,
+    },
+    HealthOk {
+        worker_id: usize,
+    },
+    TestResults {
+        worker_id: usize,
+        response: WorkerResponse,
+    },
 }
 
 impl WorkerPool {
@@ -375,7 +382,10 @@ impl WorkerPool {
         // Drain worker events
         for evt in self.evt_rx.try_iter() {
             match evt {
-                WorkerEvent::TestResults { worker_id, response } => {
+                WorkerEvent::TestResults {
+                    worker_id,
+                    response,
+                } => {
                     if let WorkerResponse::TestResults {
                         batch_id,
                         exit_code,
@@ -394,7 +404,13 @@ impl WorkerPool {
                                 stderr: stderr.to_string(),
                                 duration: Duration::from_millis(*duration_ms),
                                 nodeids: ctx.batch.nodeids.clone(),
-                                per_test: if let WorkerResponse::TestResults { per_test, .. } = response { per_test.unwrap_or_default() } else { Vec::new() },
+                                per_test: if let WorkerResponse::TestResults { per_test, .. } =
+                                    response
+                                {
+                                    per_test.unwrap_or_default()
+                                } else {
+                                    Vec::new()
+                                },
                             };
                             out.push(br);
                             if let Some(w) = self.workers.get_mut(worker_id) {
@@ -640,7 +656,10 @@ impl WorkerPool {
 
         // Try repo relative to this crate (../../py_worker)
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let cand = manifest_dir.parent().and_then(|p| p.parent()).map(|p| p.join("py_worker"));
+        let cand = manifest_dir
+            .parent()
+            .and_then(|p| p.parent())
+            .map(|p| p.join("py_worker"));
         if let Some(c) = cand {
             if c.exists() {
                 return Some(c);
@@ -653,7 +672,11 @@ impl WorkerPool {
         thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
                 let json = match msg {
-                    WorkerMessage::ExecuteTests { batch_id, nodeids, options } => {
+                    WorkerMessage::ExecuteTests {
+                        batch_id,
+                        nodeids,
+                        options,
+                    } => {
                         let junit = options
                             .junit_xml
                             .as_ref()
@@ -708,21 +731,64 @@ impl WorkerPool {
                             let _ = evt_tx.send(WorkerEvent::HealthOk { worker_id });
                         }
                         "TestResults" => {
-                            let batch_id = val.get("batch_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                            let exit_code = val.get("exit_code").and_then(|v| v.as_i64()).unwrap_or(3) as i32;
-                            let stdout_s = val.get("stdout").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                            let stderr_s = val.get("stderr").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                            let duration_ms = val.get("duration_ms").and_then(|v| v.as_i64()).unwrap_or(0) as u64;
-                            let per_test = val.get("per_test").and_then(|arr| arr.as_array()).map(|arr| {
-                                arr.iter().filter_map(|x| {
-                                    let nodeid = x.get("nodeid").and_then(|v| v.as_str())?.to_string();
-                                    let outcome = x.get("outcome").and_then(|v| v.as_str())?.to_string();
-                                    let duration_ms = x.get("duration_ms").and_then(|v| v.as_i64()).unwrap_or(0) as u64;
-                                    Some(PerTestResult { nodeid, outcome, duration_ms })
-                                }).collect::<Vec<PerTestResult>>()
+                            let batch_id = val
+                                .get("batch_id")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let exit_code =
+                                val.get("exit_code").and_then(|v| v.as_i64()).unwrap_or(3) as i32;
+                            let stdout_s = val
+                                .get("stdout")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let stderr_s = val
+                                .get("stderr")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let duration_ms =
+                                val.get("duration_ms").and_then(|v| v.as_i64()).unwrap_or(0) as u64;
+                            let per_test =
+                                val.get("per_test")
+                                    .and_then(|arr| arr.as_array())
+                                    .map(|arr| {
+                                        arr.iter()
+                                            .filter_map(|x| {
+                                                let nodeid = x
+                                                    .get("nodeid")
+                                                    .and_then(|v| v.as_str())?
+                                                    .to_string();
+                                                let outcome = x
+                                                    .get("outcome")
+                                                    .and_then(|v| v.as_str())?
+                                                    .to_string();
+                                                let duration_ms = x
+                                                    .get("duration_ms")
+                                                    .and_then(|v| v.as_i64())
+                                                    .unwrap_or(0)
+                                                    as u64;
+                                                Some(PerTestResult {
+                                                    nodeid,
+                                                    outcome,
+                                                    duration_ms,
+                                                })
+                                            })
+                                            .collect::<Vec<PerTestResult>>()
+                                    });
+                            let resp = WorkerResponse::TestResults {
+                                batch_id,
+                                exit_code,
+                                stdout: stdout_s,
+                                stderr: stderr_s,
+                                duration_ms,
+                                per_test,
+                            };
+                            let _ = evt_tx.send(WorkerEvent::TestResults {
+                                worker_id,
+                                response: resp,
                             });
-                            let resp = WorkerResponse::TestResults { batch_id, exit_code, stdout: stdout_s, stderr: stderr_s, duration_ms, per_test };
-                            let _ = evt_tx.send(WorkerEvent::TestResults { worker_id, response: resp });
                         }
                         "Error" => warn!("Worker {} error: {}", worker_id, line),
                         _ => debug!("Worker {} msg: {}", worker_id, line),
@@ -943,6 +1009,8 @@ pub struct WorkerPoolStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_worker_pool_creation() {
@@ -968,5 +1036,41 @@ mod tests {
         assert!(config.startup_timeout > Duration::ZERO);
         assert!(config.execution_timeout > Duration::ZERO);
         assert!(config.enable_recycling);
+    }
+
+    #[test]
+    fn executes_test_batch() {
+        let work_dir = TempDir::new_in(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let cache_dir = TempDir::new_in(env!("CARGO_MANIFEST_DIR")).unwrap();
+        fs::write(
+            work_dir.path().join("test_sample.py"),
+            "def test_ok():\n    assert 1 == 1\n",
+        )
+        .unwrap();
+
+        let config = WorkerPoolConfig {
+            worker_count: 1,
+            work_dir: work_dir.path().to_path_buf(),
+            cache_dir: cache_dir.path().to_path_buf(),
+            ..Default::default()
+        };
+        let mut pool = WorkerPool::new(config);
+        pool.start().expect("start pool");
+
+        let batch = TestBatch {
+            worker_id: 0,
+            nodeids: vec!["test_sample.py::test_ok".to_string()],
+            estimated_duration_ms: 0,
+            contains_last_failed: false,
+        };
+        pool.submit_batch("batch1".to_string(), batch, TestRunOptions::default())
+            .expect("submit batch");
+
+        let results = pool
+            .wait_for_completion(Some(Duration::from_secs(30)))
+            .expect("wait completion");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].exit_code, 0);
+        pool.shutdown().unwrap();
     }
 }

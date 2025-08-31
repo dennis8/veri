@@ -647,6 +647,7 @@ fn glob_match(pattern: &str, text: &str) -> bool {
 mod tests {
     use super::*;
     use std::time::Duration;
+    use tempfile::TempDir;
 
     #[test]
     fn test_debouncer() {
@@ -682,5 +683,21 @@ mod tests {
         assert!(!glob_match("*.py", "test.txt"));
         assert!(glob_match("test.py", "test.py"));
         assert!(!glob_match("test.py", "other.py"));
+    }
+
+    #[test]
+    fn respects_ignore_rules() {
+        let temp = TempDir::new().unwrap();
+        let work_dir = temp.path().to_path_buf();
+        let cache_dir = temp.path().join(".veri");
+        std::fs::create_dir(&cache_dir).unwrap();
+        let config = WatchConfig {
+            enable_tui: false,
+            ..Default::default()
+        };
+        let session = WatchSession::new(work_dir.clone(), cache_dir, config).unwrap();
+
+        assert!(!session.should_process_file(&work_dir.join("__pycache__").join("mod.pyc")));
+        assert!(session.should_process_file(&work_dir.join("test_example.py")));
     }
 }

@@ -1,7 +1,12 @@
 #[cfg(test)]
 mod tests {
     use crate::cli::{Cli, Commands, Engine, ExitCode};
+    use assert_cmd::Command;
     use clap::Parser;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::process::Command as StdCommand;
+    use tempdir::TempDir;
 
     #[test]
     fn test_cli_help_contains_all_flags() {
@@ -97,5 +102,29 @@ mod tests {
 
         let args = Cli::parse_from(["veri", "--quiet"]);
         assert!(args.quiet);
+    }
+
+    #[test]
+    fn runs_collect_command() {
+        let temp = TempDir::new("veri_cli").unwrap();
+        fs::write(
+            temp.path().join("test_sample.py"),
+            "def test_ok():\n    assert 1 == 1\n",
+        )
+        .unwrap();
+
+        StdCommand::new("cargo")
+            .arg("build")
+            .arg("-p")
+            .arg("veri-cli")
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
+            .status()
+            .unwrap();
+
+        let binary = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/debug/veri-cli");
+        let mut cmd = Command::new(binary);
+        cmd.current_dir(temp.path()).arg("--all").assert().success();
+
+        assert!(temp.path().join(".veri/cache/tests.index.json").exists());
     }
 }

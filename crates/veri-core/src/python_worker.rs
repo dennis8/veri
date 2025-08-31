@@ -536,3 +536,30 @@ pub struct TestRunOptions {
     pub coverage_source_dirs: Vec<String>,
     pub coverage_omit: Vec<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn collects_and_runs_tests() {
+        let work_dir = TempDir::new_in(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let cache_dir = work_dir.path().join(".veri").join("cache");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+
+        fs::write(
+            work_dir.path().join("test_sample.py"),
+            "def test_ok():\n    assert 1 + 1 == 2\n",
+        )
+        .unwrap();
+
+        let worker = PythonWorker::new(work_dir.path(), &cache_dir);
+        let index = worker.collect_tests(&[]).expect("collect tests");
+        assert_eq!(index.tests.len(), 1);
+
+        let exit_code = worker.run_pytest_engine(&[]).expect("run tests");
+        assert_eq!(exit_code, 0);
+    }
+}
