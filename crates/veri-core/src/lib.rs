@@ -1,20 +1,20 @@
-pub mod config;
-pub mod schemas;
 pub mod cache;
-pub mod python_worker;
+pub mod compatibility;
+pub mod config;
+pub mod coverage;
+pub mod diagnostics;
+pub mod event_stream;
+pub mod flaky;
 pub mod import_graph;
 pub mod planner;
+pub mod python_worker;
 pub mod scheduler;
-pub mod worker_pool;
-pub mod coverage;
-pub mod watch;
-pub mod sharder;
-pub mod event_stream;
-pub mod diagnostics;
+pub mod schemas;
 pub mod security;
+pub mod sharder;
 pub mod telemetry;
-pub mod compatibility;
-pub mod flaky;
+pub mod watch;
+pub mod worker_pool;
 
 pub fn hello() -> &'static str {
     "veri-core: hello"

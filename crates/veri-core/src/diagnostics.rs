@@ -1,10 +1,10 @@
 //! Enhanced error messages and diagnostics for veri
-//! 
+//!
 //! This module provides user-friendly error messages with actionable guidance,
 //! helping users understand and resolve common issues.
 
-use std::fmt;
 use anyhow::Result;
+use std::fmt;
 
 /// Common error scenarios that users encounter
 #[derive(Debug, Clone)]
@@ -91,15 +91,21 @@ impl VeriDiagnostic {
                 paths_provided,
             } => {
                 let mut message = String::from("❌ No tests found matching your criteria\n\n");
-                
+
                 message.push_str("Possible reasons:\n");
-                
+
                 if *filters_applied {
                     if let Some(keyword) = keyword_filter {
-                        message.push_str(&format!("  • Keyword filter '{}' too restrictive\n", keyword));
+                        message.push_str(&format!(
+                            "  • Keyword filter '{}' too restrictive\n",
+                            keyword
+                        ));
                     }
                     if let Some(marker) = marker_filter {
-                        message.push_str(&format!("  • Marker filter '{}' excludes all tests\n", marker));
+                        message.push_str(&format!(
+                            "  • Marker filter '{}' excludes all tests\n",
+                            marker
+                        ));
                     }
                     if *paths_provided {
                         message.push_str("  • Specified paths don't contain test files\n");
@@ -109,7 +115,7 @@ impl VeriDiagnostic {
                     message.push_str("  • Test files don't follow naming convention\n");
                     message.push_str("  • Import errors preventing test collection\n");
                 }
-                
+
                 message.push_str("\nSuggestions:\n");
                 message.push_str("  • Run 'veri --explain' to see selection logic\n");
                 message.push_str("  • Check test file naming (test_*.py or *_test.py)\n");
@@ -117,76 +123,90 @@ impl VeriDiagnostic {
                 if *filters_applied {
                     message.push_str("  • Try removing filters (-k, -m, paths) to see all tests\n");
                 }
-                
-                message.push_str("\nFor more help: https://docs.veri.dev/troubleshooting#no-tests-found");
+
+                message.push_str(
+                    "\nFor more help: https://docs.veri.dev/troubleshooting#no-tests-found",
+                );
                 message
             }
-            
+
             VeriDiagnostic::ImportGraphBuildFailed {
                 error_count,
                 syntax_errors,
                 missing_files,
             } => {
                 let mut message = String::from("⚠️  Import graph build encountered issues\n\n");
-                
-                message.push_str(&format!("Encountered {} errors during analysis:\n", error_count));
-                
+
+                message.push_str(&format!(
+                    "Encountered {} errors during analysis:\n",
+                    error_count
+                ));
+
                 if !syntax_errors.is_empty() {
                     message.push_str("\nSyntax errors:\n");
                     for error in syntax_errors.iter().take(5) {
                         message.push_str(&format!("  • {}\n", error));
                     }
                     if syntax_errors.len() > 5 {
-                        message.push_str(&format!("  • ... and {} more\n", syntax_errors.len() - 5));
+                        message
+                            .push_str(&format!("  • ... and {} more\n", syntax_errors.len() - 5));
                     }
                 }
-                
+
                 if !missing_files.is_empty() {
                     message.push_str("\nMissing files:\n");
                     for file in missing_files.iter().take(5) {
                         message.push_str(&format!("  • {}\n", file));
                     }
                     if missing_files.len() > 5 {
-                        message.push_str(&format!("  • ... and {} more\n", missing_files.len() - 5));
+                        message
+                            .push_str(&format!("  • ... and {} more\n", missing_files.len() - 5));
                     }
                 }
-                
-                message.push_str("\nImpact: Some tests may be selected unnecessarily (broadening for safety)\n");
+
+                message.push_str(
+                    "\nImpact: Some tests may be selected unnecessarily (broadening for safety)\n",
+                );
                 message.push_str("\nSuggestions:\n");
                 message.push_str("  • Fix syntax errors in Python files\n");
                 message.push_str("  • Ensure all imported modules are available\n");
                 message.push_str("  • Consider adding problematic files to .veriignore\n");
                 message.push_str("  • Run with --engine pytest to bypass impact analysis\n");
-                
+
                 message
             }
-            
+
             VeriDiagnostic::DynamicImportDetected {
                 from_module,
                 import_expression,
                 broadening_triggered,
             } => {
                 let mut message = String::from("🔍 Dynamic import detected\n\n");
-                
+
                 message.push_str(&format!("Module: {}\n", from_module));
                 message.push_str(&format!("Expression: {}\n", import_expression));
-                
+
                 if *broadening_triggered {
                     message.push_str("\n⚠️  Selection broadened to all tests for safety\n");
                     message.push_str("\nWhy: Dynamic imports can't be statically analyzed, so veri runs all tests\n");
                     message.push_str("to ensure nothing is missed.\n");
-                    
+
                     message.push_str("\nTo avoid broadening:\n");
-                    message.push_str("  • Replace dynamic imports with static imports where possible\n");
+                    message.push_str(
+                        "  • Replace dynamic imports with static imports where possible\n",
+                    );
                     message.push_str("  • Use --engine pytest to bypass impact analysis\n");
-                    message.push_str("  • Add the module to .veriignore if it's not test-related\n");
+                    message
+                        .push_str("  • Add the module to .veriignore if it's not test-related\n");
                 } else {
-                    message.push_str("\nNote: Dynamic import detected but not affecting current selection\n");
+                    message.push_str(
+                        "\nNote: Dynamic import detected but not affecting current selection\n",
+                    );
                 }
-                
+
                 message
             }
-            
+
             VeriDiagnostic::PluginIncompatible {
                 plugin_name,
                 version,
@@ -194,14 +214,16 @@ impl VeriDiagnostic {
                 fallback_suggested,
             } => {
                 let mut message = String::from("🔌 Plugin compatibility issue\n\n");
-                
+
                 message.push_str(&format!("Plugin: {} ({})\n", plugin_name, version));
                 message.push_str(&format!("Issue: {}\n", reason));
-                
+
                 if *fallback_suggested {
                     message.push_str("\n✨ Automatic fallback activated\n");
-                    message.push_str("Veri will use --engine pytest for this run to ensure compatibility.\n");
-                    
+                    message.push_str(
+                        "Veri will use --engine pytest for this run to ensure compatibility.\n",
+                    );
+
                     message.push_str("\nTo resolve:\n");
                     message.push_str("  • Update to a compatible plugin version\n");
                     message.push_str("  • Check veri plugin compatibility list\n");
@@ -212,46 +234,53 @@ impl VeriDiagnostic {
                     message.push_str("  • Update plugin to a compatible version\n");
                     message.push_str("  • Disable plugin temporarily\n");
                 }
-                
-                message.push_str("\nCompatibility guide: https://docs.veri.dev/plugins#compatibility");
+
+                message
+                    .push_str("\nCompatibility guide: https://docs.veri.dev/plugins#compatibility");
                 message
             }
-            
+
             VeriDiagnostic::ConfigurationError {
                 config_path,
                 error_type,
                 suggestions,
             } => {
                 let mut message = String::from("⚙️  Configuration error\n\n");
-                
+
                 message.push_str(&format!("File: {}\n", config_path));
-                
+
                 match error_type {
                     ConfigErrorType::InvalidSyntax(details) => {
                         message.push_str(&format!("Error: Invalid TOML syntax\n{}\n", details));
                     }
                     ConfigErrorType::ConflictingOptions(opt1, opt2) => {
-                        message.push_str(&format!("Error: Conflicting options '{}' and '{}'\n", opt1, opt2));
+                        message.push_str(&format!(
+                            "Error: Conflicting options '{}' and '{}'\n",
+                            opt1, opt2
+                        ));
                     }
                     ConfigErrorType::InvalidValue(option, value) => {
-                        message.push_str(&format!("Error: Invalid value '{}' for option '{}'\n", value, option));
+                        message.push_str(&format!(
+                            "Error: Invalid value '{}' for option '{}'\n",
+                            value, option
+                        ));
                     }
                     ConfigErrorType::MissingRequired(option) => {
                         message.push_str(&format!("Error: Missing required option '{}'\n", option));
                     }
                 }
-                
+
                 if !suggestions.is_empty() {
                     message.push_str("\nSuggestions:\n");
                     for suggestion in suggestions {
                         message.push_str(&format!("  • {}\n", suggestion));
                     }
                 }
-                
+
                 message.push_str("\nConfiguration reference: https://docs.veri.dev/config");
                 message
             }
-            
+
             VeriDiagnostic::SelectionBroadened {
                 original_count,
                 total_count,
@@ -259,31 +288,36 @@ impl VeriDiagnostic {
                 reason,
             } => {
                 let mut message = String::from("📈 Test selection broadened\n\n");
-                
-                message.push_str(&format!("Impact analysis selected {} of {} tests ({:.1}%)\n", 
-                    original_count, total_count, 
-                    (*original_count as f64 / *total_count as f64) * 100.0));
+
+                message.push_str(&format!(
+                    "Impact analysis selected {} of {} tests ({:.1}%)\n",
+                    original_count,
+                    total_count,
+                    (*original_count as f64 / *total_count as f64) * 100.0
+                ));
                 message.push_str(&format!("Threshold: {:.1}%\n", threshold * 100.0));
                 message.push_str(&format!("Reason: {}\n", reason));
-                
+
                 message.push_str("\n🚀 Running all tests for optimal performance\n");
-                message.push_str("\nWhy: When most tests would run anyway, it's faster to run them all\n");
+                message.push_str(
+                    "\nWhy: When most tests would run anyway, it's faster to run them all\n",
+                );
                 message.push_str("without the overhead of selective execution.\n");
-                
+
                 message.push_str("\nTo avoid broadening:\n");
                 message.push_str("  • Make smaller, more focused changes\n");
                 message.push_str("  • Increase threshold in configuration\n");
                 message.push_str("  • Use test filters (-k, -m) to narrow selection\n");
-                
+
                 message
             }
-            
+
             VeriDiagnostic::CacheMiss {
                 reason,
                 rebuild_time_estimate,
             } => {
                 let mut message = String::from("🔄 Cache miss - rebuilding analysis\n\n");
-                
+
                 match reason {
                     CacheMissReason::FirstRun => {
                         message.push_str("Reason: First run in this project\n");
@@ -304,29 +338,31 @@ impl VeriDiagnostic {
                         message.push_str("Reason: Cache files corrupted or invalid\n");
                     }
                 }
-                
+
                 if let Some(estimate) = rebuild_time_estimate {
                     message.push_str(&format!("Estimated rebuild time: {}\n", estimate));
                 }
-                
-                message.push_str("\nNote: Subsequent runs will be much faster using cached analysis\n");
-                
+
+                message.push_str(
+                    "\nNote: Subsequent runs will be much faster using cached analysis\n",
+                );
+
                 message
             }
-            
+
             VeriDiagnostic::PythonEnvironmentIssue {
                 issue_type,
                 current_python,
                 suggestions,
             } => {
                 let mut message = String::from("🐍 Python environment issue\n\n");
-                
+
                 match issue_type {
                     PythonIssueType::NotFound => {
                         message.push_str("Error: Python interpreter not found\n");
                     }
                     PythonIssueType::VersionMismatch(expected, actual) => {
-                        message.push_str(&format!("Error: Python version mismatch\n"));
+                        message.push_str("Error: Python version mismatch\n");
                         message.push_str(&format!("Expected: {}\n", expected));
                         message.push_str(&format!("Actual: {}\n", actual));
                     }
@@ -343,16 +379,16 @@ impl VeriDiagnostic {
                         message.push_str("Warning: Virtual environment not activated\n");
                     }
                 }
-                
+
                 message.push_str(&format!("Current Python: {}\n", current_python));
-                
+
                 if !suggestions.is_empty() {
                     message.push_str("\nSuggestions:\n");
                     for suggestion in suggestions {
                         message.push_str(&format!("  • {}\n", suggestion));
                     }
                 }
-                
+
                 message
             }
         }
@@ -365,7 +401,7 @@ impl VeriDiagnostic {
             VeriDiagnostic::ConfigurationError { .. } => 4, // UsageError
             VeriDiagnostic::PythonEnvironmentIssue { .. } => 3, // InternalError
             VeriDiagnostic::PluginIncompatible { .. } => 3, // InternalError
-            _ => 0, // These are warnings/info, not errors
+            _ => 0,                                   // These are warnings/info, not errors
         }
     }
 
@@ -398,13 +434,9 @@ impl fmt::Display for VeriDiagnostic {
 /// Helper functions for creating common diagnostics
 impl VeriDiagnostic {
     /// Create a "no tests found" diagnostic based on current filters
-    pub fn no_tests_found(
-        keyword: Option<&str>,
-        marker: Option<&str>,
-        paths: &[String],
-    ) -> Self {
+    pub fn no_tests_found(keyword: Option<&str>, marker: Option<&str>, paths: &[String]) -> Self {
         let filters_applied = keyword.is_some() || marker.is_some() || !paths.is_empty();
-        
+
         VeriDiagnostic::NoTestsFound {
             filters_applied,
             keyword_filter: keyword.map(String::from),
@@ -501,12 +533,8 @@ mod tests {
 
     #[test]
     fn test_no_tests_found_formatting() {
-        let diagnostic = VeriDiagnostic::no_tests_found(
-            Some("test_example"),
-            None,
-            &[],
-        );
-        
+        let diagnostic = VeriDiagnostic::no_tests_found(Some("test_example"), None, &[]);
+
         let message = diagnostic.format_message();
         assert!(message.contains("No tests found"));
         assert!(message.contains("test_example"));
@@ -527,13 +555,13 @@ mod tests {
     #[test]
     fn test_diagnostic_reporter() {
         let mut reporter = DiagnosticReporter::new(false);
-        
+
         reporter.add(VeriDiagnostic::no_tests_found(None, None, &[]));
         reporter.add(VeriDiagnostic::selection_broadened(15, 20, 0.6, "test"));
-        
+
         assert_eq!(reporter.max_exit_code(), 4);
         assert!(reporter.has_errors());
-        
+
         let (errors, warnings) = reporter.counts();
         assert_eq!(errors, 1);
         assert_eq!(warnings, 1);

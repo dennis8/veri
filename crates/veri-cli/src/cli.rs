@@ -3,8 +3,13 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(name = "veri")]
-#[command(version, about = "Ultra-fast pytest-compatible test runner with impact-aware selection")]
-#[command(long_about = "veri is a single-binary, pytest-compatible test runner that uses static analysis\nto run only the tests impacted by your changes, making test feedback instant.")]
+#[command(
+    version,
+    about = "Ultra-fast pytest-compatible test runner with impact-aware selection"
+)]
+#[command(
+    long_about = "veri is a single-binary, pytest-compatible test runner that uses static analysis\nto run only the tests impacted by your changes, making test feedback instant."
+)]
 pub struct Cli {
     /// Run all tests (full collection + run)
     #[arg(short = 'a', long = "all")]

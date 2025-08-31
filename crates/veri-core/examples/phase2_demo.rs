@@ -1,6 +1,6 @@
 use anyhow::Result;
-use veri_core::schemas::*;
 use veri_core::cache::CacheKey;
+use veri_core::schemas::*;
 
 /// Example demonstrating schema usage and cache key computation
 fn main() -> Result<()> {
@@ -9,7 +9,7 @@ fn main() -> Result<()> {
     // 1. Create a sample tests index
     println!("1. Creating Tests Index:");
     let mut tests_index = TestsIndex::new("3.11.0".to_string(), "7.4.0".to_string());
-    
+
     let test_node = TestNode {
         nodeid: "test_example.py::test_addition".to_string(),
         path: "test_example.py".to_string(),
@@ -24,15 +24,18 @@ fn main() -> Result<()> {
             ids: vec!["simple".to_string(), "complex".to_string()],
         }),
     };
-    
+
     tests_index.tests.push(test_node);
-    println!("   ✓ Created test index with {} tests", tests_index.tests.len());
+    println!(
+        "   ✓ Created test index with {} tests",
+        tests_index.tests.len()
+    );
     println!("   ✓ JSON size: {} bytes", tests_index.to_json()?.len());
 
     // 2. Create a sample imports graph
     println!("\n2. Creating Imports Graph:");
     let mut imports_graph = ImportsGraph::new();
-    
+
     let import_edge = ImportEdge {
         from_module: "test_example".to_string(),
         to_module: "src.calculator".to_string(),
@@ -42,9 +45,9 @@ fn main() -> Result<()> {
         alias: None,
         is_conditional: false,
     };
-    
+
     imports_graph.edges.push(import_edge);
-    
+
     let dynamic_import = DynamicImport {
         from_module: "test_integration".to_string(),
         line: 25,
@@ -52,10 +55,16 @@ fn main() -> Result<()> {
         argument: Some("plugins.loader".to_string()),
         reason: "Plugin name determined at runtime".to_string(),
     };
-    
+
     imports_graph.dynamic_imports.push(dynamic_import);
-    println!("   ✓ Created import graph with {} edges", imports_graph.edges.len());
-    println!("   ✓ Found {} dynamic imports", imports_graph.dynamic_imports.len());
+    println!(
+        "   ✓ Created import graph with {} edges",
+        imports_graph.edges.len()
+    );
+    println!(
+        "   ✓ Found {} dynamic imports",
+        imports_graph.dynamic_imports.len()
+    );
 
     // 3. Create a sample event stream
     println!("\n3. Creating Event Stream:");
@@ -68,7 +77,7 @@ fn main() -> Result<()> {
         workers: 4,
         cache_key: "abc123def456".to_string(),
     };
-    
+
     let case_event = Event::Case {
         ts: chrono::Utc::now(),
         run_id: "demo-run-12345".to_string(),
@@ -79,14 +88,14 @@ fn main() -> Result<()> {
         longrepr: None,
         markers: vec!["unit".to_string(), "fast".to_string()],
     };
-    
+
     println!("   ✓ Start event: {}", start_event.to_jsonl_line()?);
     println!("   ✓ Case event: {}", case_event.to_jsonl_line()?);
 
     // 4. Create a shards manifest
     println!("\n4. Creating Shards Manifest:");
     let mut manifest = ShardsManifest::new(4, ShardingStrategy::TimingBased);
-    
+
     let shard = Shard {
         shard_id: 0,
         estimated_duration: 15.3,
@@ -106,7 +115,7 @@ fn main() -> Result<()> {
             },
         ],
     };
-    
+
     manifest.shards.push(shard);
     manifest.estimated_duration = 60.0;
     println!("   ✓ Created manifest for {} shards", manifest.total_shards);
@@ -117,12 +126,15 @@ fn main() -> Result<()> {
     let config = veri_core::config::Config::default();
     let config_digest = veri_core::cache::compute_config_digest(&config)?;
     let cache_key = CacheKey::from_environment(config_digest)?;
-    
+
     println!("   ✓ Cache key components:");
     println!("      - Python: {}", cache_key.python_version);
     println!("      - Platform: {}", cache_key.platform);
     println!("      - veri: {}", cache_key.veri_version);
-    println!("      - Conftest files: {}", cache_key.conftest_digests.len());
+    println!(
+        "      - Conftest files: {}",
+        cache_key.conftest_digests.len()
+    );
     println!("   ✓ Final hash: {}", cache_key.compute_hash());
 
     println!("\n=== Phase 2 Implementation Complete! ===");

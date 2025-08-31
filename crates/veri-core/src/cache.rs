@@ -38,43 +38,43 @@ impl CacheKey {
     /// Compute the cache key hash
     pub fn compute_hash(&self) -> String {
         let mut hasher = Sha256::new();
-        
+
         // Hash each component in deterministic order
         hasher.update(b"python_version:");
         hasher.update(self.python_version.as_bytes());
         hasher.update(b"|");
-        
+
         hasher.update(b"platform:");
         hasher.update(self.platform.as_bytes());
         hasher.update(b"|");
-        
+
         hasher.update(b"veri_version:");
         hasher.update(self.veri_version.as_bytes());
         hasher.update(b"|");
-        
+
         if let Some(ref digest) = self.uv_lock_digest {
             hasher.update(b"uv_lock_digest:");
             hasher.update(digest.as_bytes());
         }
         hasher.update(b"|");
-        
+
         if let Some(ref digest) = self.site_packages_digest {
             hasher.update(b"site_packages_digest:");
             hasher.update(digest.as_bytes());
         }
         hasher.update(b"|");
-        
+
         hasher.update(b"pytest_version:");
         hasher.update(self.pytest_version.as_bytes());
         hasher.update(b"|");
-        
+
         hasher.update(b"plugins:");
         for plugin in &self.plugins {
             hasher.update(plugin.as_bytes());
             hasher.update(b",");
         }
         hasher.update(b"|");
-        
+
         hasher.update(b"conftest_digests:");
         let mut conftest_pairs: Vec<_> = self.conftest_digests.iter().collect();
         conftest_pairs.sort_by_key(|(path, _)| path.as_str());
@@ -85,10 +85,10 @@ impl CacheKey {
             hasher.update(b",");
         }
         hasher.update(b"|");
-        
+
         hasher.update(b"veri_config_digest:");
         hasher.update(self.veri_config_digest.as_bytes());
-        
+
         format!("{:x}", hasher.finalize())
     }
 
@@ -107,8 +107,7 @@ impl CacheKey {
     fn get_uv_lock_digest() -> Result<Option<String>> {
         let lock_path = Path::new("uv.lock");
         if lock_path.exists() {
-            let content = fs::read(lock_path)
-                .context("Failed to read uv.lock")?;
+            let content = fs::read(lock_path).context("Failed to read uv.lock")?;
             let digest = format!("{:x}", Sha256::digest(&content));
             Ok(Some(digest))
         } else {
@@ -137,7 +136,7 @@ impl CacheKey {
     /// Get digests of all conftest.py files
     fn get_conftest_digests() -> Result<HashMap<String, String>> {
         let mut digests = HashMap::new();
-        
+
         // Find all conftest.py files in current directory and subdirectories
         if let Ok(entries) = Self::find_conftest_files(Path::new(".")) {
             for path in entries {
@@ -148,38 +147,39 @@ impl CacheKey {
                 }
             }
         }
-        
+
         Ok(digests)
     }
 
     /// Recursively find all conftest.py files
     fn find_conftest_files(dir: &Path) -> Result<Vec<PathBuf>> {
         let mut conftest_files = Vec::new();
-        
+
         if !dir.is_dir() {
             return Ok(conftest_files);
         }
-        
+
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
-            
+
             if path.is_file() && path.file_name() == Some(std::ffi::OsStr::new("conftest.py")) {
                 conftest_files.push(path);
             } else if path.is_dir() {
                 // Skip hidden directories and common non-source directories
                 if let Some(dir_name) = path.file_name() {
                     let dir_name = dir_name.to_string_lossy();
-                    if !dir_name.starts_with('.') && 
-                       dir_name != "node_modules" && 
-                       dir_name != "__pycache__" &&
-                       dir_name != "target" {
+                    if !dir_name.starts_with('.')
+                        && dir_name != "node_modules"
+                        && dir_name != "__pycache__"
+                        && dir_name != "target"
+                    {
                         conftest_files.extend(Self::find_conftest_files(&path)?);
                     }
                 }
             }
         }
-        
+
         Ok(conftest_files)
     }
 
@@ -189,27 +189,27 @@ impl CacheKey {
         println!("  python_version: {}", self.python_version);
         println!("  platform: {}", self.platform);
         println!("  veri_version: {}", self.veri_version);
-        
+
         if let Some(ref digest) = self.uv_lock_digest {
             println!("  uv_lock_digest: {}", digest);
         } else {
             println!("  uv_lock_digest: (not found)");
         }
-        
+
         if let Some(ref digest) = self.site_packages_digest {
             println!("  site_packages_digest: {}", digest);
         } else {
             println!("  site_packages_digest: (not computed)");
         }
-        
+
         println!("  pytest_version: {}", self.pytest_version);
-        
+
         if self.plugins.is_empty() {
             println!("  plugins: []");
         } else {
             println!("  plugins: [{}]", self.plugins.join(", "));
         }
-        
+
         if self.conftest_digests.is_empty() {
             println!("  conftest_digests: {{}}");
         } else {
@@ -221,9 +221,9 @@ impl CacheKey {
             }
             println!("  }}");
         }
-        
+
         println!("  veri_config_digest: {}", self.veri_config_digest);
-        
+
         let cache_hash = self.compute_hash();
         println!("  computed_hash: {}", cache_hash);
     }
@@ -232,9 +232,8 @@ impl CacheKey {
 /// Compute digest of configuration for cache key
 pub fn compute_config_digest(config: &crate::config::Config) -> Result<String> {
     // Serialize config to JSON and hash it
-    let config_json = serde_json::to_string(config)
-        .context("Failed to serialize config")?;
-    
+    let config_json = serde_json::to_string(config).context("Failed to serialize config")?;
+
     let digest = format!("{:x}", Sha256::digest(config_json.as_bytes()));
     Ok(digest)
 }
@@ -242,8 +241,8 @@ pub fn compute_config_digest(config: &crate::config::Config) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_cache_key_hash_deterministic() {

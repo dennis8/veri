@@ -5,9 +5,9 @@ mod tests {
 
     #[test]
     fn test_cli_help_contains_all_flags() {
-        let help = Cli::try_parse_from(&["veri", "--help"]).unwrap_err();
+        let help = Cli::try_parse_from(["veri", "--help"]).unwrap_err();
         let help_text = help.to_string();
-        
+
         // Check that all required flags are present
         assert!(help_text.contains("--all"));
         assert!(help_text.contains("--watch"));
@@ -32,7 +32,7 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_basic_flags() {
-        let args = Cli::parse_from(&["veri", "--all", "--watch", "--explain"]);
+        let args = Cli::parse_from(["veri", "--all", "--watch", "--explain"]);
         assert!(args.all);
         assert!(args.watch);
         assert!(args.explain);
@@ -40,52 +40,62 @@ mod tests {
 
     #[test]
     fn test_cli_parsing_with_values() {
-        let args = Cli::parse_from(&[
-            "veri", 
-            "--workers", "8",
-            "--keyword", "test_example",
-            "--marker", "slow",
-            "--junit-xml", "results.xml"
+        let args = Cli::parse_from([
+            "veri",
+            "--workers",
+            "8",
+            "--keyword",
+            "test_example",
+            "--marker",
+            "slow",
+            "--junit-xml",
+            "results.xml",
         ]);
         assert_eq!(args.workers, Some("8".to_string()));
         assert_eq!(args.keyword, Some("test_example".to_string()));
         assert_eq!(args.marker, Some("slow".to_string()));
-        assert_eq!(args.junit_xml, Some(std::path::PathBuf::from("results.xml")));
+        assert_eq!(
+            args.junit_xml,
+            Some(std::path::PathBuf::from("results.xml"))
+        );
     }
 
     #[test]
     fn test_engine_enum() {
-        let args = Cli::parse_from(&["veri", "--engine", "pytest"]);
+        let args = Cli::parse_from(["veri", "--engine", "pytest"]);
         assert_eq!(args.engine, Engine::Pytest);
-        
-        let args = Cli::parse_from(&["veri", "--engine", "veri"]);
+
+        let args = Cli::parse_from(["veri", "--engine", "veri"]);
         assert_eq!(args.engine, Engine::Veri);
     }
 
     #[test]
     fn test_subcommands() {
-        let args = Cli::parse_from(&["veri", "split", "--ci", "4"]);
+        let args = Cli::parse_from(["veri", "split", "--ci", "4"]);
         match args.command {
             Some(Commands::Split { shards }) => assert_eq!(shards, 4),
             _ => panic!("Expected Split command"),
         }
 
-        let args = Cli::parse_from(&["veri", "shard", "--ci", "2"]);
+        let args = Cli::parse_from(["veri", "shard", "--ci", "2"]);
         match args.command {
-            Some(Commands::Shard { shard_id, manifest: _ }) => assert_eq!(shard_id, 2),
+            Some(Commands::Shard {
+                shard_id,
+                manifest: _,
+            }) => assert_eq!(shard_id, 2),
             _ => panic!("Expected Shard command"),
         }
     }
 
     #[test]
     fn test_verbosity_levels() {
-        let args = Cli::parse_from(&["veri", "-v"]);
+        let args = Cli::parse_from(["veri", "-v"]);
         assert_eq!(args.verbose, 1);
 
-        let args = Cli::parse_from(&["veri", "-vv"]);
+        let args = Cli::parse_from(["veri", "-vv"]);
         assert_eq!(args.verbose, 2);
 
-        let args = Cli::parse_from(&["veri", "--quiet"]);
+        let args = Cli::parse_from(["veri", "--quiet"]);
         assert!(args.quiet);
     }
 }

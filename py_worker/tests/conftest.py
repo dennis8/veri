@@ -30,13 +30,13 @@ def sample_module_map():
         "modules": {
             "src/calculator.py": {
                 "module_name": "src.calculator",
-                "path": "src/calculator.py"
+                "path": "src/calculator.py",
             },
             "tests/test_calculator.py": {
                 "module_name": "tests.test_calculator",
-                "path": "tests/test_calculator.py"
-            }
-        }
+                "path": "tests/test_calculator.py",
+            },
+        },
     }
 
 
@@ -47,7 +47,7 @@ def sample_python_file(temp_work_dir):
     src_dir.mkdir(exist_ok=True)
 
     calc_file = src_dir / "calculator.py"
-    calc_file.write_text('''
+    calc_file.write_text("""
 import math
 from typing import Union
 import os
@@ -59,6 +59,6 @@ def divide(a: Union[int, float], b: Union[int, float]) -> float:
     if b == 0:
         raise ValueError("Cannot divide by zero")
     return a / b
-''')
+""")
 
     return calc_file

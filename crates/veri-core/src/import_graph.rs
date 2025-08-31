@@ -1,14 +1,14 @@
 //! Import graph analysis and dependency tracking
-//! 
+//!
 //! This module provides AST-based import analysis for Python files,
 //! building import graphs and reverse dependency mappings for impact analysis.
 
 use anyhow::{Context, Result};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::path::{Path, PathBuf};
 use std::fs;
-use chrono::Utc;
+use std::path::{Path, PathBuf};
 
 /// Import graph data structure matching imports.graph.json schema
 #[derive(Debug, Serialize, Deserialize)]
@@ -143,7 +143,7 @@ impl ImportGraphBuilder {
         let work_dir = work_dir.into();
         let cache_dir = cache_dir.into();
         let py_worker = crate::python_worker::PythonWorker::new(&work_dir, &cache_dir);
-        
+
         Self {
             work_dir,
             cache_dir,
@@ -156,16 +156,16 @@ impl ImportGraphBuilder {
     pub fn build_graphs(&mut self) -> Result<(ImportsGraph, ReverseDepsGraph, ModuleMap)> {
         // First, build the module map
         self.build_module_map()?;
-        
+
         // Parse imports from all Python files
         let imports_graph = self.parse_imports()?;
-        
+
         // Build reverse dependencies from the imports graph
         let revdeps_graph = self.build_reverse_deps(&imports_graph)?;
-        
+
         // Save all graphs to cache
         self.save_graphs(&imports_graph, &revdeps_graph, &self.module_map)?;
-        
+
         Ok((imports_graph, revdeps_graph, self.module_map.clone()))
     }
 
@@ -177,7 +177,13 @@ impl ImportGraphBuilder {
         let mut discovered_packages = HashSet::new();
 
         // Walk the directory tree to find Python files
-        self.walk_python_files(&self.work_dir.clone(), "", &mut modules, &mut packages, &mut discovered_packages)?;
+        self.walk_python_files(
+            &self.work_dir.clone(),
+            "",
+            &mut modules,
+            &mut packages,
+            &mut discovered_packages,
+        )?;
 
         self.module_map = ModuleMap {
             version: "0.1.0".to_string(),
@@ -217,11 +223,14 @@ impl ImportGraphBuilder {
                 if file_name_str == "__init__.py" {
                     has_init = true;
                 }
-            } else if path.is_dir() && !file_name_str.starts_with('.') && !file_name_str.starts_with("__pycache__") {
+            } else if path.is_dir()
+                && !file_name_str.starts_with('.')
+                && !file_name_str.starts_with("__pycache__")
+            {
                 // Check if this directory is a Python package
                 let init_path = path.join("__init__.py");
                 let has_subinit = init_path.exists();
-                
+
                 let subpackage_name = if package_prefix.is_empty() {
                     file_name_str.to_string()
                 } else {
@@ -230,9 +239,15 @@ impl ImportGraphBuilder {
 
                 if has_subinit || self.has_python_files(&path)? {
                     subpackages.push(subpackage_name.clone());
-                    
+
                     // Recursively process subpackage
-                    self.walk_python_files(&path, &subpackage_name, modules, packages, discovered_packages)?;
+                    self.walk_python_files(
+                        &path,
+                        &subpackage_name,
+                        modules,
+                        packages,
+                        discovered_packages,
+                    )?;
                 }
             }
         }
@@ -241,7 +256,7 @@ impl ImportGraphBuilder {
         for (file_path, file_name) in python_files {
             let relative_path = file_path.strip_prefix(&self.work_dir)?;
             let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
-            
+
             let module_name = if file_name == "__init__.py" {
                 package_prefix.to_string()
             } else {
@@ -255,15 +270,22 @@ impl ImportGraphBuilder {
 
             if !module_name.is_empty() {
                 let digest = self.calculate_file_digest(&file_path)?;
-                
-                modules.insert(relative_path_str.clone(), ModuleInfo {
-                    module_name: module_name.clone(),
-                    is_package: file_name == "__init__.py",
-                    is_namespace: false, // Will be determined later
-                    parent_package: if package_prefix.is_empty() { None } else { Some(package_prefix.to_string()) },
-                    relative_path: relative_path_str,
-                    digest,
-                });
+
+                modules.insert(
+                    relative_path_str.clone(),
+                    ModuleInfo {
+                        module_name: module_name.clone(),
+                        is_package: file_name == "__init__.py",
+                        is_namespace: false, // Will be determined later
+                        parent_package: if package_prefix.is_empty() {
+                            None
+                        } else {
+                            Some(package_prefix.to_string())
+                        },
+                        relative_path: relative_path_str,
+                        digest,
+                    },
+                );
             }
         }
 
@@ -271,7 +293,10 @@ impl ImportGraphBuilder {
         if !package_prefix.is_empty() && !discovered_packages.contains(package_prefix) {
             packages.push(PackageInfo {
                 name: package_prefix.to_string(),
-                path: dir.strip_prefix(&self.work_dir)?.to_string_lossy().replace('\\', "/"),
+                path: dir
+                    .strip_prefix(&self.work_dir)?
+                    .to_string_lossy()
+                    .replace('\\', "/"),
                 is_namespace: !has_init, // PEP 420 namespace package if no __init__.py
                 subpackages,
             });
@@ -282,12 +307,13 @@ impl ImportGraphBuilder {
     }
 
     /// Check if a directory contains Python files (for namespace package detection)
+    #[allow(clippy::only_used_in_recursion)]
     fn has_python_files(&self, dir: &Path) -> Result<bool> {
         let entries = fs::read_dir(dir)?;
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            if path.is_file() && path.extension().map_or(false, |ext| ext == "py") {
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "py") {
                 return Ok(true);
             }
             if path.is_dir() && self.has_python_files(&path)? {
@@ -299,7 +325,7 @@ impl ImportGraphBuilder {
 
     /// Calculate SHA-256 digest of file content
     fn calculate_file_digest(&self, file_path: &Path) -> Result<String> {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let content = fs::read(file_path)?;
         let mut hasher = Sha256::new();
         hasher.update(&content);
@@ -319,12 +345,15 @@ impl ImportGraphBuilder {
 
         // Initialize all modules with empty reverse deps
         for module_info in self.module_map.modules.values() {
-            reverse_deps.insert(module_info.module_name.clone(), ModuleReverseDeps {
-                direct_dependents: Vec::new(),
-                transitive_dependents: Vec::new(),
-                test_dependents: Vec::new(),
-                uncertain_dependents: Vec::new(),
-            });
+            reverse_deps.insert(
+                module_info.module_name.clone(),
+                ModuleReverseDeps {
+                    direct_dependents: Vec::new(),
+                    transitive_dependents: Vec::new(),
+                    test_dependents: Vec::new(),
+                    uncertain_dependents: Vec::new(),
+                },
+            );
         }
 
         // Build direct dependencies from import edges
@@ -335,10 +364,10 @@ impl ImportGraphBuilder {
                 }
 
                 // Check if the dependent is a test module
-                if self.is_test_module(&edge.from_module) {
-                    if !target_deps.test_dependents.contains(&edge.from_module) {
-                        target_deps.test_dependents.push(edge.from_module.clone());
-                    }
+                if self.is_test_module(&edge.from_module)
+                    && !target_deps.test_dependents.contains(&edge.from_module)
+                {
+                    target_deps.test_dependents.push(edge.from_module.clone());
                 }
             }
         }
@@ -355,7 +384,7 @@ impl ImportGraphBuilder {
         for dynamic_import in &imports_graph.dynamic_imports {
             // For dynamic imports, we need to be conservative and potentially mark
             // all modules as uncertain dependents
-            self.add_uncertain_dependencies(&dynamic_import, &mut reverse_deps);
+            self.add_uncertain_dependencies(dynamic_import, &mut reverse_deps);
         }
 
         Ok(ReverseDepsGraph {
@@ -410,7 +439,7 @@ impl ImportGraphBuilder {
     ) {
         // For conservative analysis, dynamic imports create uncertainty about
         // which modules might be imported at runtime
-        
+
         // If we have a static argument, try to resolve it
         if let Some(argument) = &dynamic_import.argument {
             if let Some(target_deps) = reverse_deps.get_mut(argument) {
@@ -430,11 +459,11 @@ impl ImportGraphBuilder {
 
     /// Check if a module is a test module
     fn is_test_module(&self, module_name: &str) -> bool {
-        module_name.starts_with("test_") ||
-        module_name.ends_with("_test") ||
-        module_name.contains(".test_") ||
-        module_name.contains(".tests.") ||
-        module_name.starts_with("tests.")
+        module_name.starts_with("test_")
+            || module_name.ends_with("_test")
+            || module_name.contains(".test_")
+            || module_name.contains(".tests.")
+            || module_name.starts_with("tests.")
     }
 
     /// Save all graphs to cache directory
@@ -466,7 +495,9 @@ impl ImportGraphBuilder {
     }
 
     /// Load cached graphs if they exist and are valid
-    pub fn load_cached_graphs(&self) -> Result<Option<(ImportsGraph, ReverseDepsGraph, ModuleMap)>> {
+    pub fn load_cached_graphs(
+        &self,
+    ) -> Result<Option<(ImportsGraph, ReverseDepsGraph, ModuleMap)>> {
         let imports_path = self.cache_dir.join("imports.graph.json");
         let revdeps_path = self.cache_dir.join("revdeps.graph.json");
         let module_map_path = self.cache_dir.join("module.map.json");

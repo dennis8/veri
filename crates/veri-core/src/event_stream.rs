@@ -1,10 +1,10 @@
 use anyhow::Result;
-use std::path::{Path, PathBuf};
-use std::fs::OpenOptions;
-use std::io::{BufWriter, Write};
-use serde_json;
 use chrono::{DateTime, Utc};
 use log::debug;
+use serde_json;
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 
 /// Event types for JSONL stream (as per schema)
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -112,27 +112,36 @@ impl EventStream {
             .create(true)
             .append(true)
             .open(output_path)?;
-        
+
         self.writer = Some(BufWriter::new(file));
-        debug!("Initialized event stream output to: {}", output_path.display());
+        debug!(
+            "Initialized event stream output to: {}",
+            output_path.display()
+        );
         Ok(())
     }
 
     /// Emit an event to the stream
     pub fn emit(&mut self, event: EventType) -> Result<()> {
         let event_json = serde_json::to_string(&event)?;
-        
+
         if let Some(writer) = &mut self.writer {
             writeln!(writer, "{}", event_json)?;
             writer.flush()?;
         }
-        
+
         debug!("Emitted event: {}", event_json);
         Ok(())
     }
 
     /// Emit start event
-    pub fn emit_start(&mut self, total_tests: u32, selected_tests: u32, workers: u32, strategy: &str) -> Result<()> {
+    pub fn emit_start(
+        &mut self,
+        total_tests: u32,
+        selected_tests: u32,
+        workers: u32,
+        strategy: &str,
+    ) -> Result<()> {
         self.emit(EventType::Start {
             timestamp: Utc::now(),
             run_id: self.run_id.clone(),
@@ -144,7 +153,12 @@ impl EventStream {
     }
 
     /// Emit plan event
-    pub fn emit_plan(&mut self, selected_nodeids: Vec<String>, broaden_reason: Option<String>, estimated_duration: f64) -> Result<()> {
+    pub fn emit_plan(
+        &mut self,
+        selected_nodeids: Vec<String>,
+        broaden_reason: Option<String>,
+        estimated_duration: f64,
+    ) -> Result<()> {
         self.emit(EventType::Plan {
             timestamp: Utc::now(),
             run_id: self.run_id.clone(),
@@ -156,7 +170,14 @@ impl EventStream {
     }
 
     /// Emit test case result
-    pub fn emit_case(&mut self, worker_id: Option<String>, nodeid: String, outcome: TestOutcome, duration: f64, message: Option<String>) -> Result<()> {
+    pub fn emit_case(
+        &mut self,
+        worker_id: Option<String>,
+        nodeid: String,
+        outcome: TestOutcome,
+        duration: f64,
+        message: Option<String>,
+    ) -> Result<()> {
         self.emit(EventType::Case {
             timestamp: Utc::now(),
             run_id: self.run_id.clone(),
@@ -170,7 +191,17 @@ impl EventStream {
     }
 
     /// Emit summary event
-    pub fn emit_summary(&mut self, total_duration: f64, tests_run: u32, tests_passed: u32, tests_failed: u32, tests_skipped: u32, tests_error: u32, exit_code: i32) -> Result<()> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn emit_summary(
+        &mut self,
+        total_duration: f64,
+        tests_run: u32,
+        tests_passed: u32,
+        tests_failed: u32,
+        tests_skipped: u32,
+        tests_error: u32,
+        exit_code: i32,
+    ) -> Result<()> {
         self.emit(EventType::Summary {
             timestamp: Utc::now(),
             run_id: self.run_id.clone(),
@@ -186,7 +217,12 @@ impl EventStream {
     }
 
     /// Emit log event
-    pub fn emit_log(&mut self, level: LogLevel, message: String, context: Option<serde_json::Value>) -> Result<()> {
+    pub fn emit_log(
+        &mut self,
+        level: LogLevel,
+        message: String,
+        context: Option<serde_json::Value>,
+    ) -> Result<()> {
         self.emit(EventType::Log {
             timestamp: Utc::now(),
             run_id: self.run_id.clone(),
@@ -218,7 +254,7 @@ pub fn generate_run_id() -> String {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    
+
     let random_suffix: u32 = rand::random();
     format!("veri-{}-{:08x}", timestamp, random_suffix)
 }
@@ -319,9 +355,21 @@ impl JUnitWriter {
     pub fn finalize(&self) -> Result<()> {
         let total_time = self.suite_start_time.elapsed().as_secs_f64();
         let total_tests = self.test_cases.len();
-        let failures = self.test_cases.iter().filter(|tc| matches!(tc.result, JUnitResult::Failed { .. })).count();
-        let errors = self.test_cases.iter().filter(|tc| matches!(tc.result, JUnitResult::Error { .. })).count();
-        let skipped = self.test_cases.iter().filter(|tc| matches!(tc.result, JUnitResult::Skipped { .. })).count();
+        let failures = self
+            .test_cases
+            .iter()
+            .filter(|tc| matches!(tc.result, JUnitResult::Failed { .. }))
+            .count();
+        let errors = self
+            .test_cases
+            .iter()
+            .filter(|tc| matches!(tc.result, JUnitResult::Error { .. }))
+            .count();
+        let skipped = self
+            .test_cases
+            .iter()
+            .filter(|tc| matches!(tc.result, JUnitResult::Skipped { .. }))
+            .count();
 
         let mut xml = String::new();
         xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -401,21 +449,23 @@ mod tests {
     fn test_event_stream() {
         let temp_dir = TempDir::new("veri_test").unwrap();
         let output_path = temp_dir.path().join("events.jsonl");
-        
+
         let mut stream = EventStream::new("test-run-123".to_string());
         stream.init_file(&output_path).unwrap();
-        
+
         stream.emit_start(10, 5, 2, "timing_based").unwrap();
-        stream.emit_case(
-            Some("worker-1".to_string()),
-            "test::example".to_string(),
-            TestOutcome::Passed,
-            1.5,
-            None
-        ).unwrap();
-        
+        stream
+            .emit_case(
+                Some("worker-1".to_string()),
+                "test::example".to_string(),
+                TestOutcome::Passed,
+                1.5,
+                None,
+            )
+            .unwrap();
+
         stream.close().unwrap();
-        
+
         let content = std::fs::read_to_string(&output_path).unwrap();
         assert!(content.contains("\"type\":\"start\""));
         assert!(content.contains("\"type\":\"case\""));
@@ -426,16 +476,16 @@ mod tests {
     fn test_junit_writer() {
         let temp_dir = TempDir::new("veri_test").unwrap();
         let output_path = temp_dir.path().join("junit.xml");
-        
+
         let mut writer = JUnitWriter::new(output_path.clone());
-        
+
         writer.add_test_case(JUnitTestCase {
             name: "test_example".to_string(),
             classname: "test.module".to_string(),
             time: 1.5,
             result: JUnitResult::Passed,
         });
-        
+
         writer.add_test_case(JUnitTestCase {
             name: "test_failure".to_string(),
             classname: "test.module".to_string(),
@@ -445,9 +495,9 @@ mod tests {
                 details: "Expected true, got false".to_string(),
             },
         });
-        
+
         writer.finalize().unwrap();
-        
+
         let content = std::fs::read_to_string(&output_path).unwrap();
         assert!(content.contains("<testsuite"));
         assert!(content.contains("test_example"));
@@ -458,7 +508,7 @@ mod tests {
     fn test_run_id_generation() {
         let id1 = generate_run_id();
         let id2 = generate_run_id();
-        
+
         assert!(id1.starts_with("veri-"));
         assert!(id2.starts_with("veri-"));
         assert_ne!(id1, id2);

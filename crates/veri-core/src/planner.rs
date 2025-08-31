@@ -1,5 +1,5 @@
 //! Impact analysis and test selection planner
-//! 
+//!
 //! This module implements the planner logic for determining which tests
 //! to run based on changed files and import dependencies.
 
@@ -7,19 +7,37 @@ use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use crate::import_graph::{ImportsGraph, ReverseDepsGraph, ModuleMap};
+use crate::import_graph::{ImportsGraph, ModuleMap, ReverseDepsGraph};
 use crate::python_worker::TestsIndex;
 
 /// Test selection reason for explain mode
 #[derive(Debug, Clone)]
 pub enum SelectionReason {
-    TestFileChanged { path: String },
-    SourceFileChanged { path: String, impacted_modules: Vec<String> },
-    ConftestChanged { path: String, scope: String },
-    PluginChanged { plugin: String },
-    DynamicImportDetected { from_module: String, reason: String },
-    ThresholdExceeded { percentage: f64, threshold: f64 },
-    FullRun { reason: String },
+    TestFileChanged {
+        path: String,
+    },
+    SourceFileChanged {
+        path: String,
+        impacted_modules: Vec<String>,
+    },
+    ConftestChanged {
+        path: String,
+        scope: String,
+    },
+    PluginChanged {
+        plugin: String,
+    },
+    DynamicImportDetected {
+        from_module: String,
+        reason: String,
+    },
+    ThresholdExceeded {
+        percentage: f64,
+        threshold: f64,
+    },
+    FullRun {
+        reason: String,
+    },
 }
 
 /// Test selection result
@@ -49,7 +67,7 @@ impl PlannerConfig {
         if self.broaden_threshold < 0.0 || self.broaden_threshold > 1.0 {
             return Err(anyhow::anyhow!(
                 "broaden_threshold must be between 0.0 and 1.0 (fraction), got {}. \
-                 Use 0.6 for 60%, not 60.", 
+                 Use 0.6 for 60%, not 60.",
                 self.broaden_threshold
             ));
         }
@@ -69,7 +87,9 @@ impl Default for PlannerConfig {
 
 /// Impact-aware test planner
 pub struct TestPlanner {
+    #[allow(dead_code)]
     work_dir: PathBuf,
+    #[allow(dead_code)]
     cache_dir: PathBuf,
     config: PlannerConfig,
 }
@@ -85,7 +105,11 @@ impl TestPlanner {
     }
 
     /// Create with custom configuration
-    pub fn with_config(work_dir: impl Into<PathBuf>, cache_dir: impl Into<PathBuf>, config: PlannerConfig) -> Result<Self> {
+    pub fn with_config(
+        work_dir: impl Into<PathBuf>,
+        cache_dir: impl Into<PathBuf>,
+        config: PlannerConfig,
+    ) -> Result<Self> {
         config.validate()?;
         Ok(Self {
             work_dir: work_dir.into(),
@@ -148,22 +172,34 @@ impl TestPlanner {
                 if let Some(reverse_deps) = revdeps_graph.reverse_deps.get(module_name) {
                     // Add direct test dependents
                     selected_nodeids.extend(reverse_deps.test_dependents.iter().cloned());
-                    
+
                     // Add transitive test dependents
                     for transitive_dep in &reverse_deps.transitive_dependents {
                         if self.is_test_module(transitive_dep) {
-                            let test_nodeids = self.get_nodeids_for_module(transitive_dep, tests_index);
+                            let test_nodeids =
+                                self.get_nodeids_for_module(transitive_dep, tests_index);
                             selected_nodeids.extend(test_nodeids.iter().cloned());
                         }
                     }
 
-                    if !reverse_deps.test_dependents.is_empty() || 
-                       reverse_deps.transitive_dependents.iter().any(|m| self.is_test_module(m)) {
-                        let impacted_modules = reverse_deps.test_dependents.iter()
-                            .chain(reverse_deps.transitive_dependents.iter().filter(|m| self.is_test_module(m)))
+                    if !reverse_deps.test_dependents.is_empty()
+                        || reverse_deps
+                            .transitive_dependents
+                            .iter()
+                            .any(|m| self.is_test_module(m))
+                    {
+                        let impacted_modules = reverse_deps
+                            .test_dependents
+                            .iter()
+                            .chain(
+                                reverse_deps
+                                    .transitive_dependents
+                                    .iter()
+                                    .filter(|m| self.is_test_module(m)),
+                            )
                             .cloned()
                             .collect();
-                        
+
                         selection_reasons.push(SelectionReason::SourceFileChanged {
                             path: file_path.clone(),
                             impacted_modules,
@@ -183,7 +219,7 @@ impl TestPlanner {
                             // Broaden to all tests for safety
                             should_broaden = true;
                             broaden_reason = Some(format!(
-                                "Dynamic import detected in {} - broadening for safety", 
+                                "Dynamic import detected in {} - broadening for safety",
                                 dynamic_import.from_module
                             ));
                             selection_reasons.push(SelectionReason::DynamicImportDetected {
@@ -257,28 +293,37 @@ impl TestPlanner {
 
     /// Check if a module is a test module
     fn is_test_module(&self, module_name: &str) -> bool {
-        module_name.starts_with("test_") ||
-        module_name.ends_with("_test") ||
-        module_name.contains(".test_") ||
-        module_name.contains(".tests.") ||
-        module_name.starts_with("tests.")
+        module_name.starts_with("test_")
+            || module_name.ends_with("_test")
+            || module_name.contains(".test_")
+            || module_name.contains(".tests.")
+            || module_name.starts_with("tests.")
     }
 
     /// Get nodeids for a specific test file
     fn get_nodeids_for_test_file(&self, file_path: &str, tests_index: &TestsIndex) -> Vec<String> {
-        tests_index.tests.iter()
+        tests_index
+            .tests
+            .iter()
             .filter(|test| test.path == file_path)
             .map(|test| test.nodeid.clone())
             .collect()
     }
 
     /// Get nodeids for tests under a conftest.py scope
-    fn get_nodeids_for_conftest_scope(&self, conftest_path: &str, tests_index: &TestsIndex) -> Vec<String> {
-        let conftest_dir = Path::new(conftest_path).parent()
+    fn get_nodeids_for_conftest_scope(
+        &self,
+        conftest_path: &str,
+        tests_index: &TestsIndex,
+    ) -> Vec<String> {
+        let conftest_dir = Path::new(conftest_path)
+            .parent()
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default();
 
-        tests_index.tests.iter()
+        tests_index
+            .tests
+            .iter()
             .filter(|test| test.path.starts_with(&conftest_dir))
             .map(|test| test.nodeid.clone())
             .collect()
@@ -286,14 +331,17 @@ impl TestPlanner {
 
     /// Get conftest scope description
     fn get_conftest_scope(&self, conftest_path: &str) -> String {
-        Path::new(conftest_path).parent()
+        Path::new(conftest_path)
+            .parent()
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| "root".to_string())
     }
 
     /// Get nodeids for a specific module
     fn get_nodeids_for_module(&self, module_name: &str, tests_index: &TestsIndex) -> Vec<String> {
-        tests_index.tests.iter()
+        tests_index
+            .tests
+            .iter()
             .filter(|test| test.module == module_name)
             .map(|test| test.nodeid.clone())
             .collect()
@@ -341,7 +389,7 @@ impl TestPlanner {
     ) -> bool {
         // Conservative approach: any change could potentially affect dynamic imports
         // unless we have a static argument that we can check
-        
+
         if let Some(argument) = &dynamic_import.argument {
             // If the dynamic import has a static argument, check if it matches
             argument == changed_module || argument.starts_with(&format!("{}.", changed_module))
@@ -355,40 +403,66 @@ impl TestPlanner {
     pub fn format_explain(&self, selection: &TestSelection) -> String {
         let mut output = Vec::new();
 
-        output.push(format!("Test Selection Plan:"));
-        output.push(format!("  Selected: {} of {} tests", selection.selected_nodeids.len(), selection.total_tests));
-        
+        output.push("Test Selection Plan:".to_string());
+        output.push(format!(
+            "  Selected: {} of {} tests",
+            selection.selected_nodeids.len(),
+            selection.total_tests
+        ));
+
         if selection.should_broaden {
-            output.push(format!("  Broadened: Yes"));
+            output.push("  Broadened: Yes".to_string());
             if let Some(reason) = &selection.broaden_reason {
                 output.push(format!("  Reason: {}", reason));
             }
         } else {
-            output.push(format!("  Broadened: No"));
+            output.push("  Broadened: No".to_string());
         }
 
         output.push(String::new());
-        output.push(format!("Selection Reasons:"));
-        
+        output.push("Selection Reasons:".to_string());
+
         for (i, reason) in selection.selection_reasons.iter().enumerate() {
             match reason {
                 SelectionReason::TestFileChanged { path } => {
                     output.push(format!("  {}. Test file changed: {}", i + 1, path));
                 }
-                SelectionReason::SourceFileChanged { path, impacted_modules } => {
+                SelectionReason::SourceFileChanged {
+                    path,
+                    impacted_modules,
+                } => {
                     output.push(format!("  {}. Source file changed: {}", i + 1, path));
-                    output.push(format!("     Impacted modules: {}", impacted_modules.join(", ")));
+                    output.push(format!(
+                        "     Impacted modules: {}",
+                        impacted_modules.join(", ")
+                    ));
                 }
                 SelectionReason::ConftestChanged { path, scope } => {
-                    output.push(format!("  {}. conftest.py changed: {} (scope: {})", i + 1, path, scope));
+                    output.push(format!(
+                        "  {}. conftest.py changed: {} (scope: {})",
+                        i + 1,
+                        path,
+                        scope
+                    ));
                 }
                 SelectionReason::PluginChanged { plugin } => {
                     output.push(format!("  {}. Plugin changed: {}", i + 1, plugin));
                 }
-                SelectionReason::DynamicImportDetected { from_module, reason } => {
-                    output.push(format!("  {}. Dynamic import detected in {}: {}", i + 1, from_module, reason));
+                SelectionReason::DynamicImportDetected {
+                    from_module,
+                    reason,
+                } => {
+                    output.push(format!(
+                        "  {}. Dynamic import detected in {}: {}",
+                        i + 1,
+                        from_module,
+                        reason
+                    ));
                 }
-                SelectionReason::ThresholdExceeded { percentage, threshold } => {
+                SelectionReason::ThresholdExceeded {
+                    percentage,
+                    threshold,
+                } => {
                     output.push(format!(
                         "  {}. Threshold exceeded: {:.1}% > {:.1}%",
                         i + 1,
@@ -404,13 +478,16 @@ impl TestPlanner {
 
         if !selection.selected_nodeids.is_empty() && selection.selected_nodeids.len() <= 20 {
             output.push(String::new());
-            output.push(format!("Selected Tests:"));
+            output.push("Selected Tests:".to_string());
             for nodeid in &selection.selected_nodeids {
                 output.push(format!("  - {}", nodeid));
             }
         } else if !selection.selected_nodeids.is_empty() {
             output.push(String::new());
-            output.push(format!("Selected Tests: {} tests (too many to list)", selection.selected_nodeids.len()));
+            output.push(format!(
+                "Selected Tests: {} tests (too many to list)",
+                selection.selected_nodeids.len()
+            ));
         }
 
         output.join("\n")

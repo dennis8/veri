@@ -1,14 +1,14 @@
 //! Python worker integration for pytest compatibility
-//! 
+//!
 //! This module provides the interface for communicating with the Python worker
 //! that handles pytest collection and execution.
 
+use crate::diagnostics::{DiagnosticReporter, VeriDiagnostic};
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{Command, Output};
-use std::collections::HashMap;
-use crate::diagnostics::{VeriDiagnostic, DiagnosticReporter};
 
 /// Test collection data from tests.index.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,10 +83,10 @@ impl PythonWorker {
     pub fn new(work_dir: impl Into<PathBuf>, cache_dir: impl Into<PathBuf>) -> Self {
         let work_dir = work_dir.into();
         let cache_dir = cache_dir.into();
-        
+
         // Always use uv run for consistent dependency management
         let python_executable = "uv".to_string();
-        
+
         Self {
             work_dir,
             cache_dir,
@@ -102,8 +102,7 @@ impl PythonWorker {
     /// Collect tests using pytest and generate indexes
     pub fn collect_tests(&self, paths: &[String]) -> Result<TestsIndex> {
         // Ensure cache directory exists
-        std::fs::create_dir_all(&self.cache_dir)
-            .context("Failed to create cache directory")?;
+        std::fs::create_dir_all(&self.cache_dir).context("Failed to create cache directory")?;
 
         // Build command arguments
         let mut args = vec![
@@ -122,7 +121,8 @@ impl PythonWorker {
         }
 
         // Execute Python worker
-        let output = self.run_python_command(&args)
+        let output = self
+            .run_python_command(&args)
             .context("Failed to run Python worker for test collection")?;
 
         // Check for fatal errors (exit codes other than 0 and 2)
@@ -136,9 +136,9 @@ impl PythonWorker {
         let tests_index_path = self.cache_dir.join("tests.index.json");
         let tests_data = std::fs::read_to_string(&tests_index_path)
             .context("Failed to read tests.index.json")?;
-        
-        let tests_index: TestsIndex = serde_json::from_str(&tests_data)
-            .context("Failed to parse tests.index.json")?;
+
+        let tests_index: TestsIndex =
+            serde_json::from_str(&tests_data).context("Failed to parse tests.index.json")?;
 
         Ok(tests_index)
     }
@@ -148,9 +148,9 @@ impl PythonWorker {
         let markers_index_path = self.cache_dir.join("markers.index.json");
         let markers_data = std::fs::read_to_string(&markers_index_path)
             .context("Failed to read markers.index.json")?;
-        
-        let markers_index: MarkersIndex = serde_json::from_str(&markers_data)
-            .context("Failed to parse markers.index.json")?;
+
+        let markers_index: MarkersIndex =
+            serde_json::from_str(&markers_data).context("Failed to parse markers.index.json")?;
 
         Ok(markers_index)
     }
@@ -217,7 +217,8 @@ impl PythonWorker {
         }
 
         // Execute Python worker
-        let output = self.run_python_command(&args)
+        let output = self
+            .run_python_command(&args)
             .context("Failed to run Python worker for test execution")?;
 
         Ok(output.status.code().unwrap_or(3))
@@ -239,14 +240,18 @@ impl PythonWorker {
         }
 
         // Execute Python worker
-        let output = self.run_python_command(&args)
+        let output = self
+            .run_python_command(&args)
             .context("Failed to run Python worker in pytest engine mode")?;
 
         Ok(output.status.code().unwrap_or(3))
     }
 
     /// Parse imports from Python files using AST analysis
-    pub fn parse_imports(&self, module_map: &crate::import_graph::ModuleMap) -> Result<crate::import_graph::ImportsGraph> {
+    pub fn parse_imports(
+        &self,
+        module_map: &crate::import_graph::ModuleMap,
+    ) -> Result<crate::import_graph::ImportsGraph> {
         // Save module map to a temporary file for the Python worker
         let module_map_path = self.cache_dir.join("temp_module_map.json");
         let module_map_json = serde_json::to_string_pretty(module_map)?;
@@ -266,7 +271,8 @@ impl PythonWorker {
         ];
 
         // Execute Python worker
-        let output = self.run_python_command(&args)
+        let output = self
+            .run_python_command(&args)
             .context("Failed to run Python worker for import parsing")?;
 
         // Clean up temporary file
@@ -281,18 +287,18 @@ impl PythonWorker {
         let imports_graph_path = self.cache_dir.join("imports.graph.json");
         let imports_data = std::fs::read_to_string(&imports_graph_path)
             .context("Failed to read imports.graph.json")?;
-        
-        let imports_graph: crate::import_graph::ImportsGraph = serde_json::from_str(&imports_data)
-            .context("Failed to parse imports.graph.json")?;
+
+        let imports_graph: crate::import_graph::ImportsGraph =
+            serde_json::from_str(&imports_data).context("Failed to parse imports.graph.json")?;
 
         Ok(imports_graph)
     }
-    
+
     /// Get list of installed pytest plugins
     pub fn get_pytest_plugins(&self) -> Result<Vec<String>> {
         // Run Python to get installed pytest plugins
         let output = Command::new("python")
-            .args(&[
+            .args([
                 "-c",
                 r#"
 import pkg_resources
@@ -333,16 +339,16 @@ except Exception as e:
             .current_dir(&self.work_dir)
             .output()
             .context("Failed to run Python to get pytest plugins")?;
-        
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow!("Failed to get pytest plugins: {}", stderr));
         }
-        
+
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let plugins: Vec<String> = serde_json::from_str(&stdout)
-            .context("Failed to parse pytest plugins JSON")?;
-        
+        let plugins: Vec<String> =
+            serde_json::from_str(&stdout).context("Failed to parse pytest plugins JSON")?;
+
         Ok(plugins)
     }
 
@@ -350,7 +356,7 @@ except Exception as e:
     pub fn has_valid_cache(&self) -> bool {
         let tests_index_path = self.cache_dir.join("tests.index.json");
         let markers_index_path = self.cache_dir.join("markers.index.json");
-        
+
         tests_index_path.exists() && markers_index_path.exists()
     }
 
@@ -368,50 +374,51 @@ except Exception as e:
     fn run_python_command(&self, args: &[String]) -> Result<Output> {
         // Find the py_worker directory to use as the project root for uv
         let py_worker_path = self.find_py_worker_path();
-        
+
         let mut cmd = Command::new(&self.python_executable);
-        
+
         // Add uv run arguments with project specification
         cmd.arg("run");
         if let Some(py_worker) = &py_worker_path {
             cmd.arg("--project");
             cmd.arg(py_worker);
         }
-        
+
         // Add the python module arguments
         cmd.args(args);
         cmd.current_dir(&self.work_dir);
 
         cmd.output().context("Failed to execute uv run command")
     }
-    
+
     /// Find the py_worker directory path
     fn find_py_worker_path(&self) -> Option<PathBuf> {
         // Look for py_worker directory
-        if let Some(current_exe) = std::env::current_exe().ok() {
+        if let Ok(current_exe) = std::env::current_exe() {
             if let Some(parent) = current_exe.parent() {
                 let mut potential_root = parent.to_path_buf();
                 if potential_root.ends_with("debug") {
                     potential_root.pop(); // Remove "debug"
                     potential_root.pop(); // Remove "target"
                 }
-                
+
                 let potential_py_worker = potential_root.join("py_worker");
                 if potential_py_worker.exists() {
                     return Some(potential_py_worker);
                 }
             }
         }
-        
+
         // If not found relative to exe, try relative to work_dir
         let potential_py_worker = self.work_dir.join("py_worker");
         if potential_py_worker.exists() {
             return Some(potential_py_worker);
         }
-        
+
         // Try going up from work_dir to find project root
         let mut current = self.work_dir.clone();
-        for _ in 0..5 { // Try up to 5 levels up
+        for _ in 0..5 {
+            // Try up to 5 levels up
             let potential_py_worker = current.join("py_worker");
             if potential_py_worker.exists() {
                 return Some(potential_py_worker);
@@ -420,17 +427,15 @@ except Exception as e:
                 break;
             }
         }
-        
+
         None
     }
 
     /// Check for Python environment issues and generate diagnostics
     pub fn check_environment(&self, diagnostics: &mut DiagnosticReporter) -> Result<()> {
         // Check if Python is available
-        let python_result = Command::new("python")
-            .arg("--version")
-            .output();
-            
+        let python_result = Command::new("python").arg("--version").output();
+
         match python_result {
             Ok(output) => {
                 if !output.status.success() {
@@ -445,18 +450,19 @@ except Exception as e:
                     });
                 } else {
                     let version_output = String::from_utf8_lossy(&output.stdout);
-                    
+
                     // Check for pytest availability
                     let pytest_result = Command::new("python")
                         .args(["-m", "pytest", "--version"])
                         .output();
-                        
+
                     if let Ok(pytest_output) = pytest_result {
                         if !pytest_output.status.success() {
                             diagnostics.add(VeriDiagnostic::PythonEnvironmentIssue {
-                                issue_type: crate::diagnostics::PythonIssueType::MissingDependencies(
-                                    vec!["pytest".to_string()]
-                                ),
+                                issue_type:
+                                    crate::diagnostics::PythonIssueType::MissingDependencies(vec![
+                                        "pytest".to_string(),
+                                    ]),
                                 current_python: version_output.trim().to_string(),
                                 suggestions: vec![
                                     "Install pytest: pip install pytest".to_string(),
@@ -480,25 +486,31 @@ except Exception as e:
                 });
             }
         }
-        
+
         Ok(())
     }
 
     /// Check tests index for collection errors and generate diagnostics
-    pub fn check_collection_errors(&self, tests_index: &TestsIndex, diagnostics: &mut DiagnosticReporter) {
+    pub fn check_collection_errors(
+        &self,
+        tests_index: &TestsIndex,
+        diagnostics: &mut DiagnosticReporter,
+    ) {
         if !tests_index.collection_errors.is_empty() {
-            let syntax_errors = tests_index.collection_errors
+            let syntax_errors = tests_index
+                .collection_errors
                 .iter()
                 .filter(|e| e.error_type.contains("Syntax"))
                 .map(|e| e.message.clone())
                 .collect();
-            
-            let import_errors = tests_index.collection_errors
+
+            let import_errors = tests_index
+                .collection_errors
                 .iter()
                 .filter(|e| e.error_type.contains("Import") || e.error_type.contains("Module"))
                 .map(|e| e.path.clone())
                 .collect();
-            
+
             diagnostics.add(VeriDiagnostic::ImportGraphBuildFailed {
                 error_count: tests_index.collection_errors.len(),
                 syntax_errors,

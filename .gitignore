@@ -1,6 +1,9 @@
 # Custom overrides
 .github/prompts/review_phase4.md
 reviews/phase4.md
+.veri/**
+.veri/cache
+.bin/**
 
 # Insta snapshots.
 *.pending-snap
@@ -48,4 +51,5 @@ profile.json.gz
 # IDE
 .idea
 .vscode
+
 

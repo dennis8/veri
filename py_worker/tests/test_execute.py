@@ -1,7 +1,5 @@
 """Tests for pytest execution functionality."""
 
-
-
 from veri_worker import VeriExecutor
 
 
@@ -25,21 +23,18 @@ class TestVeriExecutor:
         """Test running passing tests."""
         # Create a simple passing test
         test_file = temp_work_dir / "test_passing.py"
-        test_file.write_text('''
+        test_file.write_text("""
 def test_pass():
     assert True
 
 def test_also_pass():
     assert 1 == 1
-''')
+""")
 
         executor = VeriExecutor(temp_work_dir)
 
         # Run specific nodeids
-        nodeids = [
-            "test_passing.py::test_pass",
-            "test_passing.py::test_also_pass"
-        ]
+        nodeids = ["test_passing.py::test_pass", "test_passing.py::test_also_pass"]
 
         exit_code = executor.run_tests(nodeids, quiet=True)
         assert exit_code == 0
@@ -48,13 +43,13 @@ def test_also_pass():
         """Test running failing tests."""
         # Create a failing test
         test_file = temp_work_dir / "test_failing.py"
-        test_file.write_text('''
+        test_file.write_text("""
 def test_fail():
     assert False, "This test should fail"
 
 def test_pass():
     assert True
-''')
+""")
 
         executor = VeriExecutor(temp_work_dir)
 
@@ -67,11 +62,11 @@ def test_pass():
     def test_run_tests_with_verbose(self, temp_work_dir):
         """Test running tests with verbose output."""
         test_file = temp_work_dir / "test_verbose.py"
-        test_file.write_text('''
+        test_file.write_text("""
 def test_verbose():
     print("Verbose test output")
     assert True
-''')
+""")
 
         executor = VeriExecutor(temp_work_dir)
 
@@ -84,19 +79,19 @@ def test_verbose():
     def test_run_tests_with_exitfirst(self, temp_work_dir):
         """Test running tests with exitfirst option."""
         test_file = temp_work_dir / "test_exitfirst.py"
-        test_file.write_text('''
+        test_file.write_text("""
 def test_first_fail():
     assert False, "First failure"
 
 def test_second():
     assert True
-''')
+""")
 
         executor = VeriExecutor(temp_work_dir)
 
         nodeids = [
             "test_exitfirst.py::test_first_fail",
-            "test_exitfirst.py::test_second"
+            "test_exitfirst.py::test_second",
         ]
 
         exit_code = executor.run_tests(nodeids, exitfirst=True, quiet=True)
@@ -105,7 +100,7 @@ def test_second():
     def test_run_tests_with_maxfail(self, temp_work_dir):
         """Test running tests with maxfail option."""
         test_file = temp_work_dir / "test_maxfail.py"
-        test_file.write_text('''
+        test_file.write_text("""
 def test_fail_1():
     assert False, "Failure 1"
 
@@ -114,14 +109,14 @@ def test_fail_2():
 
 def test_pass():
     assert True
-''')
+""")
 
         executor = VeriExecutor(temp_work_dir)
 
         nodeids = [
             "test_maxfail.py::test_fail_1",
             "test_maxfail.py::test_fail_2",
-            "test_maxfail.py::test_pass"
+            "test_maxfail.py::test_pass",
         ]
 
         exit_code = executor.run_tests(nodeids, maxfail=1, quiet=True)
@@ -130,10 +125,10 @@ def test_pass():
     def test_run_pytest_engine(self, temp_work_dir):
         """Test pytest engine mode."""
         test_file = temp_work_dir / "test_engine.py"
-        test_file.write_text('''
+        test_file.write_text("""
 def test_engine():
     assert True
-''')
+""")
 
         executor = VeriExecutor(temp_work_dir)
 
@@ -145,13 +140,13 @@ def test_engine():
     def test_run_pytest_engine_with_workers(self, temp_work_dir):
         """Test pytest engine with worker args."""
         test_file = temp_work_dir / "test_workers.py"
-        test_file.write_text('''
+        test_file.write_text("""
 def test_worker_1():
     assert True
 
 def test_worker_2():
     assert True
-''')
+""")
 
         executor = VeriExecutor(temp_work_dir)
 
@@ -163,11 +158,11 @@ def test_worker_2():
     def test_run_pytest_engine_with_no_capture(self, temp_work_dir):
         """Test pytest engine with no-capture option."""
         test_file = temp_work_dir / "test_no_capture.py"
-        test_file.write_text('''
+        test_file.write_text("""
 def test_with_print():
     print("This should be captured")
     assert True
-''')
+""")
 
         executor = VeriExecutor(temp_work_dir)
 

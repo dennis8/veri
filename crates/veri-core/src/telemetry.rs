@@ -1,10 +1,10 @@
 use anyhow::Result;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
-use log::debug;
 
 /// Telemetry client for optional usage analytics
 #[derive(Clone)]
@@ -19,19 +19,19 @@ pub struct TelemetryClient {
 pub struct TelemetryConfig {
     /// Whether telemetry is enabled (default: false)
     pub enabled: bool,
-    
+
     /// Endpoint URL for telemetry data
     pub endpoint: Option<String>,
-    
+
     /// Collection interval in seconds (default: 300 = 5 minutes)
     pub collection_interval: u64,
-    
+
     /// Whether to collect performance metrics
     pub collect_performance: bool,
-    
+
     /// Whether to collect usage patterns
     pub collect_usage: bool,
-    
+
     /// Maximum number of events to queue before dropping
     pub max_queue_size: usize,
 }
@@ -57,25 +57,25 @@ pub struct TelemetryMetrics {
     pub veri_version: String,
     pub platform: String,
     pub python_version: Option<String>,
-    
+
     /// Usage counters
     pub runs_total: u64,
     pub runs_with_coverage: u64,
     pub runs_watch_mode: u64,
     pub runs_ci_mode: u64,
-    
+
     /// Performance metrics (aggregated)
     pub avg_collection_time_ms: Option<u64>,
     pub avg_execution_time_ms: Option<u64>,
     pub avg_tests_per_run: Option<f64>,
     pub avg_workers_used: Option<f64>,
-    
+
     /// Feature usage
     pub features_used: HashMap<String, u64>,
-    
+
     /// Error categories (no specific error messages)
     pub error_categories: HashMap<String, u64>,
-    
+
     /// Timestamp of last update
     pub last_updated: u64,
 }
@@ -100,14 +100,11 @@ impl TelemetryMetrics {
             last_updated: Self::current_timestamp(),
         }
     }
-    
+
     fn get_platform() -> String {
-        format!("{}-{}", 
-            env::consts::OS, 
-            env::consts::ARCH
-        )
+        format!("{}-{}", env::consts::OS, env::consts::ARCH)
     }
-    
+
     fn current_timestamp() -> u64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -121,7 +118,7 @@ impl TelemetryClient {
     pub fn new(config: TelemetryConfig) -> Self {
         let session_id = Uuid::new_v4().to_string();
         let enabled = config.enabled && !Self::is_disabled_by_env();
-        
+
         Self {
             session_id: session_id.clone(),
             config,
@@ -129,60 +126,74 @@ impl TelemetryClient {
             enabled,
         }
     }
-    
+
     /// Check if telemetry is disabled by environment variables
     fn is_disabled_by_env() -> bool {
         // Respect common telemetry opt-out environment variables
-        env::var("VERI_NO_TELEMETRY").is_ok() ||
-        env::var("DO_NOT_TRACK").is_ok() ||
-        env::var("NO_ANALYTICS").is_ok() ||
-        env::var("DISABLE_TELEMETRY").is_ok()
+        env::var("VERI_NO_TELEMETRY").is_ok()
+            || env::var("DO_NOT_TRACK").is_ok()
+            || env::var("NO_ANALYTICS").is_ok()
+            || env::var("DISABLE_TELEMETRY").is_ok()
     }
-    
+
     /// Record a test run event
     pub fn record_run(&mut self, event: RunEvent) {
         if !self.enabled {
             return;
         }
-        
+
         self.metrics.runs_total += 1;
-        
+
         if event.coverage_enabled {
             self.metrics.runs_with_coverage += 1;
         }
-        
+
         if event.watch_mode {
             self.metrics.runs_watch_mode += 1;
         }
-        
+
         if event.ci_mode {
             self.metrics.runs_ci_mode += 1;
         }
-        
+
         // Update averages
-        TelemetryClient::update_average_u64(&mut self.metrics.avg_collection_time_ms, event.collection_time_ms);
-        TelemetryClient::update_average_u64(&mut self.metrics.avg_execution_time_ms, event.execution_time_ms);
-        TelemetryClient::update_average_f64(&mut self.metrics.avg_tests_per_run, event.test_count as f64);
-        TelemetryClient::update_average_f64(&mut self.metrics.avg_workers_used, event.worker_count as f64);
-        
+        TelemetryClient::update_average_u64(
+            &mut self.metrics.avg_collection_time_ms,
+            event.collection_time_ms,
+        );
+        TelemetryClient::update_average_u64(
+            &mut self.metrics.avg_execution_time_ms,
+            event.execution_time_ms,
+        );
+        TelemetryClient::update_average_f64(
+            &mut self.metrics.avg_tests_per_run,
+            event.test_count as f64,
+        );
+        TelemetryClient::update_average_f64(
+            &mut self.metrics.avg_workers_used,
+            event.worker_count as f64,
+        );
+
         // Record feature usage
         for feature in event.features_used {
             *self.metrics.features_used.entry(feature).or_insert(0) += 1;
         }
-        
+
         self.metrics.python_version = event.python_version;
         self.metrics.last_updated = TelemetryMetrics::current_timestamp();
-        
-        debug!("Recorded telemetry run event: {} tests, {} workers", 
-               event.test_count, event.worker_count);
+
+        debug!(
+            "Recorded telemetry run event: {} tests, {} workers",
+            event.test_count, event.worker_count
+        );
     }
-    
+
     /// Record an error event (category only, no sensitive details)
     pub fn record_error(&mut self, category: ErrorCategory) {
         if !self.enabled {
             return;
         }
-        
+
         let category_name = match category {
             ErrorCategory::ConfigurationError => "configuration",
             ErrorCategory::CollectionError => "collection",
@@ -194,45 +205,53 @@ impl TelemetryClient {
             ErrorCategory::FileSystemError => "filesystem",
             ErrorCategory::PythonEnvironmentError => "python_env",
         };
-        
-        *self.metrics.error_categories.entry(category_name.to_string()).or_insert(0) += 1;
+
+        *self
+            .metrics
+            .error_categories
+            .entry(category_name.to_string())
+            .or_insert(0) += 1;
         self.metrics.last_updated = TelemetryMetrics::current_timestamp();
-        
+
         debug!("Recorded telemetry error: {}", category_name);
     }
-    
+
     /// Record feature usage
     pub fn record_feature_usage(&mut self, feature: &str) {
         if !self.enabled {
             return;
         }
-        
-        *self.metrics.features_used.entry(feature.to_string()).or_insert(0) += 1;
+
+        *self
+            .metrics
+            .features_used
+            .entry(feature.to_string())
+            .or_insert(0) += 1;
         self.metrics.last_updated = TelemetryMetrics::current_timestamp();
     }
-    
+
     /// Get current metrics (for debugging/verification)
     pub fn get_metrics(&self) -> &TelemetryMetrics {
         &self.metrics
     }
-    
+
     /// Check if telemetry is enabled
     pub fn is_enabled(&self) -> bool {
         self.enabled
     }
-    
+
     /// Disable telemetry (cannot be re-enabled in same session)
     pub fn disable(&mut self) {
         self.enabled = false;
         debug!("Telemetry disabled for current session");
     }
-    
+
     /// Send telemetry data (if enabled and endpoint configured)
     pub async fn send_telemetry(&self) -> Result<()> {
         if !self.enabled {
             return Ok(());
         }
-        
+
         let endpoint = match &self.config.endpoint {
             Some(url) => url,
             None => {
@@ -240,23 +259,25 @@ impl TelemetryClient {
                 return Ok(());
             }
         };
-        
+
         // Check if network is disabled
         if env::var("VERI_NO_NETWORK").is_ok() {
             debug!("Network disabled, skipping telemetry send");
             return Ok(());
         }
-        
+
         // In a real implementation, this would send to the endpoint
         // For now, we'll just log what would be sent
-        debug!("Would send telemetry to {}: {} runs, {} features used", 
-               endpoint, 
-               self.metrics.runs_total,
-               self.metrics.features_used.len());
-        
+        debug!(
+            "Would send telemetry to {}: {} runs, {} features used",
+            endpoint,
+            self.metrics.runs_total,
+            self.metrics.features_used.len()
+        );
+
         Ok(())
     }
-    
+
     /// Helper function to update running averages
     fn update_average_u64(current_avg: &mut Option<u64>, new_value: u64) {
         match current_avg {
@@ -269,7 +290,7 @@ impl TelemetryClient {
             }
         }
     }
-    
+
     /// Helper function to update running averages for f64 values
     fn update_average_f64(current_avg: &mut Option<f64>, new_value: f64) {
         match current_avg {
@@ -356,37 +377,49 @@ impl TelemetryClient {
             ],
         }
     }
-    
+
     /// Print telemetry status for user transparency
     pub fn print_status(&self, use_color: bool) {
         let status = self.get_status();
-        
+
         let color_start = if use_color { "\x1b[36m" } else { "" }; // Cyan
         let color_end = if use_color { "\x1b[0m" } else { "" };
-        
+
         println!("{}📊 Telemetry Status{}", color_start, color_end);
-        println!("  Enabled: {}", if status.enabled { "✅ Yes" } else { "❌ No" });
-        
+        println!(
+            "  Enabled: {}",
+            if status.enabled { "✅ Yes" } else { "❌ No" }
+        );
+
         if status.enabled {
             println!("  Session ID: {}", status.session_id);
             if let Some(endpoint) = &status.endpoint {
                 println!("  Endpoint: {}", endpoint);
             }
             println!("  Data collected:");
-            println!("    • Runs recorded: {}", status.data_collected.runs_recorded);
-            println!("    • Features tracked: {}", status.data_collected.features_tracked);
-            println!("    • Error categories: {}", status.data_collected.errors_by_category);
+            println!(
+                "    • Runs recorded: {}",
+                status.data_collected.runs_recorded
+            );
+            println!(
+                "    • Features tracked: {}",
+                status.data_collected.features_tracked
+            );
+            println!(
+                "    • Error categories: {}",
+                status.data_collected.errors_by_category
+            );
             println!("  Privacy guarantees:");
             println!("    • No personal data: ✅");
             println!("    • No code paths: ✅");
             println!("    • No test names: ✅");
         }
-        
+
         println!("  Opt-out methods:");
         for method in &status.opt_out_methods {
             println!("    • {}", method);
         }
-        
+
         println!("  More info: https://docs.veri.dev/telemetry");
     }
 }
@@ -405,25 +438,27 @@ mod tests {
     #[test]
     fn test_env_var_disables_telemetry() {
         env::set_var("DO_NOT_TRACK", "1");
-        
-        let mut config = TelemetryConfig::default();
-        config.enabled = true;
-        let client = TelemetryClient::new(config);
-        
+
+        let client = TelemetryClient::new(TelemetryConfig {
+            enabled: true,
+            ..Default::default()
+        });
+
         assert!(!client.is_enabled());
-        
+
         env::remove_var("DO_NOT_TRACK");
     }
 
     #[test]
     fn test_record_run_event() {
-        let mut config = TelemetryConfig::default();
-        config.enabled = true;
-        let mut client = TelemetryClient::new(config);
-        
+        let mut client = TelemetryClient::new(TelemetryConfig {
+            enabled: true,
+            ..Default::default()
+        });
+
         // Override env check for testing
         client.enabled = true;
-        
+
         let event = RunEvent {
             test_count: 10,
             worker_count: 4,
@@ -435,9 +470,9 @@ mod tests {
             python_version: Some("3.12.0".to_string()),
             features_used: vec!["coverage".to_string(), "sharding".to_string()],
         };
-        
+
         client.record_run(event);
-        
+
         let metrics = client.get_metrics();
         assert_eq!(metrics.runs_total, 1);
         assert_eq!(metrics.runs_with_coverage, 1);
@@ -448,15 +483,16 @@ mod tests {
 
     #[test]
     fn test_record_error() {
-        let mut config = TelemetryConfig::default();
-        config.enabled = true;
-        let mut client = TelemetryClient::new(config);
+        let mut client = TelemetryClient::new(TelemetryConfig {
+            enabled: true,
+            ..Default::default()
+        });
         client.enabled = true; // Override for testing
-        
+
         client.record_error(ErrorCategory::CollectionError);
         client.record_error(ErrorCategory::CollectionError);
         client.record_error(ErrorCategory::ExecutionError);
-        
+
         let metrics = client.get_metrics();
         assert_eq!(metrics.error_categories.get("collection"), Some(&2));
         assert_eq!(metrics.error_categories.get("execution"), Some(&1));
@@ -467,7 +503,7 @@ mod tests {
         let config = TelemetryConfig::default();
         let client = TelemetryClient::new(config);
         let status = client.get_status();
-        
+
         // Verify privacy guarantees
         assert!(!status.data_collected.contains_personal_data);
         assert!(!status.data_collected.contains_code_paths);
@@ -479,9 +515,9 @@ mod tests {
         let config = TelemetryConfig::default();
         let client = TelemetryClient::new(config);
         let status = client.get_status();
-        
+
         assert!(!status.enabled);
         assert!(!status.opt_out_methods.is_empty());
-        assert!(status.session_id.len() > 0);
+        assert!(!status.session_id.is_empty());
     }
 }

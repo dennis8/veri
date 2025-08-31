@@ -1,9 +1,9 @@
-use anyhow::{Result, Context};
-use notify::{Watcher, RecommendedWatcher, RecursiveMode, Event, EventKind};
+use anyhow::{Context, Result};
+use log::{debug, info, warn};
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
-use log::{debug, info, warn};
 
 use crate::import_graph::ImportGraphBuilder;
 use crate::planner::TestPlanner;
@@ -122,7 +122,7 @@ impl WatchSession {
 
         let mut builder = ignore::gitignore::GitignoreBuilder::new(work_dir);
         builder.add(&gitignore_path);
-        
+
         match builder.build() {
             Ok(gitignore) => Ok(Some(gitignore)),
             Err(e) => {
@@ -136,10 +136,11 @@ impl WatchSession {
         info!("Starting watch mode on {}", self.work_dir.display());
 
         let (tx, rx) = mpsc::channel();
-        let mut watcher = notify::recommended_watcher(tx)
-            .context("Failed to create file system watcher")?;
+        let mut watcher =
+            notify::recommended_watcher(tx).context("Failed to create file system watcher")?;
 
-        watcher.watch(&self.work_dir, RecursiveMode::Recursive)
+        watcher
+            .watch(&self.work_dir, RecursiveMode::Recursive)
             .context("Failed to start watching directory")?;
 
         self.watcher = Some(watcher);
@@ -149,17 +150,23 @@ impl WatchSession {
             tui.start()?;
             tui.show_initial_status(&self.work_dir)?;
         } else {
-            println!("👀 Watching for changes in {} (press Ctrl+C to stop)", self.work_dir.display());
+            println!(
+                "👀 Watching for changes in {} (press Ctrl+C to stop)",
+                self.work_dir.display()
+            );
         }
 
         Ok(())
     }
 
     pub fn run(&mut self, test_run_options: TestRunOptions) -> Result<()> {
-        let receiver = self.event_receiver.take()
+        let receiver = self
+            .event_receiver
+            .take()
             .ok_or_else(|| anyhow::anyhow!("Watch session not started"))?;
 
-        let mut debouncer = FileChangeDebouncer::new(self.config.debounce_delay, self.config.max_wait_time);
+        let mut debouncer =
+            FileChangeDebouncer::new(self.config.debounce_delay, self.config.max_wait_time);
         let mut last_run = Instant::now();
 
         loop {
@@ -184,7 +191,7 @@ impl WatchSession {
             // Check if we should trigger a test run
             if let Some(changed_files) = debouncer.should_trigger() {
                 let now = Instant::now();
-                
+
                 // Avoid triggering too frequently
                 if now.duration_since(last_run) < Duration::from_millis(100) {
                     debouncer.reset(); // Reset to avoid rapid fire
@@ -194,7 +201,10 @@ impl WatchSession {
                 last_run = now;
 
                 if self.config.verbose {
-                    info!("Triggering test run for {} changed files", changed_files.len());
+                    info!(
+                        "Triggering test run for {} changed files",
+                        changed_files.len()
+                    );
                     for file in &changed_files {
                         debug!("  Changed: {}", file.display());
                     }
@@ -262,10 +272,8 @@ impl WatchSession {
         };
 
         // Check if it's a Python file or conftest.py
-        let is_python_file = path.extension()
-            .map_or(false, |ext| ext == "py") || 
-            path.file_name()
-            .map_or(false, |name| name == "conftest.py");
+        let is_python_file = path.extension().is_some_and(|ext| ext == "py")
+            || path.file_name().is_some_and(|name| name == "conftest.py");
 
         if !is_python_file {
             return false;
@@ -275,7 +283,12 @@ impl WatchSession {
         for component in relative_path.components() {
             if let std::path::Component::Normal(name) = component {
                 let name_str = name.to_string_lossy();
-                if self.config.ignore_dirs.iter().any(|ignore| *ignore == name_str) {
+                if self
+                    .config
+                    .ignore_dirs
+                    .iter()
+                    .any(|ignore| *ignore == name_str)
+                {
                     return false;
                 }
             }
@@ -299,13 +312,17 @@ impl WatchSession {
         true
     }
 
-    fn run_impacted_tests(&self, changed_files: &[PathBuf], test_run_options: &TestRunOptions) -> Result<TestRunResult> {
+    fn run_impacted_tests(
+        &self,
+        changed_files: &[PathBuf],
+        test_run_options: &TestRunOptions,
+    ) -> Result<TestRunResult> {
         let start_time = Instant::now();
-        
+
         // Initialize components
         let worker = PythonWorker::new(&self.work_dir, &self.cache_dir);
         let mut graph_builder = ImportGraphBuilder::new(&self.work_dir, &self.cache_dir);
-        
+
         // Load or build import graphs
         let (imports_graph, revdeps_graph, module_map) = match graph_builder.load_cached_graphs()? {
             Some(graphs) => graphs,
@@ -329,9 +346,13 @@ impl WatchSession {
                     tests_run: 0,
                     failures: 0,
                     exit_code: 0,
-                    changed_files: changed_files.iter()
-                        .filter_map(|path| path.strip_prefix(&self.work_dir).ok()
-                            .map(|rel| rel.to_string_lossy().replace('\\', "/")))
+                    changed_files: changed_files
+                        .iter()
+                        .filter_map(|path| {
+                            path.strip_prefix(&self.work_dir)
+                                .ok()
+                                .map(|rel| rel.to_string_lossy().replace('\\', "/"))
+                        })
                         .collect(),
                     selected_tests: Vec::new(),
                     was_broadened: false,
@@ -341,9 +362,11 @@ impl WatchSession {
         };
 
         // Convert changed files to relative string paths
-        let changed_file_strs: Vec<String> = changed_files.iter()
+        let changed_file_strs: Vec<String> = changed_files
+            .iter()
             .filter_map(|path| {
-                path.strip_prefix(&self.work_dir).ok()
+                path.strip_prefix(&self.work_dir)
+                    .ok()
                     .map(|rel| rel.to_string_lossy().replace('\\', "/"))
             })
             .collect();
@@ -361,10 +384,9 @@ impl WatchSession {
             Err(e) => {
                 warn!("Impact analysis failed: {}", e);
                 // Fallback: run all tests
-                let all_tests: Vec<String> = tests_index.tests.iter()
-                    .map(|t| t.nodeid.clone())
-                    .collect();
-                
+                let all_tests: Vec<String> =
+                    tests_index.tests.iter().map(|t| t.nodeid.clone()).collect();
+
                 return Ok(TestRunResult {
                     duration: start_time.elapsed(),
                     tests_run: all_tests.len(),
@@ -373,7 +395,10 @@ impl WatchSession {
                     changed_files: changed_file_strs,
                     selected_tests: all_tests,
                     was_broadened: true,
-                    broaden_reason: Some(format!("Impact analysis failed, running all tests: {}", e)),
+                    broaden_reason: Some(format!(
+                        "Impact analysis failed, running all tests: {}",
+                        e
+                    )),
                 });
             }
         };
@@ -415,11 +440,11 @@ impl WatchSession {
     fn print_run_summary(&self, result: &TestRunResult) {
         let status_icon = if result.exit_code == 0 { "✅" } else { "❌" };
         let duration_ms = result.duration.as_millis();
-        
-        println!("{} {} tests completed in {}ms", 
-            status_icon, 
-            result.tests_run, 
-            duration_ms);
+
+        println!(
+            "{} {} tests completed in {}ms",
+            status_icon, result.tests_run, duration_ms
+        );
 
         if result.was_broadened {
             if let Some(reason) = &result.broaden_reason {
@@ -460,7 +485,7 @@ impl FileChangeDebouncer {
         if self.first_change_time.is_none() {
             self.first_change_time = Some(change.timestamp);
         }
-        
+
         // Remove any previous change for the same file
         self.changes.retain(|existing| existing.path != change.path);
         self.changes.push(change);
@@ -473,18 +498,20 @@ impl FileChangeDebouncer {
 
         let now = Instant::now();
         let first_change = self.first_change_time?;
-        
+
         // Find the most recent change
-        let last_change_time = self.changes.iter()
-            .map(|change| change.timestamp)
-            .max()?;
+        let last_change_time = self.changes.iter().map(|change| change.timestamp).max()?;
 
         let time_since_last = now.duration_since(last_change_time);
         let time_since_first = now.duration_since(first_change);
 
         // Trigger if debounce period has passed or max wait time exceeded
         if time_since_last >= self.debounce_delay || time_since_first >= self.max_wait_time {
-            let files = self.changes.iter().map(|change| change.path.clone()).collect();
+            let files = self
+                .changes
+                .iter()
+                .map(|change| change.path.clone())
+                .collect();
             self.reset();
             Some(files)
         } else {
@@ -536,7 +563,10 @@ impl WatchTui {
     }
 
     fn show_run_starting(&mut self, changed_files: &[PathBuf]) -> Result<()> {
-        print!("\r🔄 Running tests for {} changed file(s)... ", changed_files.len());
+        print!(
+            "\r🔄 Running tests for {} changed file(s)... ",
+            changed_files.len()
+        );
         std::io::Write::flush(&mut std::io::stdout())?;
         Ok(())
     }
@@ -544,13 +574,16 @@ impl WatchTui {
     fn show_run_completed(&mut self, result: &TestRunResult) -> Result<()> {
         let status_icon = if result.exit_code == 0 { "✅" } else { "❌" };
         let duration_ms = result.duration.as_millis();
-        
-        println!("\r{} {} tests in {}ms", status_icon, result.tests_run, duration_ms);
-        
+
+        println!(
+            "\r{} {} tests in {}ms",
+            status_icon, result.tests_run, duration_ms
+        );
+
         if result.was_broadened {
             println!("⚠️  Selection broadened");
         }
-        
+
         println!("👀 Watching for changes...");
         Ok(())
     }
@@ -580,20 +613,20 @@ fn glob_match(pattern: &str, text: &str) -> bool {
     if pattern == text {
         return true;
     }
-    
+
     // Handle patterns with * wildcard
     if pattern.contains('*') {
-        if pattern.starts_with('*') && pattern.ends_with('*') {
+        if let Some(middle) = pattern
+            .strip_prefix('*')
+            .and_then(|rest| rest.strip_suffix('*'))
+        {
             // *substring* pattern
-            let middle = &pattern[1..pattern.len() - 1];
             text.contains(middle)
-        } else if pattern.starts_with('*') {
+        } else if let Some(suffix) = pattern.strip_prefix('*') {
             // *suffix pattern
-            let suffix = &pattern[1..];
             text.ends_with(suffix)
-        } else if pattern.ends_with('*') {
+        } else if let Some(prefix) = pattern.strip_suffix('*') {
             // prefix* pattern
-            let prefix = &pattern[..pattern.len() - 1];
             text.starts_with(prefix)
         } else {
             // More complex pattern - for now, just do simple contains check
@@ -617,10 +650,8 @@ mod tests {
 
     #[test]
     fn test_debouncer() {
-        let mut debouncer = FileChangeDebouncer::new(
-            Duration::from_millis(100),
-            Duration::from_millis(500)
-        );
+        let mut debouncer =
+            FileChangeDebouncer::new(Duration::from_millis(100), Duration::from_millis(500));
 
         // Add a change
         let path = PathBuf::from("test.py");
