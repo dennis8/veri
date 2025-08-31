@@ -247,7 +247,7 @@ impl TelemetryClient {
     }
 
     /// Send telemetry data (if enabled and endpoint configured)
-    pub async fn send_telemetry(&self) -> Result<()> {
+    pub fn send_telemetry(&self) -> Result<()> {
         if !self.enabled {
             return Ok(());
         }
@@ -260,20 +260,17 @@ impl TelemetryClient {
             }
         };
 
-        // Check if network is disabled
         if env::var("VERI_NO_NETWORK").is_ok() {
             debug!("Network disabled, skipping telemetry send");
             return Ok(());
         }
 
-        // In a real implementation, this would send to the endpoint
-        // For now, we'll just log what would be sent
-        debug!(
-            "Would send telemetry to {}: {} runs, {} features used",
-            endpoint,
-            self.metrics.runs_total,
-            self.metrics.features_used.len()
-        );
+        let client = reqwest::blocking::Client::new();
+        let resp = client.post(endpoint).json(&self.metrics).send();
+
+        if let Err(e) = resp {
+            debug!("Telemetry send failed: {}", e);
+        }
 
         Ok(())
     }

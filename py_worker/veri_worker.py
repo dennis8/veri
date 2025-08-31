@@ -5,18 +5,18 @@ Handles test collection/execution via pytest integration and import analysis
 
 import argparse
 import ast
+import io
 import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-import io
 
 import pytest
 from _pytest.nodes import Item
 
 try:
-    import coverage
+    import coverage  # type: ignore[import-not-found]
 
     COVERAGE_AVAILABLE = True
 except ImportError:
@@ -30,45 +30,15 @@ class VeriASTParser:
         self.work_dir = work_dir
         self.module_map = module_map
         self.builtin_modules = set(sys.builtin_module_names)
-        # Add common standard library modules
-        self.stdlib_modules = self.builtin_modules | {
-            "os",
-            "sys",
-            "math",
-            "time",
-            "datetime",
-            "json",
-            "urllib",
-            "http",
-            "threading",
-            "multiprocessing",
-            "subprocess",
-            "pathlib",
-            "shutil",
-            "typing",
-            "collections",
-            "itertools",
-            "functools",
-            "operator",
-            "logging",
-            "re",
-            "ast",
-            "inspect",
-            "importlib",
-            "pkgutil",
-            "unittest",
-            "pytest",
-            "argparse",
-            "configparser",
-            "sqlite3",
-            "email",
-            "xml",
-            "html",
-            "csv",
-            "gzip",
-            "zipfile",
-            "tarfile",
-        }
+        try:
+            self.stdlib_modules = self.builtin_modules | set(sys.stdlib_module_names)
+        except Exception:
+            import pkgutil
+            import sysconfig
+
+            std_path = sysconfig.get_paths().get("stdlib", "")
+            found = {m.name for m in pkgutil.iter_modules([std_path])}
+            self.stdlib_modules = self.builtin_modules | found
 
     def parse_imports_from_files(self) -> dict[str, Any]:
         """
@@ -560,18 +530,20 @@ class VeriExecutor:
             def __init__(self, sink: list[dict[str, Any]]):
                 self.sink = sink
 
-            def pytest_runtest_logreport(self, report: Any) -> None:  # type: ignore[override]
+            def pytest_runtest_logreport(self, report: Any) -> None:
                 if getattr(report, "when", "call") == "call":
                     nodeid = getattr(report, "nodeid", "")
                     outcome = getattr(report, "outcome", "")
                     duration = int(getattr(report, "duration", 0.0) * 1000)
-                    self.sink.append({
-                        "nodeid": nodeid,
-                        "outcome": outcome,
-                        "duration_ms": duration,
-                    })
+                    self.sink.append(
+                        {
+                            "nodeid": nodeid,
+                            "outcome": outcome,
+                            "duration_ms": duration,
+                        }
+                    )
 
-        self.last_per_test = []
+        self.last_per_test: list[dict[str, Any]] = []
         plugin = ExecPlugin(self.last_per_test)
 
         # Run pytest from the correct working directory
@@ -583,8 +555,9 @@ class VeriExecutor:
             # Capture stdout/stderr if requested (for worker mode)
             capture_output = bool(kwargs.get("_capture_output", False))
             if capture_output:
-                from contextlib import redirect_stdout, redirect_stderr
                 import io as _io
+                from contextlib import redirect_stderr, redirect_stdout
+
                 out_buf, err_buf = _io.StringIO(), _io.StringIO()
                 with redirect_stdout(out_buf), redirect_stderr(err_buf):
                     exit_code = pytest.main(args, plugins=[plugin])
@@ -620,6 +593,7 @@ class VeriExecutor:
 
             # Use per-worker coverage data file if VERI_WORKER_ID is provided
             import os as _os
+
             worker_id = _os.environ.get("VERI_WORKER_ID")
             data_file = (
                 self.work_dir
@@ -725,7 +699,7 @@ def run_worker_mode(args: Any) -> int:
 
     Reads JSON commands from stdin and writes JSON responses to stdout.
     """
-    import os
+
     stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", newline="\n")
     stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n")
 
@@ -768,7 +742,10 @@ def run_worker_mode(args: Any) -> int:
 
                 # Map JSON options to executor args
                 start = datetime.now(UTC)
-                print(f"[worker {getattr(args, 'worker_id', 0)}] ExecuteTests {batch_id}: {len(nodeids)} nodeids", file=sys.stderr)
+                print(
+                    f"[worker {getattr(args, 'worker_id', 0)}] ExecuteTests {batch_id}: {len(nodeids)} nodeids",
+                    file=sys.stderr,
+                )
                 exit_code = executor.run_tests(
                     nodeids,
                     verbose=bool(options.get("verbose", False)),
@@ -776,17 +753,24 @@ def run_worker_mode(args: Any) -> int:
                     no_capture=bool(options.get("no_capture", False)),
                     exitfirst=bool(options.get("exitfirst", False)),
                     maxfail=options.get("maxfail"),
-                    junit_xml=Path(options["junit_xml"]) if options.get("junit_xml") else None,
+                    junit_xml=Path(options["junit_xml"])
+                    if options.get("junit_xml")
+                    else None,
                     workers=str(options.get("workers", "1")),
                     coverage=bool(options.get("coverage", False)),
                     coverage_xml=bool(options.get("coverage_xml", False)),
                     coverage_html=bool(options.get("coverage_html", False)),
-                    coverage_source_dirs=list(options.get("coverage_source_dirs", ["src"])),
+                    coverage_source_dirs=list(
+                        options.get("coverage_source_dirs", ["src"])
+                    ),
                     coverage_omit=list(options.get("coverage_omit", [])),
                     _capture_output=True,
                 )
                 dur_ms = int((datetime.now(UTC) - start).total_seconds() * 1000)
-                print(f"[worker {getattr(args, 'worker_id', 0)}] Completed {batch_id} in {dur_ms}ms (exit {exit_code})", file=sys.stderr)
+                print(
+                    f"[worker {getattr(args, 'worker_id', 0)}] Completed {batch_id} in {dur_ms}ms (exit {exit_code})",
+                    file=sys.stderr,
+                )
 
                 # For now stdout/stderr are not captured live; provide empty strings
                 send(
@@ -802,7 +786,13 @@ def run_worker_mode(args: Any) -> int:
                     }
                 )
             else:
-                send({"t": "Error", "kind": "UnknownMessage", "message": f"Unknown t={t}"})
+                send(
+                    {
+                        "t": "Error",
+                        "kind": "UnknownMessage",
+                        "message": f"Unknown t={t}",
+                    }
+                )
         except Exception as e:  # pragma: no cover - defensive
             send({"t": "Error", "kind": "Exception", "message": str(e)})
 
@@ -818,7 +808,9 @@ def main() -> int:
         action="store_true",
         help="Start in long-lived worker mode (JSONL protocol)",
     )
-    parser.add_argument("--worker-id", type=int, default=0, help="Worker id in worker mode")
+    parser.add_argument(
+        "--worker-id", type=int, default=0, help="Worker id in worker mode"
+    )
     parser.add_argument(
         "command",
         nargs="?",

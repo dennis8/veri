@@ -356,9 +356,11 @@ fn run_veri_engine(
 
     // Check if we need to collect tests (first run or --all)
     let needs_collection = cli.all || !worker.has_valid_cache();
+    let mut collection_time_ms = 0u64;
 
     if needs_collection {
         println!("📋 Collecting tests...");
+        let start_collect = std::time::Instant::now();
 
         // Determine paths to collect
         let collection_paths = if !cli.paths.is_empty() {
@@ -369,6 +371,7 @@ fn run_veri_engine(
 
         // Collect tests
         let tests_index = worker.collect_tests(&collection_paths)?;
+        collection_time_ms = start_collect.elapsed().as_millis() as u64;
 
         // Check for collection errors
         worker.check_collection_errors(&tests_index, &mut diagnostics);
@@ -443,11 +446,7 @@ fn run_veri_engine(
     // Fallback: if nothing selected but tests exist, run all tests
     if nodeids_to_run.is_empty() && !tests_index.tests.is_empty() {
         println!("ℹ️  No impacted tests detected; defaulting to run all tests");
-        nodeids_to_run = tests_index
-            .tests
-            .iter()
-            .map(|t| t.nodeid.clone())
-            .collect();
+        nodeids_to_run = tests_index.tests.iter().map(|t| t.nodeid.clone()).collect();
     }
 
     if nodeids_to_run.is_empty() {
@@ -554,12 +553,12 @@ fn run_veri_engine(
     let run_event = RunEvent {
         test_count: nodeids_to_run.len() as u32,
         worker_count: worker_count as u32,
-        collection_time_ms: 0, // TODO: Measure collection time separately
+        collection_time_ms,
         execution_time_ms: execution_duration.as_millis() as u64,
         coverage_enabled: cli.cov || cli.cov_merge_full,
         watch_mode: cli.watch,
         ci_mode: cli.ci,
-        python_version: worker.get_pytest_plugins().ok().map(|_| "3.12".to_string()), // TODO: Get actual Python version
+        python_version: worker.get_python_version().ok(),
         features_used: {
             let mut features = Vec::new();
             if cli.cov || cli.cov_merge_full {
@@ -579,6 +578,7 @@ fn run_veri_engine(
     };
 
     telemetry_client.record_run(run_event);
+    telemetry_client.send_telemetry()?;
 
     // Record telemetry based on test result
     if test_result.is_err() {
@@ -612,7 +612,7 @@ fn run_watch_mode(
     _config: &Config,
     work_dir: &std::path::Path,
     cache_dir: &std::path::Path,
-    _telemetry_client: &mut TelemetryClient,
+    telemetry_client: &mut TelemetryClient,
 ) -> Result<ExitCode> {
     println!("👀 Starting watch mode...");
 
@@ -722,6 +722,7 @@ fn run_watch_mode(
 
     // Run watch loop
     watch_session.run(run_options)?;
+    telemetry_client.send_telemetry()?;
 
     Ok(ExitCode::Success)
 }
@@ -1083,8 +1084,10 @@ fn execute_tests_parallel(
         // Update aggregated_timings incrementally
         for r in &results {
             for t in &r.per_test {
-                let entry = timings.aggregated_timings.entry(t.nodeid.clone()).or_insert(
-                    veri_core::schemas::AggregatedTiming {
+                let entry = timings
+                    .aggregated_timings
+                    .entry(t.nodeid.clone())
+                    .or_insert(veri_core::schemas::AggregatedTiming {
                         nodeid: t.nodeid.clone(),
                         run_count: 0,
                         avg_duration: 0.0,
@@ -1094,8 +1097,7 @@ fn execute_tests_parallel(
                         p95_duration: 0.0,
                         last_duration: 0.0,
                         stability: 1.0,
-                    },
-                );
+                    });
                 let d = (t.duration_ms as f64) / 1000.0;
                 entry.run_count += 1;
                 // Incremental average

@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
+use walkdir::WalkDir;
 
 /// Cache key components for deterministic caching
 #[derive(Debug, Clone)]
@@ -94,8 +96,14 @@ impl CacheKey {
 
     /// Get Python version from current interpreter
     fn get_python_version() -> Result<String> {
-        // For now, return a placeholder - in Phase 3 we'll get this from the Python worker
-        Ok("3.11.0".to_string())
+        let output = Command::new("python")
+            .args(["-c", "import platform; print(platform.python_version())"])
+            .output()
+            .context("Failed to get python version")?;
+        if !output.status.success() {
+            return Err(anyhow::anyhow!("python --version failed"));
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     }
 
     /// Get platform identifier
@@ -117,20 +125,64 @@ impl CacheKey {
 
     /// Get site-packages digest
     fn get_site_packages_digest() -> Result<Option<String>> {
-        // For now, return None - in Phase 3 we'll implement proper site-packages scanning
-        Ok(None)
+        let output = Command::new("python")
+            .args([
+                "-c",
+                "import sysconfig; print(sysconfig.get_paths()['purelib'])",
+            ])
+            .output()
+            .context("Failed to locate site-packages")?;
+        if !output.status.success() {
+            return Ok(None);
+        }
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if path.is_empty() {
+            return Ok(None);
+        }
+        let mut hasher = Sha256::new();
+        for entry in WalkDir::new(&path).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() {
+                hasher.update(entry.path().to_string_lossy().as_bytes());
+            }
+        }
+        Ok(Some(format!("{:x}", hasher.finalize())))
     }
 
     /// Get pytest version from current environment
     fn get_pytest_version() -> Result<String> {
-        // For now, return a placeholder - in Phase 3 we'll get this from the Python worker
-        Ok("7.4.0".to_string())
+        let output = Command::new("python")
+            .args(["-m", "pytest", "--version"])
+            .output()
+            .context("Failed to get pytest version")?;
+        if !output.status.success() {
+            return Err(anyhow::anyhow!("pytest --version failed"));
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let version = stdout.split_whitespace().nth(1).unwrap_or("unknown");
+        Ok(version.to_string())
     }
 
     /// Get list of installed pytest plugins
     fn get_pytest_plugins() -> Result<Vec<String>> {
-        // For now, return empty list - in Phase 3 we'll scan for actual plugins
-        Ok(Vec::new())
+        let script = r#"
+import pkg_resources, json
+plugins = []
+for entry_point in pkg_resources.iter_entry_points('pytest11'):
+    dist = entry_point.dist
+    plugins.append(f"{dist.project_name}=={dist.version}")
+print(json.dumps(sorted(set(plugins))))
+"#;
+        let output = Command::new("python")
+            .args(["-c", script])
+            .output()
+            .context("Failed to get pytest plugins")?;
+        if !output.status.success() {
+            return Err(anyhow::anyhow!("plugin query failed"));
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let plugins: Vec<String> =
+            serde_json::from_str(&stdout).context("Failed to parse plugin list")?;
+        Ok(plugins)
     }
 
     /// Get digests of all conftest.py files

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use log::{debug, info, warn};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
@@ -87,6 +88,7 @@ pub struct WatchSession {
     event_receiver: Option<Receiver<notify::Result<Event>>>,
     gitignore: Option<ignore::gitignore::Gitignore>,
     tui: Option<WatchTui>,
+    ignore_globs: GlobSet,
 }
 
 impl WatchSession {
@@ -103,6 +105,14 @@ impl WatchSession {
             None
         };
 
+        let mut glob_builder = GlobSetBuilder::new();
+        for pattern in &config.ignore_patterns {
+            if let Ok(glob) = Glob::new(pattern) {
+                glob_builder.add(glob);
+            }
+        }
+        let ignore_globs = glob_builder.build().context("invalid glob pattern")?;
+
         Ok(Self {
             config,
             work_dir,
@@ -111,6 +121,7 @@ impl WatchSession {
             event_receiver: None,
             gitignore,
             tui,
+            ignore_globs,
         })
     }
 
@@ -296,10 +307,8 @@ impl WatchSession {
 
         // Check ignore patterns
         let path_str = relative_path.to_string_lossy();
-        for pattern in &self.config.ignore_patterns {
-            if glob_match(pattern, &path_str) {
-                return false;
-            }
+        if self.ignore_globs.is_match(path_str.as_ref()) {
+            return false;
         }
 
         // Check gitignore
@@ -540,12 +549,12 @@ pub struct TestRunResult {
 /// Simple TUI for watch mode
 #[derive(Debug)]
 struct WatchTui {
-    // Placeholder - will be expanded later
+    run_count: u32,
 }
 
 impl WatchTui {
     fn new() -> Result<Self> {
-        Ok(Self {})
+        Ok(Self { run_count: 0 })
     }
 
     fn start(&mut self) -> Result<()> {
@@ -575,9 +584,10 @@ impl WatchTui {
         let status_icon = if result.exit_code == 0 { "✅" } else { "❌" };
         let duration_ms = result.duration.as_millis();
 
+        self.run_count += 1;
         println!(
-            "\r{} {} tests in {}ms",
-            status_icon, result.tests_run, duration_ms
+            "\r{} {} tests in {}ms (run #{})",
+            status_icon, result.tests_run, duration_ms, self.run_count
         );
 
         if result.was_broadened {
@@ -595,7 +605,7 @@ impl WatchTui {
     }
 
     fn update(&mut self) -> Result<()> {
-        // Placeholder for TUI updates
+        // No dynamic updates yet
         Ok(())
     }
 }
@@ -604,42 +614,6 @@ impl Drop for WatchTui {
     fn drop(&mut self) {
         // Restore terminal state
         let _ = crossterm::terminal::disable_raw_mode();
-    }
-}
-
-/// Simple glob pattern matching
-fn glob_match(pattern: &str, text: &str) -> bool {
-    // Handle exact match first
-    if pattern == text {
-        return true;
-    }
-
-    // Handle patterns with * wildcard
-    if pattern.contains('*') {
-        if let Some(middle) = pattern
-            .strip_prefix('*')
-            .and_then(|rest| rest.strip_suffix('*'))
-        {
-            // *substring* pattern
-            text.contains(middle)
-        } else if let Some(suffix) = pattern.strip_prefix('*') {
-            // *suffix pattern
-            text.ends_with(suffix)
-        } else if let Some(prefix) = pattern.strip_suffix('*') {
-            // prefix* pattern
-            text.starts_with(prefix)
-        } else {
-            // More complex pattern - for now, just do simple contains check
-            let parts: Vec<&str> = pattern.split('*').collect();
-            if parts.len() == 2 {
-                text.starts_with(parts[0]) && text.ends_with(parts[1])
-            } else {
-                false // More complex patterns not supported yet
-            }
-        }
-    } else {
-        // No wildcards, must be exact match
-        pattern == text
     }
 }
 
@@ -676,11 +650,11 @@ mod tests {
     }
 
     #[test]
-    fn test_glob_match() {
-        assert!(glob_match("*.py", "test.py"));
-        assert!(glob_match("*.py", ".py"));
-        assert!(!glob_match("*.py", "test.txt"));
-        assert!(glob_match("test.py", "test.py"));
-        assert!(!glob_match("test.py", "other.py"));
+    fn test_glob_patterns() {
+        let mut builder = GlobSetBuilder::new();
+        builder.add(Glob::new("*.py").unwrap());
+        let set = builder.build().unwrap();
+        assert!(set.is_match("test.py"));
+        assert!(!set.is_match("test.txt"));
     }
 }

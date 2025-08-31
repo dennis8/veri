@@ -99,6 +99,19 @@ impl PythonWorker {
         self
     }
 
+    /// Get Python interpreter version
+    pub fn get_python_version(&self) -> Result<String> {
+        let output = self.run_python_command(&[
+            "-c".to_string(),
+            "import platform; print(platform.python_version())".to_string(),
+        ])?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!("Failed to get Python version: {}", stderr));
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+
     /// Collect tests using pytest and generate indexes
     pub fn collect_tests(&self, paths: &[String]) -> Result<TestsIndex> {
         // Ensure cache directory exists
@@ -297,48 +310,16 @@ impl PythonWorker {
     /// Get list of installed pytest plugins
     pub fn get_pytest_plugins(&self) -> Result<Vec<String>> {
         // Run Python to get installed pytest plugins
-        let output = Command::new("python")
-            .args([
-                "-c",
-                r#"
+        let script = r#"
 import pkg_resources
 import json
-import sys
-
-try:
-    # Get all installed packages
-    installed_packages = [d.project_name for d in pkg_resources.working_set]
-    
-    # Filter for pytest plugins (packages that start with 'pytest-' or are pytest itself)
-    plugins = [pkg for pkg in installed_packages if pkg.startswith('pytest') or 'pytest' in pkg.lower()]
-    
-    # Also check for setuptools entry points for pytest plugins
-    try:
-        for entry_point in pkg_resources.iter_entry_points('pytest11'):
-            plugin_name = entry_point.dist.project_name
-            if plugin_name not in plugins:
-                plugins.append(plugin_name)
-    except:
-        pass
-    
-    # Get version information for each plugin
-    plugin_info = []
-    for plugin in plugins:
-        try:
-            dist = pkg_resources.get_distribution(plugin)
-            plugin_info.append(f"{dist.project_name}=={dist.version}")
-        except:
-            plugin_info.append(plugin)
-    
-    print(json.dumps(plugin_info))
-except Exception as e:
-    print(json.dumps([]), file=sys.stderr)
-    print(f"Error getting plugins: {e}", file=sys.stderr)
-"#,
-            ])
-            .current_dir(&self.work_dir)
-            .output()
-            .context("Failed to run Python to get pytest plugins")?;
+plugins = []
+for entry_point in pkg_resources.iter_entry_points('pytest11'):
+    dist = entry_point.dist
+    plugins.append(f"{dist.project_name}=={dist.version}")
+print(json.dumps(sorted(set(plugins))))
+"#;
+        let output = self.run_python_command(&["-c".to_string(), script.to_string()])?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -434,7 +415,10 @@ except Exception as e:
     /// Check for Python environment issues and generate diagnostics
     pub fn check_environment(&self, diagnostics: &mut DiagnosticReporter) -> Result<()> {
         // Check if Python is available
-        let python_result = Command::new("python").arg("--version").output();
+        let python_result = self.run_python_command(&[
+            "-c".to_string(),
+            "import sys; print(sys.version)".to_string(),
+        ]);
 
         match python_result {
             Ok(output) => {
@@ -452,9 +436,11 @@ except Exception as e:
                     let version_output = String::from_utf8_lossy(&output.stdout);
 
                     // Check for pytest availability
-                    let pytest_result = Command::new("python")
-                        .args(["-m", "pytest", "--version"])
-                        .output();
+                    let pytest_result = self.run_python_command(&[
+                        "-m".to_string(),
+                        "pytest".to_string(),
+                        "--version".to_string(),
+                    ]);
 
                     if let Ok(pytest_output) = pytest_result {
                         if !pytest_output.status.success() {
