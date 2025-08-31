@@ -1,0 +1,108 @@
+name: Performance Benchmarks
+
+on:
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      suites:
+        description: 'Test suites to benchmark (comma-separated)'
+        required: false
+        default: 'fastapi,pydantic'
+      scenarios:
+        description: 'Scenarios to run (comma-separated)'
+        required: false
+        default: 'cold,hot'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [fastapi, pydantic, polars, sqlalchemy]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        
+      - name: Install veri
+        run: |
+          source $HOME/.cargo/env
+          uv tool install veri
+          
+      - name: Create benchmark workspace
+        run: mkdir -p benchmark_workspace
+        
+      - name: Run benchmark for ${{ matrix.suite }}
+        run: |
+          uv run scripts/bench.py \
+            --suite ${{ matrix.suite }} \
+            --scenarios ${{ github.event.inputs.scenarios || 'cold,hot' }} \
+            --runs 3 \
+            --output-dir benchmarks/
+        continue-on-error: true
+        
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ matrix.suite }}
+          path: benchmarks/
+          retention-days: 30
+          
+      - name: Check for performance regressions
+        if: github.event_name == 'schedule'
+        run: |
+          # Download baseline from previous successful run
+          # This would be enhanced with actual baseline management
+          echo "Regression check would run here"
+          
+  report:
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Download all benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: benchmark-results-*
+          path: benchmarks/
+          merge-multiple: true
+          
+      - name: Generate summary report
+        run: |
+          uv run scripts/generate_benchmark_summary.py benchmarks/ > benchmark_summary.md
+          
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('benchmark_summary.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📊 Performance Benchmark Results\n\n${summary}`
+            });
+            
+      - name: Upload summary report
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-summary
+          path: benchmark_summary.md

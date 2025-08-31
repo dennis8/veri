@@ -53,3 +53,24 @@ setup:
 	@echo "Installing development tools..."
 	cargo install --force cargo-nextest
 	cd py_worker && uv sync --dev
+
+# Benchmark commands
+benchmark-setup:
+	@echo "Setting up benchmark repositories..."
+	uv run scripts/setup_benchmark_repos.py
+
+benchmark-quick:
+	@echo "Running quick benchmark test..."
+	uv run scripts/quick_benchmark_test.py
+
+benchmark-demo:
+	@echo "Running benchmark on demo suite..."
+	uv run scripts/bench.py --suite demo --scenarios cold,hot --runs 3
+
+benchmark-all:
+	@echo "Running full benchmark suite..."
+	uv run scripts/bench.py --all --scenarios cold,hot --runs 5
+
+benchmark-report:
+	@echo "Generating benchmark summary..."
+	uv run scripts/generate_benchmark_summary.py benchmarks/

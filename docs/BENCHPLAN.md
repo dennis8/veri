@@ -89,10 +89,10 @@ Controlled test scenarios to isolate specific performance characteristics.
 #### Software Environment
 ```bash
 # Consistent Python environment
-Python 3.11.x
-uv 0.x.x
-pytest 8.x.x
-coverage 7.x.x
+Python 3.11+
+uv (latest)
+pytest (latest)
+coverage (latest)
 
 # Clean test environment
 export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
@@ -147,10 +147,10 @@ class BenchmarkRunner:
 rm -rf .veri .pytest_cache .coverage
 
 # Pytest baseline
-time pytest -q
+time uv run pytest -q
 
 # veri measurement  
-time veri -a -q
+time uv tool run veri -a -q
 ```
 
 #### 2. Hot Impact Run (Small Change)
@@ -160,10 +160,10 @@ time veri -a -q
 echo "# comment" >> src/utils.py
 
 # Pytest (full run)
-time pytest -q
+time uv run pytest -q
 
 # veri (impact-aware)
-time veri -q
+time uv tool run veri -q
 ```
 
 #### 3. Hot Impact Run (Large Change)
@@ -173,14 +173,14 @@ time veri -q
 echo "NEW_CONSTANT = 42" >> src/core.py
 
 # Measure selection vs execution time
-time veri --explain -q
+time uv tool run veri --explain -q
 ```
 
 #### 4. Watch Mode Performance
 **Purpose**: Measure edit-to-feedback latency
 ```bash
 # Start watch mode
-veri -w &
+uv tool run veri -w &
 PID=$!
 
 # Simulate file edit
@@ -195,7 +195,7 @@ kill $PID
 **Purpose**: Measure worker efficiency across different core counts
 ```bash
 for workers in 1 2 4 8 16; do
-    time veri --workers $workers -q
+    time uv tool run veri --workers $workers -q
 done
 ```
 
@@ -203,30 +203,30 @@ done
 **Purpose**: Measure incremental vs full coverage performance
 ```bash
 # Full coverage collection
-time veri -a --cov --cov-report xml -q
+time uv tool run veri -a --cov --cov-report xml -q
 
 # Incremental coverage
 echo "# comment" >> src/utils.py
-time veri --cov --cov-report xml -q
+time uv tool run veri --cov --cov-report xml -q
 
 # Coverage combine performance
-time veri --cov-merge-full --cov-report xml -q
+time uv tool run veri --cov-merge-full --cov-report xml -q
 ```
 
 #### 7. CI Sharding Simulation
 **Purpose**: Measure CI workflow performance
 ```bash
 # Generate shards
-time veri split --ci 4 > shards.json
+time uv tool run veri split --ci 4 > shards.json
 
 # Run each shard (simulating parallel CI)
 for shard in 0 1 2 3; do
-    time veri shard --ci $shard --junit-xml junit-$shard.xml -q &
+    time uv tool run veri shard --ci $shard --junit-xml junit-$shard.xml -q &
 done
 wait
 
 # Combine results
-time veri --cov-merge-full --cov-report xml
+time uv tool run veri --cov-merge-full --cov-report xml
 ```
 
 ## Performance Targets
@@ -290,19 +290,19 @@ def run_benchmark_suite(suite_name: str, repo_path: Path):
     
     # Cold run benchmarks
     results['cold_pytest'] = runner.benchmark_scenario(
-        'pytest_cold', ['pytest', '-q']
+        'pytest_cold', ['uv', 'run', 'pytest', '-q']
     )
     results['cold_veri'] = runner.benchmark_scenario(
-        'veri_cold', ['veri', '-a', '-q']
+        'veri_cold', ['uv', 'tool', 'run', 'veri', '-a', '-q']
     )
     
     # Hot impact benchmarks
     runner.make_small_change()
     results['hot_pytest'] = runner.benchmark_scenario(
-        'pytest_hot', ['pytest', '-q']
+        'pytest_hot', ['uv', 'run', 'pytest', '-q']
     )
     results['hot_veri'] = runner.benchmark_scenario(
-        'veri_hot', ['veri', '-q']
+        'veri_hot', ['uv', 'tool', 'run', 'veri', '-q']
     )
     
     # Generate report
