@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Coverage map data keyed by file digest
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -272,21 +273,103 @@ impl CoverageCollector {
     }
 
     fn read_coverage_data(&self) -> Result<serde_json::Value> {
-        // Read from coverage.py's JSON report
+        // Ensure coverage parallel data is combined and JSON exported
         let coverage_json = self.cache_dir.join("coverage.json");
 
         if !coverage_json.exists() {
-            // Return empty coverage if no data available
-            return Ok(serde_json::json!({
-                "files": {},
-                "totals": {}
-            }));
+            // Try to detect parallel data files
+            let mut has_parallel = false;
+            if let Ok(entries) = std::fs::read_dir(&self.cache_dir) {
+                for e in entries.flatten() {
+                    if let Some(name) = e.file_name().to_str() {
+                        if name.starts_with(".coverage.worker_") || name == ".coverage" {
+                            has_parallel = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if has_parallel {
+                // Prefer uv project in py_worker to ensure coverage available
+                let py_worker = self.find_py_worker_path();
+                let mut combine_ok = false;
+                if let Some(pyproj) = &py_worker {
+                    // uv run --project <py_worker> python -m coverage combine <cache_dir>
+                    let status = Command::new("uv")
+                        .arg("run")
+                        .arg("--project")
+                        .arg(pyproj)
+                        .arg("python")
+                        .arg("-m")
+                        .arg("coverage")
+                        .arg("combine")
+                        .arg(&self.cache_dir)
+                        .current_dir(&self.work_dir)
+                        .status();
+                    if let Ok(st) = status {
+                        combine_ok = st.success();
+                    }
+                    // Export JSON: uv run --project <py_worker> python -m coverage json -o <cache>/coverage.json
+                    if combine_ok {
+                        let _ = Command::new("uv")
+                            .arg("run")
+                            .arg("--project")
+                            .arg(pyproj)
+                            .arg("python")
+                            .arg("-m")
+                            .arg("coverage")
+                            .arg("json")
+                            .arg("-o")
+                            .arg(&coverage_json)
+                            .current_dir(&self.work_dir)
+                            .status();
+                    }
+                }
+                if !combine_ok {
+                    // Fallback to system coverage if uv unavailable
+                    let _ = Command::new("python")
+                        .args(["-m", "coverage", "combine", &self.cache_dir.to_string_lossy()])
+                        .current_dir(&self.work_dir)
+                        .status();
+                    let _ = Command::new("python")
+                        .args(["-m", "coverage", "json", "-o", &coverage_json.to_string_lossy()])
+                        .current_dir(&self.work_dir)
+                        .status();
+                }
+            }
         }
 
-        let json_content = std::fs::read_to_string(&coverage_json)
-            .context("Failed to read coverage JSON report")?;
+        if coverage_json.exists() {
+            let json_content = std::fs::read_to_string(&coverage_json)
+                .context("Failed to read coverage JSON report")?;
+            serde_json::from_str(&json_content).context("Failed to parse coverage JSON report")
+        } else {
+            // Return empty coverage if no data available
+            Ok(serde_json::json!({ "files": {}, "totals": {} }))
+        }
+    }
 
-        serde_json::from_str(&json_content).context("Failed to parse coverage JSON report")
+    fn find_py_worker_path(&self) -> Option<PathBuf> {
+        // Try work_dir/py_worker, then ascend
+        let mut cur = self.work_dir.clone();
+        for _ in 0..5 {
+            let cand = cur.join("py_worker");
+            if cand.exists() {
+                return Some(cand);
+            }
+            if !cur.pop() {
+                break;
+            }
+        }
+        // Try crate-relative ../../py_worker
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        if let Some(c) = manifest_dir.parent().and_then(|p| p.parent()).map(|p| p.join("py_worker")) {
+            if c.exists() {
+                return Some(c);
+            }
+        }
+        None
     }
 
     fn convert_to_coverage_map(&self, coverage_data: serde_json::Value) -> Result<CoverageMap> {
@@ -500,18 +583,37 @@ impl CoverageCollector {
     }
 
     fn generate_html_report(&self, _coverage_map: &CoverageMap) -> Result<()> {
-        // HTML report generation would be implemented here
-        // For now, just create a placeholder
+        // Use coverage.py to generate HTML if available
         let html_dir = self.config.output_dir.join("htmlcov");
         std::fs::create_dir_all(&html_dir)?;
 
-        let index_path = html_dir.join("index.html");
-        std::fs::write(&index_path, "<html><body><h1>Coverage Report</h1><p>HTML report generation not yet implemented</p></body></html>")?;
+        if let Some(pyproj) = self.find_py_worker_path() {
+            let status = Command::new("uv")
+                .arg("run")
+                .arg("--project")
+                .arg(pyproj)
+                .arg("python")
+                .arg("-m")
+                .arg("coverage")
+                .arg("html")
+                .arg("-d")
+                .arg(&html_dir)
+                .current_dir(&self.work_dir)
+                .status();
+            if let Ok(st) = status {
+                if st.success() {
+                    info!("Generated HTML coverage report at {}", html_dir.display());
+                    return Ok(());
+                }
+            }
+        }
 
-        debug!(
-            "Generated placeholder HTML coverage report at {}",
-            html_dir.display()
-        );
+        // Fallback to system coverage
+        let _ = Command::new("python")
+            .args(["-m", "coverage", "html", "-d", &html_dir.to_string_lossy()])
+            .current_dir(&self.work_dir)
+            .status();
+        info!("Generated HTML coverage report at {}", html_dir.display());
         Ok(())
     }
 

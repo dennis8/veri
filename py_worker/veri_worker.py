@@ -10,6 +10,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+import io
 
 import pytest
 from _pytest.nodes import Item
@@ -554,13 +555,43 @@ class VeriExecutor:
             if workers != "1":
                 args.extend(["-n", str(workers)])
 
+        # Hook plugin to capture per-test durations/outcomes
+        class ExecPlugin:
+            def __init__(self, sink: list[dict[str, Any]]):
+                self.sink = sink
+
+            def pytest_runtest_logreport(self, report: Any) -> None:  # type: ignore[override]
+                if getattr(report, "when", "call") == "call":
+                    nodeid = getattr(report, "nodeid", "")
+                    outcome = getattr(report, "outcome", "")
+                    duration = int(getattr(report, "duration", 0.0) * 1000)
+                    self.sink.append({
+                        "nodeid": nodeid,
+                        "outcome": outcome,
+                        "duration_ms": duration,
+                    })
+
+        self.last_per_test = []
+        plugin = ExecPlugin(self.last_per_test)
+
         # Run pytest from the correct working directory
         import os
 
         original_cwd = os.getcwd()
         try:
             os.chdir(self.work_dir)
-            exit_code = pytest.main(args)
+            # Capture stdout/stderr if requested (for worker mode)
+            capture_output = bool(kwargs.get("_capture_output", False))
+            if capture_output:
+                from contextlib import redirect_stdout, redirect_stderr
+                import io as _io
+                out_buf, err_buf = _io.StringIO(), _io.StringIO()
+                with redirect_stdout(out_buf), redirect_stderr(err_buf):
+                    exit_code = pytest.main(args, plugins=[plugin])
+                self.last_stdout = out_buf.getvalue()
+                self.last_stderr = err_buf.getvalue()
+            else:
+                exit_code = pytest.main(args, plugins=[plugin])
 
             # Stop coverage and save data
             if kwargs.get("coverage") and COVERAGE_AVAILABLE and self.coverage_instance:
@@ -587,11 +618,21 @@ class VeriExecutor:
                 ["*/tests/*", "*/test_*", "*/__pycache__/*", "*/venv/*", "*/.venv/*"],
             )
 
+            # Use per-worker coverage data file if VERI_WORKER_ID is provided
+            import os as _os
+            worker_id = _os.environ.get("VERI_WORKER_ID")
+            data_file = (
+                self.work_dir
+                / ".veri"
+                / "cache"
+                / (f".coverage.worker_{worker_id}" if worker_id else ".coverage")
+            )
+
             self.coverage_instance = coverage.Coverage(
                 source=source_dirs,
                 omit=omit_patterns,
                 branch=True,
-                data_file=str(self.work_dir / ".veri" / "cache" / ".coverage"),
+                data_file=str(data_file),
             )
 
         # Start coverage measurement
@@ -614,9 +655,10 @@ class VeriExecutor:
         json_report_path = cache_dir / "coverage.json"
 
         try:
-            # Generate JSON report
-            with open(json_report_path, "w") as json_file:
-                self.coverage_instance.json_report(outfile=json_file, pretty_print=True)
+            # Generate JSON report (coverage.json_report expects a file path)
+            self.coverage_instance.json_report(
+                outfile=str(json_report_path), pretty_print=True
+            )
 
             print(f"Coverage data saved to {json_report_path}")
 
@@ -678,12 +720,108 @@ class VeriExecutor:
             os.chdir(original_cwd)
 
 
+def run_worker_mode(args: Any) -> int:
+    """Long‑lived worker JSONL protocol loop.
+
+    Reads JSON commands from stdin and writes JSON responses to stdout.
+    """
+    import os
+    stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", newline="\n")
+    stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n")
+
+    def send(obj: dict[str, Any]) -> None:
+        stdout.write(json.dumps(obj, ensure_ascii=False) + "\n")
+        stdout.flush()
+
+    # Send HelloOk immediately (Rust may or may not send Hello first)
+    send(
+        {
+            "t": "HelloOk",
+            "worker_id": int(getattr(args, "worker_id", 0) or 0),
+            "py_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "pytest_version": getattr(pytest, "__version__", "unknown"),
+        }
+    )
+
+    executor = VeriExecutor(args.work_dir)
+
+    while True:
+        line = stdin.readline()
+        if line == "":
+            # stdin closed
+            break
+        line = line.strip()
+        if not line:
+            continue
+
+        try:
+            msg = json.loads(line)
+            t = msg.get("t")
+            if t == "HealthCheck":
+                send({"t": "HealthOk", "ts": datetime.now(UTC).isoformat() + "Z"})
+            elif t == "Shutdown":
+                break
+            elif t == "ExecuteTests":
+                batch_id = msg.get("batch_id", "batch")
+                nodeids = msg.get("nodeids", [])
+                options = msg.get("options", {})
+
+                # Map JSON options to executor args
+                start = datetime.now(UTC)
+                print(f"[worker {getattr(args, 'worker_id', 0)}] ExecuteTests {batch_id}: {len(nodeids)} nodeids", file=sys.stderr)
+                exit_code = executor.run_tests(
+                    nodeids,
+                    verbose=bool(options.get("verbose", False)),
+                    quiet=bool(options.get("quiet", False)),
+                    no_capture=bool(options.get("no_capture", False)),
+                    exitfirst=bool(options.get("exitfirst", False)),
+                    maxfail=options.get("maxfail"),
+                    junit_xml=Path(options["junit_xml"]) if options.get("junit_xml") else None,
+                    workers=str(options.get("workers", "1")),
+                    coverage=bool(options.get("coverage", False)),
+                    coverage_xml=bool(options.get("coverage_xml", False)),
+                    coverage_html=bool(options.get("coverage_html", False)),
+                    coverage_source_dirs=list(options.get("coverage_source_dirs", ["src"])),
+                    coverage_omit=list(options.get("coverage_omit", [])),
+                    _capture_output=True,
+                )
+                dur_ms = int((datetime.now(UTC) - start).total_seconds() * 1000)
+                print(f"[worker {getattr(args, 'worker_id', 0)}] Completed {batch_id} in {dur_ms}ms (exit {exit_code})", file=sys.stderr)
+
+                # For now stdout/stderr are not captured live; provide empty strings
+                send(
+                    {
+                        "t": "TestResults",
+                        "batch_id": batch_id,
+                        "exit_code": int(exit_code),
+                        "stdout": executor.last_stdout or "",
+                        "stderr": executor.last_stderr or "",
+                        "duration_ms": dur_ms,
+                        "nodeids": nodeids,
+                        "per_test": executor.last_per_test,
+                    }
+                )
+            else:
+                send({"t": "Error", "kind": "UnknownMessage", "message": f"Unknown t={t}"})
+        except Exception as e:  # pragma: no cover - defensive
+            send({"t": "Error", "kind": "Exception", "message": str(e)})
+
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="veri Python worker - pytest compatibility shim and AST parser"
     )
     parser.add_argument(
+        "--worker-mode",
+        action="store_true",
+        help="Start in long-lived worker mode (JSONL protocol)",
+    )
+    parser.add_argument("--worker-id", type=int, default=0, help="Worker id in worker mode")
+    parser.add_argument(
         "command",
+        nargs="?",
         choices=["collect", "run", "pytest-engine", "parse-imports"],
         help="Command to execute",
     )
@@ -750,6 +888,9 @@ def main() -> int:
     )
 
     args = parser.parse_args()
+
+    if args.worker_mode:
+        return run_worker_mode(args)
 
     try:
         if args.command == "collect":

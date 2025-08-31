@@ -310,23 +310,27 @@ fn run_veri_engine(
                 let validation_result = security_config.validate_plugins(&plugins);
 
                 if validation_result.has_blocked_plugins() {
-                    // Add security diagnostic
-                    diagnostics.add(VeriDiagnostic::PluginIncompatible {
-                        plugin_name: validation_result.blocked.join(", "),
-                        version: "unknown".to_string(),
-                        reason: "Plugin not in allowlist".to_string(),
-                        fallback_suggested: true,
-                    });
-
-                    if let Some(warning) = validation_result.get_warning_message() {
-                        eprintln!("{}", warning);
-                    }
-
-                    // Exit early if we have blocked plugins and no override
                     if !cli.disable_allowlist {
+                        // Add diagnostic and exit when not overridden
+                        diagnostics.add(VeriDiagnostic::PluginIncompatible {
+                            plugin_name: validation_result.blocked.join(", "),
+                            version: "unknown".to_string(),
+                            reason: "Plugin not in allowlist".to_string(),
+                            fallback_suggested: true,
+                        });
+
+                        if let Some(warning) = validation_result.get_warning_message() {
+                            eprintln!("{}", warning);
+                        }
+
                         println!("🚨 Blocked plugins detected. Use --disable-allowlist to override (not recommended)");
                         telemetry_client.record_error(ErrorCategory::PluginError);
                         return Ok(ExitCode::UsageError);
+                    } else {
+                        // Overridden: log a warning but do not add fatal diagnostic
+                        if let Some(warning) = validation_result.get_warning_message() {
+                            eprintln!("{}", warning);
+                        }
                     }
                 } else {
                     println!(
@@ -460,9 +464,12 @@ fn run_veri_engine(
     println!("🎯 Running {} selected tests", nodeids_to_run.len());
 
     // Parse worker count
-    // Temporarily force single-worker execution until WorkerPool is fully wired
-    let _requested_workers = parse_worker_count(&cli.workers)?;
-    let worker_count = 1usize;
+    let requested_workers = parse_worker_count(&cli.workers)?;
+    let worker_count = if std::env::var_os("VERI_EXPERIMENTAL_WORKERPOOL").is_some() {
+        requested_workers
+    } else {
+        1usize
+    };
 
     // Configure test run options
     let run_options = TestRunOptions {
@@ -537,6 +544,7 @@ fn run_veri_engine(
             &work_dir,
             &cache_dir,
             cli.verbose > 0,
+            config,
         )
     };
 
@@ -940,6 +948,7 @@ fn execute_tests_parallel(
     work_dir: &std::path::Path,
     cache_dir: &std::path::Path,
     verbose: bool,
+    config: &Config,
 ) -> Result<ExitCode> {
     use std::time::Instant;
 
@@ -993,10 +1002,18 @@ fn execute_tests_parallel(
     }
 
     // Configure worker pool
+    let worker_cfg = config.worker.clone().unwrap_or_default();
     let pool_config = WorkerPoolConfig {
         worker_count,
-        startup_timeout: std::time::Duration::from_secs(30),
-        execution_timeout: std::time::Duration::from_secs(300),
+        startup_timeout: std::time::Duration::from_secs(
+            worker_cfg.startup_timeout_sec.unwrap_or(30),
+        ),
+        execution_timeout: std::time::Duration::from_secs(
+            worker_cfg.execution_timeout_sec.unwrap_or(300),
+        ),
+        heartbeat_interval: std::time::Duration::from_secs(
+            worker_cfg.heartbeat_interval_sec.unwrap_or(10),
+        ),
         max_idle_time: std::time::Duration::from_secs(600),
         enable_recycling: true,
         work_dir: work_dir.to_path_buf(),
@@ -1018,6 +1035,95 @@ fn execute_tests_parallel(
 
     // Wait for completion
     let results = worker_pool.wait_for_completion(Some(std::time::Duration::from_secs(600)))?;
+    // Persist per-test timings for future scheduling
+    if !results.is_empty() {
+        use chrono::Utc;
+        use std::collections::HashMap;
+
+        // Build this run timings
+        let mut test_timings: HashMap<String, veri_core::schemas::TestTiming> = HashMap::new();
+        for r in &results {
+            for t in &r.per_test {
+                let outcome = match t.outcome.as_str() {
+                    "passed" => veri_core::schemas::TestOutcome::Passed,
+                    "failed" => veri_core::schemas::TestOutcome::Failed,
+                    "skipped" => veri_core::schemas::TestOutcome::Skipped,
+                    _ => veri_core::schemas::TestOutcome::Error,
+                };
+                test_timings.insert(
+                    t.nodeid.clone(),
+                    veri_core::schemas::TestTiming {
+                        nodeid: t.nodeid.clone(),
+                        setup_duration: 0.0,
+                        call_duration: (t.duration_ms as f64) / 1000.0,
+                        teardown_duration: 0.0,
+                        total_duration: (t.duration_ms as f64) / 1000.0,
+                        outcome,
+                        worker_id: None,
+                    },
+                );
+            }
+        }
+        let run = veri_core::schemas::TimingRun {
+            run_id: format!("parallel-{}", Utc::now().timestamp()),
+            started_at: Utc::now(),
+            finished_at: Utc::now(),
+            workers: worker_count as u32,
+            test_timings,
+        };
+
+        // Load existing timings if present
+        let mut timings = match veri_core::schemas::TimingsData::load_from_cache(cache_dir) {
+            Ok(t) => t,
+            Err(_) => veri_core::schemas::TestTimings::new(),
+        };
+        // Append run
+        timings.runs.push(run);
+
+        // Update aggregated_timings incrementally
+        for r in &results {
+            for t in &r.per_test {
+                let entry = timings.aggregated_timings.entry(t.nodeid.clone()).or_insert(
+                    veri_core::schemas::AggregatedTiming {
+                        nodeid: t.nodeid.clone(),
+                        run_count: 0,
+                        avg_duration: 0.0,
+                        min_duration: f64::MAX,
+                        max_duration: 0.0,
+                        p50_duration: 0.0,
+                        p95_duration: 0.0,
+                        last_duration: 0.0,
+                        stability: 1.0,
+                    },
+                );
+                let d = (t.duration_ms as f64) / 1000.0;
+                entry.run_count += 1;
+                // Incremental average
+                entry.avg_duration += (d - entry.avg_duration) / (entry.run_count as f64);
+                if d < entry.min_duration {
+                    entry.min_duration = d;
+                }
+                if d > entry.max_duration {
+                    entry.max_duration = d;
+                }
+                entry.last_duration = d;
+                // Simple approximations for percentiles
+                entry.p50_duration = entry.avg_duration;
+                entry.p95_duration = entry.max_duration;
+                // Stability heuristic: decay towards 0 on failures, towards 1 on passes
+                if t.outcome == "failed" || t.outcome == "error" {
+                    entry.stability = (entry.stability * 0.8).max(0.0);
+                } else {
+                    entry.stability = (entry.stability * 0.8 + 0.2).min(1.0);
+                }
+            }
+        }
+
+        if let Ok(json) = timings.to_json() {
+            let path = cache_dir.join("timings.json");
+            let _ = std::fs::write(&path, json);
+        }
+    }
     let total_duration = start_time.elapsed();
 
     // Process results

@@ -28,6 +28,12 @@ engine = "veri"  # or "pytest"
 watch = false
 all = false
 
+# Worker pool tuning (multi-worker)
+[worker]
+startup_timeout_sec = 30
+execution_timeout_sec = 300
+heartbeat_interval_sec = 10
+
 # Phase 13: Security and plugin allowlist
 [security]
 enforce_allowlist = true

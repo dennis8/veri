@@ -68,6 +68,9 @@ pub struct Config {
     /// Flaky test configuration
     pub flaky: Option<FlakyTestConfig>,
 
+    /// Worker pool tuning
+    pub worker: Option<WorkerConfig>,
+
     /// Automatic retry of failed tests
     pub auto_retry: Option<bool>,
 
@@ -173,6 +176,7 @@ impl Default for Config {
             security: None,
             telemetry: None,
             flaky: None,
+            worker: None,
             auto_retry: Some(false),
             retry_count: Some(1),
         }
@@ -365,6 +369,9 @@ impl Config {
         if other.telemetry.is_some() {
             self.telemetry = other.telemetry;
         }
+        if other.worker.is_some() {
+            self.worker = other.worker;
+        }
     }
 
     /// Apply CLI arguments to override config values
@@ -500,6 +507,26 @@ impl Config {
         }
 
         self.telemetry().enabled.unwrap_or(false)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct WorkerConfig {
+    /// Startup timeout for workers (seconds)
+    pub startup_timeout_sec: Option<u64>,
+    /// Execution timeout for a batch (seconds)
+    pub execution_timeout_sec: Option<u64>,
+    /// Heartbeat interval (seconds)
+    pub heartbeat_interval_sec: Option<u64>,
+}
+
+impl Default for WorkerConfig {
+    fn default() -> Self {
+        Self {
+            startup_timeout_sec: Some(30),
+            execution_timeout_sec: Some(300),
+            heartbeat_interval_sec: Some(10),
+        }
     }
 }
 

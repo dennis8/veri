@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veri.dev/schemas/worker_protocol.v1.json",
+  "title": "Veri Worker Protocol v1",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/defs/Hello" },
+    { "$ref": "#/defs/HelloOk" },
+    { "$ref": "#/defs/ExecuteTests" },
+    { "$ref": "#/defs/TestResults" },
+    { "$ref": "#/defs/HealthCheck" },
+    { "$ref": "#/defs/HealthOk" },
+    { "$ref": "#/defs/Error" },
+    { "$ref": "#/defs/Log" }
+  ],
+  "defs": {
+    "Hello": {
+      "type": "object",
+      "properties": { "t": { "const": "Hello" }, "worker_id": { "type": "integer" }, "protocol": { "type": "string" } },
+      "required": ["t", "worker_id", "protocol"],
+      "additionalProperties": false
+    },
+    "HelloOk": {
+      "type": "object",
+      "properties": { "t": { "const": "HelloOk" }, "worker_id": { "type": "integer" }, "py_version": { "type": "string" }, "pytest_version": { "type": "string" } },
+      "required": ["t", "worker_id", "py_version", "pytest_version"],
+      "additionalProperties": false
+    },
+    "ExecuteTests": {
+      "type": "object",
+      "properties": {
+        "t": { "const": "ExecuteTests" },
+        "batch_id": { "type": "string" },
+        "nodeids": { "type": "array", "items": { "type": "string" } },
+        "options": { "type": "object" }
+      },
+      "required": ["t", "batch_id", "nodeids", "options"],
+      "additionalProperties": true
+    },
+    "TestResults": {
+      "type": "object",
+      "properties": {
+        "t": { "const": "TestResults" },
+        "batch_id": { "type": "string" },
+        "exit_code": { "type": "integer" },
+        "stdout": { "type": "string" },
+        "stderr": { "type": "string" },
+        "duration_ms": { "type": "integer" },
+        "nodeids": { "type": "array", "items": { "type": "string" } },
+        "per_test": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "nodeid": { "type": "string" },
+              "outcome": { "type": "string" },
+              "duration_ms": { "type": "integer" }
+            },
+            "required": ["nodeid", "outcome", "duration_ms"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["t", "batch_id", "exit_code", "stdout", "stderr", "duration_ms", "nodeids"],
+      "additionalProperties": false
+    },
+    "HealthCheck": { "type": "object", "properties": { "t": { "const": "HealthCheck" } }, "required": ["t"], "additionalProperties": false },
+    "HealthOk": { "type": "object", "properties": { "t": { "const": "HealthOk" }, "ts": { "type": "string" } }, "required": ["t", "ts"], "additionalProperties": false },
+    "Error": { "type": "object", "properties": { "t": { "const": "Error" }, "message": { "type": "string" }, "kind": { "type": "string" } }, "required": ["t", "message"], "additionalProperties": true },
+    "Log": { "type": "object", "properties": { "t": { "const": "Log" }, "level": { "type": "string" }, "message": { "type": "string" } }, "required": ["t", "level", "message"], "additionalProperties": false }
+  }
+}
+

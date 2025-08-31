@@ -323,6 +323,28 @@ When `--junit-xml` is specified, veri generates standard JUnit XML:
 </testsuites>
 ```
 
+
+### Parallel Execution & Worker Pool
+
+- Flag: `--workers N` (N>=1) enables multi‑worker execution.
+- Scheduling strategy defaults to Balanced and uses historical timings when available.
+- Worker pool reliability:
+  - Startup handshake with `HelloOk` and `startup_timeout_sec` guard.
+  - Heartbeats (`HealthCheck`/`HealthOk`) every `heartbeat_interval_sec`.
+  - Per‑batch `execution_timeout_sec` with automatic worker restart.
+- Coverage:
+  - Per‑worker coverage data (`.coverage.worker_<id>`) combined automatically.
+  - `--cov-merge-full` writes XML/JSON/HTML reports to `reports/`.
+
+Config (veri.toml / [tool.veri]):
+
+```
+[worker]
+startup_timeout_sec = 30
+execution_timeout_sec = 300
+heartbeat_interval_sec = 10
+```
+
 ### JSONL Event Stream
 
 When `--jsonl` is specified, veri outputs newline-delimited JSON events:

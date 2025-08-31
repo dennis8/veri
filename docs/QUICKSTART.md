@@ -385,3 +385,25 @@ strategy = "timings"
 ```
 
 That's it! You're now ready to use veri effectively. The tool is designed to be intuitive, so explore and experiment. Most pytest knowledge transfers directly to veri.
+
+## Parallel Execution
+
+Use `--workers N` to run tests in parallel. Veri schedules tests across workers to minimize wall‑clock time and prioritizes short or likely‑to‑fail tests depending on strategy.
+
+Config (in veri.toml or [tool.veri] in pyproject.toml):
+
+```
+[worker]
+# Worker process startup timeout (seconds)
+startup_timeout_sec = 30
+# Per‑batch execution timeout (seconds)
+execution_timeout_sec = 300
+# Heartbeat ping interval (seconds)
+heartbeat_interval_sec = 10
+```
+
+Notes:
+- Veri launches Python workers using the project’s py_worker environment (via `uv run`) so pytest and plugins resolve consistently.
+- Coverage in multi‑worker mode writes per‑worker data files and is combined automatically; `--cov-merge-full` emits XML/JSON/HTML.
+
+See also: `docs/TROUBLESHOOTING.md` for common issues and fixes.
