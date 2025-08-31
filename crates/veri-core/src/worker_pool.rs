@@ -544,10 +544,17 @@ impl WorkerPool {
             cmd = Command::new("uv");
             cmd.arg("run")
                 .arg("--project")
-                .arg(py_worker_path)
-                .arg("python")
-                .arg("-m")
-                .arg("veri_worker");
+                .arg(&py_worker_path)
+                .arg("python");
+            // Execute the cached worker script to avoid module import issues
+            let script_path = self
+                .config
+                .cache_dir
+                .join("veri_worker.py");
+            let script_abs = std::fs::canonicalize(&script_path).unwrap_or(script_path);
+            cmd.arg(&script_abs);
+            // Run uv from py_worker so it resolves deps into that project
+            cmd.current_dir(&py_worker_path);
         } else {
             // Fallback to system python and cached script
             let python_executable = self.get_python_executable()?;
@@ -564,7 +571,6 @@ impl WorkerPool {
             .arg(&self.config.cache_dir)
             .arg("--work-dir")
             .arg(&self.config.work_dir)
-            .current_dir(&self.config.work_dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -670,6 +676,7 @@ impl WorkerPool {
                                 "maxfail": options.maxfail,
                                 "junit_xml": junit,
                                 "workers": options.workers.clone().unwrap_or_else(|| "1".to_string()),
+                                "ignore": options.ignore,
                                 "coverage": options.coverage,
                                 "coverage_xml": options.coverage_xml,
                                 "coverage_html": options.coverage_html,

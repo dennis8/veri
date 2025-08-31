@@ -169,11 +169,64 @@ fn run() -> Result<ExitCode> {
     }
 }
 
+fn detect_project_root_from_paths(paths: &[String]) -> Option<std::path::PathBuf> {
+    use std::path::{Path, PathBuf};
+    if paths.is_empty() { return None; }
+    let mut cand = PathBuf::from(&paths[0]);
+    if cand.is_file() {
+        cand = cand.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
+    }
+    if cand.file_name().map(|n| n == "tests").unwrap_or(false) {
+        if let Some(parent) = cand.parent() { cand = parent.to_path_buf(); }
+    }
+    for _ in 0..3 {
+        if cand.join("pyproject.toml").exists()
+            || cand.join("pytest.ini").exists()
+            || cand.join("setup.cfg").exists()
+        {
+            return Some(cand.clone());
+        }
+        if !cand.pop() { break; }
+    }
+    None
+}
+
+fn normalize_paths(paths: &[String], work_dir: &std::path::Path) -> Vec<String> {
+    use std::path::Path;
+    let mut out = Vec::new();
+    for p in paths {
+        let pb = Path::new(p);
+        if let Ok(rel) = pb.strip_prefix(work_dir) {
+            out.push(rel.to_string_lossy().to_string());
+        } else if pb.is_absolute() {
+            // Keep absolute paths as-is
+            out.push(p.clone());
+        } else {
+            // Try to normalize common case: <work_dir>/tests → tests
+            if p.starts_with(&format!("{}/", work_dir.display())) {
+                out.push(p[work_dir.display().to_string().len() + 1..].to_string());
+            } else if let Some(name) = work_dir.file_name() {
+                let name = name.to_string_lossy();
+                let prefix = format!("{}/", name);
+                if p.starts_with(&prefix) {
+                    out.push(p[prefix.len()..].to_string());
+                } else {
+                    out.push(p.clone());
+                }
+            } else {
+                out.push(p.clone());
+            }
+        }
+    }
+    out
+}
+
 fn run_pytest_engine(cli: &Cli, _config: &Config) -> Result<ExitCode> {
     println!("🔄 Using pytest engine for compatibility");
 
     // Create Python worker
-    let work_dir = std::env::current_dir()?;
+    let work_dir = detect_project_root_from_paths(&cli.paths).unwrap_or(std::env::current_dir()?);
+    let work_dir = std::fs::canonicalize(&work_dir).unwrap_or(work_dir);
     let worker = PythonWorker::new(&work_dir, work_dir.join(".veri").join("cache"));
 
     // Build pytest arguments from CLI
@@ -223,8 +276,15 @@ fn run_pytest_engine(cli: &Cli, _config: &Config) -> Result<ExitCode> {
         }
     }
 
-    // Add paths
-    pytest_args.extend(cli.paths.clone());
+    // Add ignores
+    for ig in &cli.ignore {
+        pytest_args.push("--ignore".to_string());
+        pytest_args.push(ig.clone());
+    }
+
+    // Add paths (normalized to selected work_dir)
+    let norm_paths = normalize_paths(&cli.paths, &work_dir);
+    pytest_args.extend(norm_paths);
 
     // If no paths and not --all, run current directory
     if pytest_args.is_empty() && !cli.all {
@@ -253,7 +313,8 @@ fn run_veri_engine(
 ) -> Result<ExitCode> {
     println!("🚀 Using veri engine for maximum speed");
 
-    let work_dir = std::env::current_dir()?;
+    let work_dir = detect_project_root_from_paths(&cli.paths).unwrap_or(std::env::current_dir()?);
+    let work_dir = std::fs::canonicalize(&work_dir).unwrap_or(work_dir);
     let cache_dir = work_dir.join(".veri").join("cache");
 
     // Handle watch mode
@@ -360,15 +421,15 @@ fn run_veri_engine(
     if needs_collection {
         println!("📋 Collecting tests...");
 
-        // Determine paths to collect
+        // Determine paths to collect (normalized to work_dir)
         let collection_paths = if !cli.paths.is_empty() {
-            cli.paths.clone()
+            normalize_paths(&cli.paths, &work_dir)
         } else {
             vec![] // Empty means collect all
         };
 
         // Collect tests
-        let tests_index = worker.collect_tests(&collection_paths)?;
+        let tests_index = worker.collect_tests(&collection_paths, &cli.ignore)?;
 
         // Check for collection errors
         worker.check_collection_errors(&tests_index, &mut diagnostics);
@@ -385,20 +446,22 @@ fn run_veri_engine(
             }
         }
 
-        // Build import graph and dependency analysis
-        println!("🔍 Building import graph...");
-        let mut graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
-        let (imports_graph, _revdeps_graph, _module_map) = graph_builder.build_graphs()?;
+        // Build import graph only when impact analysis is needed
+        if !cli.all {
+            println!("🔍 Building import graph...");
+            let mut graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
+            let (imports_graph, _revdeps_graph, _module_map) = graph_builder.build_graphs()?;
 
-        println!(
-            "✅ Built import graph with {} edges",
-            imports_graph.edges.len()
-        );
-        if !imports_graph.dynamic_imports.is_empty() {
             println!(
-                "⚠️  {} dynamic imports detected",
-                imports_graph.dynamic_imports.len()
+                "✅ Built import graph with {} edges",
+                imports_graph.edges.len()
             );
+            if !imports_graph.dynamic_imports.is_empty() {
+                println!(
+                    "⚠️  {} dynamic imports detected",
+                    imports_graph.dynamic_imports.len()
+                );
+            }
         }
 
         // If this was just collection (--all with no other action), we're done
@@ -407,20 +470,13 @@ fn run_veri_engine(
         }
     }
 
-    // Load collected tests and graphs
-    let tests_index = worker.collect_tests(&cli.paths)?;
-
-    // Load or build graphs
-    let mut graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
-    let (imports_graph, revdeps_graph, module_map) = match graph_builder.load_cached_graphs()? {
-        Some(graphs) => graphs,
-        None => {
-            println!("🔍 Building import graph...");
-            let graphs = graph_builder.build_graphs()?;
-            println!("✅ Built import graph with {} edges", graphs.0.edges.len());
-            graphs
-        }
+    // Load collected tests
+    let collection_paths = if !cli.paths.is_empty() {
+        normalize_paths(&cli.paths, &work_dir)
+    } else {
+        vec![]
     };
+    let tests_index = worker.collect_tests(&collection_paths, &cli.ignore)?;
 
     // Report any diagnostics from collection phase
     diagnostics.report_all()?;
@@ -430,15 +486,31 @@ fn run_veri_engine(
         return Ok(ExitCode::InternalError);
     }
 
-    // Determine which tests to run using impact analysis
-    let mut nodeids_to_run = select_tests_to_run(
-        &tests_index,
-        &imports_graph,
-        &revdeps_graph,
-        &module_map,
-        cli,
-        config,
-    )?;
+    // Determine which tests to run
+    let mut nodeids_to_run = if cli.all {
+        tests_index.tests.iter().map(|t| t.nodeid.clone()).collect()
+    } else {
+        // Load or build graphs for impact analysis
+        let mut graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
+        let (imports_graph, revdeps_graph, module_map) = match graph_builder.load_cached_graphs()? {
+            Some(graphs) => graphs,
+            None => {
+                println!("🔍 Building import graph...");
+                let graphs = graph_builder.build_graphs()?;
+                println!("✅ Built import graph with {} edges", graphs.0.edges.len());
+                graphs
+            }
+        };
+
+        select_tests_to_run(
+            &tests_index,
+            &imports_graph,
+            &revdeps_graph,
+            &module_map,
+            cli,
+            config,
+        )?
+    };
 
     // Fallback: if nothing selected but tests exist, run all tests
     if nodeids_to_run.is_empty() && !tests_index.tests.is_empty() {
@@ -480,6 +552,7 @@ fn run_veri_engine(
         maxfail: cli.maxfail,
         junit_xml: cli.junit_xml.clone(),
         workers: Some("1".to_string()), // Each worker handles their batch sequentially
+        ignore: cli.ignore.clone(),
         coverage: cli.cov,
         coverage_xml: cli.cov || cli.cov_merge_full,
         coverage_html: false,                          // Can be configured later
@@ -526,8 +599,35 @@ fn run_veri_engine(
     let start_time = std::time::Instant::now();
     let test_result = if worker_count == 1 || nodeids_to_run.len() == 1 {
         // Single worker execution - use direct approach
-        let exit_code = worker.run_tests(&nodeids_to_run, &run_options)?;
-        match exit_code {
+        let exec = worker.run_tests(&nodeids_to_run, &run_options)?;
+        if exec.exit_code != 0 {
+            println!("\n--- Worker stdout (tail) ---");
+            for line in exec.stdout.lines().rev().take(50).collect::<Vec<_>>().into_iter().rev() {
+                println!("{}", line);
+            }
+            eprintln!("\n--- Worker stderr (tail) ---");
+            for line in exec.stderr.lines().rev().take(50).collect::<Vec<_>>().into_iter().rev() {
+                eprintln!("{}", line);
+            }
+
+            // Fallback: if execution failed with usage error, retry via pytest engine
+            if exec.exit_code == 4 {
+                println!("\nℹ️  Retrying via pytest engine due to execution error (code 4)...");
+                return run_pytest_engine(cli, config);
+            }
+        }
+
+        // Outcome rollup for single-worker path
+        if !exec.per_test.is_empty() {
+            let mut passed=0u32; let mut skipped=0u32; let mut failed=0u32; let mut error=0u32;
+            for t in &exec.per_test { match t.outcome.as_str() { "passed"=>passed+=1, "skipped"=>skipped+=1, "failed"=>failed+=1, "error"=>error+=1, _=>{} } }
+            let total = exec.per_test.len();
+            println!(
+                "Summary: {} passed, {} skipped, {} failed, {} error ({} total)",
+                passed, skipped, failed, error, total
+            );
+        }
+        match exec.exit_code {
             0 => Ok(ExitCode::Success),
             1 => Ok(ExitCode::TestFailure),
             2 => Ok(ExitCode::Interrupted),
@@ -635,6 +735,7 @@ fn run_watch_mode(
         maxfail: cli.maxfail,
         junit_xml: cli.junit_xml.clone(),
         workers: Some("1".to_string()), // Use single worker in watch mode for speed
+        ignore: cli.ignore.clone(),
         coverage: cli.cov,
         coverage_xml: cli.cov || cli.cov_merge_full,
         coverage_html: false,
@@ -652,7 +753,7 @@ fn run_watch_mode(
     let worker = PythonWorker::new(work_dir, cache_dir);
     if !worker.has_valid_cache() {
         println!("📋 Initial collection required...");
-        match worker.collect_tests(&[]) {
+        match worker.collect_tests(&[], &[]) {
             Ok(_tests_index) => {
                 println!("✅ Initial collection completed");
             }
@@ -1139,6 +1240,20 @@ fn execute_tests_parallel(
             if total_exit_code == 0 {
                 total_exit_code = result.exit_code;
             }
+            println!("\n--- Batch failure: worker {} ({} tests, {:.1}s, exit {}) ---",
+                     result.worker_id, result.nodeids.len(), result.duration.as_secs_f64(), result.exit_code);
+            if !result.stdout.is_empty() {
+                println!("[stdout tail]");
+                for line in result.stdout.lines().rev().take(80).collect::<Vec<_>>().into_iter().rev() {
+                    println!("{}", line);
+                }
+            }
+            if !result.stderr.is_empty() {
+                eprintln!("[stderr tail]");
+                for line in result.stderr.lines().rev().take(80).collect::<Vec<_>>().into_iter().rev() {
+                    eprintln!("{}", line);
+                }
+            }
         }
 
         if verbose {
@@ -1165,6 +1280,26 @@ fn execute_tests_parallel(
             "❌ {} of {} worker batches reported failures",
             failed_batches,
             results.len()
+        );
+    }
+
+    // Outcome rollup for parallel path
+    let mut passed=0u32; let mut skipped=0u32; let mut failed=0u32; let mut error=0u32;
+    for r in &results {
+        for t in &r.per_test {
+            match t.outcome.as_str() {
+                "passed" => passed += 1,
+                "skipped" => skipped += 1,
+                "failed" => failed += 1,
+                "error" => error += 1,
+                _ => {}
+            }
+        }
+    }
+    if passed+skipped+failed+error > 0 {
+        println!(
+            "Summary: {} passed, {} skipped, {} failed, {} error ({} total)",
+            passed, skipped, failed, error, passed+skipped+failed+error
         );
     }
 
@@ -1315,6 +1450,7 @@ fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Res
                 maxfail: cli_args.maxfail,
                 junit_xml: config.junit_xml.clone(),
                 workers: Some("1".to_string()), // Single worker for shard execution
+                ignore: cli_args.ignore.clone(),
                 coverage: config.cov.unwrap_or(false),
                 coverage_xml: config.cov.unwrap_or(false) || config.cov_merge_full.unwrap_or(false),
                 coverage_html: false,
@@ -1332,13 +1468,13 @@ fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Res
             let start_time = std::time::Instant::now();
 
             // Run the tests
-            let exit_code = worker.run_tests(&nodeids, &run_options)?;
+            let exec = worker.run_tests(&nodeids, &run_options)?;
             let duration = start_time.elapsed().as_secs_f64();
 
             // Emit summary event if JSONL enabled
             if let Some(stream) = ci_reporter.event_stream() {
                 // Parse exit code to test results (simplified)
-                let (passed, failed, error) = match exit_code {
+                let (passed, failed, error) = match exec.exit_code {
                     0 => (nodeids.len() as u32, 0, 0),
                     1 => (0, nodeids.len() as u32, 0), // Simplified: assume all failed
                     _ => (0, 0, nodeids.len() as u32), // Simplified: assume all error
@@ -1351,7 +1487,7 @@ fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Res
                     failed,
                     0,
                     error,
-                    exit_code,
+                    exec.exit_code,
                 )?;
             }
 
@@ -1361,7 +1497,18 @@ fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Res
             println!("✅ Shard {} completed in {:.1}s", shard_id, duration);
 
             // Return appropriate exit code
-            match exit_code {
+            if exec.exit_code != 0 {
+                println!("\n--- Worker stdout (tail) ---");
+                for line in exec.stdout.lines().rev().take(50).collect::<Vec<_>>().into_iter().rev() {
+                    println!("{}", line);
+                }
+                eprintln!("\n--- Worker stderr (tail) ---");
+                for line in exec.stderr.lines().rev().take(50).collect::<Vec<_>>().into_iter().rev() {
+                    eprintln!("{}", line);
+                }
+            }
+
+            match exec.exit_code {
                 0 => Ok(ExitCode::Success),
                 1 => Ok(ExitCode::TestFailure),
                 2 => Ok(ExitCode::Interrupted),
@@ -1453,7 +1600,7 @@ fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
                     {
                         let worker = PythonWorker::new(&work_dir, &cache_dir);
                         if worker.has_valid_cache() {
-                            if let Ok(tests_index) = worker.collect_tests(&[]) {
+                            if let Ok(tests_index) = worker.collect_tests(&[], &[]) {
                                 let planner = TestPlanner::new(&work_dir, &cache_dir);
                                 if let Ok(selection) = planner.plan_test_selection(
                                     &changed_files,

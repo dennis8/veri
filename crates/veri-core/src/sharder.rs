@@ -65,7 +65,7 @@ impl TestSharder {
 
         // Collect all tests
         let worker = PythonWorker::new(&self.work_dir, &self.cache_dir);
-        let tests_index = worker.collect_tests(&[])?;
+        let tests_index = worker.collect_tests(&[], &[])?;
 
         // Filter tests if selection provided
         let filtered_tests = if let Some(selection) = test_selection {
@@ -415,7 +415,7 @@ impl TestSharder {
 
         // Validate nodeids exist in current test suite
         let worker = PythonWorker::new(&self.work_dir, &self.cache_dir);
-        if let Ok(tests_index) = worker.collect_tests(&[]) {
+        if let Ok(tests_index) = worker.collect_tests(&[], &[]) {
             let available_nodeids: std::collections::HashSet<_> =
                 tests_index.tests.iter().map(|t| &t.nodeid).collect();
 

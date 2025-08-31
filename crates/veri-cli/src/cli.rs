@@ -27,6 +27,10 @@ pub struct Cli {
     #[arg(short = 'm', long = "marker")]
     pub marker: Option<String>,
 
+    /// Ignore test paths (repeatable, forwarded to pytest)
+    #[arg(long = "ignore")]
+    pub ignore: Vec<String>,
+
     /// Number of parallel workers (default: auto-detect)
     #[arg(long = "workers")]
     pub workers: Option<String>,

@@ -1,8 +1,8 @@
 """Simple calculator for testing purposes"""
 
 def add(a, b):
-    """Add two numbers"""
-    # Enhanced for Phase 9 testing
+    """Add two numbers (touched 2025-08-31 for impact test)"""
+    # Enhanced for Phase 9 testing; minor edit to trigger impact analysis
     return a + b
 
 def subtract(a, b):

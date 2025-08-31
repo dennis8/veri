@@ -336,7 +336,7 @@ impl WatchSession {
         };
 
         // Load test index
-        let tests_index = match worker.collect_tests(&[]) {
+        let tests_index = match worker.collect_tests(&[], &[]) {
             Ok(index) => index,
             Err(e) => {
                 warn!("Failed to collect tests in watch mode: {}", e);
@@ -417,11 +417,11 @@ impl WatchSession {
         }
 
         // Run the selected tests
-        let exit_code = match worker.run_tests(&selection.selected_nodeids, test_run_options) {
-            Ok(code) => code,
+        let (exit_code, _stdout, _stderr) = match worker.run_tests(&selection.selected_nodeids, test_run_options) {
+            Ok(exec) => (exec.exit_code, exec.stdout, exec.stderr),
             Err(e) => {
                 warn!("Test execution failed: {}", e);
-                -1 // Indicate execution failure
+                (-1, String::new(), String::new()) // Indicate execution failure
             }
         };
 

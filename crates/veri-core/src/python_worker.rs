@@ -100,7 +100,7 @@ impl PythonWorker {
     }
 
     /// Collect tests using pytest and generate indexes
-    pub fn collect_tests(&self, paths: &[String]) -> Result<TestsIndex> {
+    pub fn collect_tests(&self, paths: &[String], ignores: &[String]) -> Result<TestsIndex> {
         // Ensure cache directory exists
         std::fs::create_dir_all(&self.cache_dir).context("Failed to create cache directory")?;
 
@@ -118,6 +118,12 @@ impl PythonWorker {
         if !paths.is_empty() {
             args.push("--paths".to_string());
             args.extend(paths.iter().cloned());
+        }
+
+        // Add ignores
+        for ig in ignores {
+            args.push("--ignore".to_string());
+            args.push(ig.clone());
         }
 
         // Execute Python worker
@@ -156,7 +162,7 @@ impl PythonWorker {
     }
 
     /// Execute specific tests by nodeid
-    pub fn run_tests(&self, nodeids: &[String], options: &TestRunOptions) -> Result<i32> {
+    pub fn run_tests(&self, nodeids: &[String], options: &TestRunOptions) -> Result<TestExecOutput> {
         let mut args = vec![
             "-m".to_string(),
             "veri_worker".to_string(),
@@ -187,6 +193,11 @@ impl PythonWorker {
         if let Some(maxfail) = options.maxfail {
             args.push("--maxfail".to_string());
             args.push(maxfail.to_string());
+        }
+        // Add ignores
+        for ig in &options.ignore {
+            args.push("--ignore".to_string());
+            args.push(ig.clone());
         }
         if let Some(junit_xml) = &options.junit_xml {
             args.push("--junit-xml".to_string());
@@ -221,7 +232,19 @@ impl PythonWorker {
             .run_python_command(&args)
             .context("Failed to run Python worker for test execution")?;
 
-        Ok(output.status.code().unwrap_or(3))
+        // Attempt to read per-test results written by the worker run mode
+        let per_path = self.cache_dir.join("last_per_test.json");
+        let per_test: Vec<PythonPerTest> = match std::fs::read_to_string(&per_path) {
+            Ok(txt) => serde_json::from_str(&txt).unwrap_or_default(),
+            Err(_) => Vec::new(),
+        };
+
+        Ok(TestExecOutput {
+            exit_code: output.status.code().unwrap_or(3),
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            per_test,
+        })
     }
 
     /// Hand off completely to pytest (--engine pytest mode)
@@ -256,6 +279,8 @@ impl PythonWorker {
         let module_map_path = self.cache_dir.join("temp_module_map.json");
         let module_map_json = serde_json::to_string_pretty(module_map)?;
         std::fs::write(&module_map_path, module_map_json)?;
+        // Use absolute path to avoid cwd-related issues in the worker
+        let module_map_path = std::fs::canonicalize(&module_map_path).unwrap_or(module_map_path);
 
         // Build command arguments
         let args = vec![
@@ -382,6 +407,15 @@ except Exception as e:
         if let Some(py_worker) = &py_worker_path {
             cmd.arg("--project");
             cmd.arg(py_worker);
+            // Ensure the worker module is importable
+            if let Ok(existing) = std::env::var("PYTHONPATH") {
+                let mut val = py_worker.to_string_lossy().to_string();
+                val.push(std::path::MAIN_SEPARATOR);
+                val.push_str(&existing);
+                cmd.env("PYTHONPATH", val);
+            } else {
+                cmd.env("PYTHONPATH", py_worker);
+            }
         }
 
         // Add the python module arguments
@@ -530,9 +564,27 @@ pub struct TestRunOptions {
     pub maxfail: Option<u32>,
     pub junit_xml: Option<PathBuf>,
     pub workers: Option<String>,
+    pub ignore: Vec<String>,
     pub coverage: bool,
     pub coverage_xml: bool,
     pub coverage_html: bool,
     pub coverage_source_dirs: Vec<String>,
     pub coverage_omit: Vec<String>,
+}
+
+/// Result of executing tests via the Python worker
+#[derive(Debug, Clone)]
+pub struct TestExecOutput {
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+    // Present when running via non-worker-mode run path (best-effort)
+    pub per_test: Vec<PythonPerTest>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct PythonPerTest {
+    pub nodeid: String,
+    pub outcome: String,
+    pub duration_ms: u64,
 }

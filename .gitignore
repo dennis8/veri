@@ -25,6 +25,12 @@ target/
 # Python tmp files
 __pycache__
 .pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Python virtual envs (uv/venv)
+.venv/
+.uv/
 
 # Maturin builds, and other native editable builds
 *.so
@@ -52,3 +58,13 @@ profile.json.gz
 
 
 .coveragerc
+
+# Coverage and test reports
+.coverage
+coverage.xml
+htmlcov/
+reports/
+
+# Logs
+*.log
+log.txt

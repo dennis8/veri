@@ -316,7 +316,7 @@ class VeriCollector:
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def collect_tests(self, paths: list[str] | None = None) -> dict[str, Any]:
+    def collect_tests(self, paths: list[str] | None = None, ignores: list[str] | None = None) -> dict[str, Any]:
         """
         Use pytest to collect tests and extract metadata
         Returns collected test information in tests.index schema format
@@ -328,6 +328,10 @@ class VeriCollector:
         args.extend(["-o", "python_files=test*.py Test*.py"])
         if paths:
             args.extend(paths)
+        # Add ignores
+        if ignores:
+            for ig in ignores:
+                args.extend(["--ignore", ig])
 
         # Capture pytest collection output
         collected_items = []
@@ -555,21 +559,40 @@ class VeriExecutor:
             if workers != "1":
                 args.extend(["-n", str(workers)])
 
-        # Hook plugin to capture per-test durations/outcomes
+        # Add ignores
+        for ig in kwargs.get("ignore", []) or []:
+            args.extend(["--ignore", ig])
+
+        # Hook plugin to capture per-test durations/outcomes (including setup skips)
         class ExecPlugin:
             def __init__(self, sink: list[dict[str, Any]]):
-                self.sink = sink
+                self._by_nodeid: dict[str, dict[str, Any]] = {}
+                self._sink = sink
 
             def pytest_runtest_logreport(self, report: Any) -> None:  # type: ignore[override]
-                if getattr(report, "when", "call") == "call":
-                    nodeid = getattr(report, "nodeid", "")
-                    outcome = getattr(report, "outcome", "")
-                    duration = int(getattr(report, "duration", 0.0) * 1000)
-                    self.sink.append({
-                        "nodeid": nodeid,
-                        "outcome": outcome,
-                        "duration_ms": duration,
-                    })
+                nodeid = getattr(report, "nodeid", "")
+                when = getattr(report, "when", "call")
+                outcome = getattr(report, "outcome", "")
+                duration_ms = int(getattr(report, "duration", 0.0) * 1000)
+
+                def rank(o: str) -> int:
+                    return {"failed": 3, "error": 3, "skipped": 2, "passed": 1}.get(o, 0)
+
+                new_outcome = outcome
+                if outcome == "failed" and when != "call":
+                    new_outcome = "error"
+
+                # Only record meaningful outcomes; prefer call-phase duration for passes
+                if new_outcome == "passed" and when != "call":
+                    return
+
+                prev = self._by_nodeid.get(nodeid)
+                entry = {"nodeid": nodeid, "outcome": new_outcome, "duration_ms": duration_ms}
+                if prev is None or rank(new_outcome) >= rank(prev.get("outcome", "")):
+                    self._by_nodeid[nodeid] = entry
+
+            def finalize(self) -> None:
+                self._sink.extend(self._by_nodeid.values())
 
         self.last_per_test = []
         plugin = ExecPlugin(self.last_per_test)
@@ -596,6 +619,12 @@ class VeriExecutor:
             # Stop coverage and save data
             if kwargs.get("coverage") and COVERAGE_AVAILABLE and self.coverage_instance:
                 self._stop_coverage(**kwargs)
+
+            # Flush plugin results
+            try:
+                plugin.finalize()
+            except Exception:
+                pass
 
             return exit_code
         finally:
@@ -838,6 +867,7 @@ def main() -> int:
         help="Cache directory for storing indexes",
     )
     parser.add_argument("--paths", nargs="*", default=[], help="Test paths or patterns")
+    parser.add_argument("--ignore", action="append", default=[], help="Ignore test path (repeatable)")
     parser.add_argument(
         "--nodeids", nargs="*", default=[], help="Specific test nodeids to run"
     )
@@ -902,7 +932,7 @@ def main() -> int:
                 print(f"Paths: {args.paths}")
 
             # Collect tests
-            tests_data = collector.collect_tests(args.paths if args.paths else None)
+            tests_data = collector.collect_tests(args.paths if args.paths else None, ignores=args.ignore)
             collector.save_index(tests_data, "tests.index.json")
 
             # Collect markers
@@ -978,12 +1008,23 @@ def main() -> int:
                 maxfail=args.maxfail,
                 junit_xml=args.junit_xml,
                 workers=args.workers,
+                ignore=args.ignore,
                 coverage=args.coverage,
                 coverage_xml=args.coverage_xml,
                 coverage_html=args.coverage_html,
                 coverage_source_dirs=args.coverage_source_dirs,
                 coverage_omit=args.coverage_omit,
             )
+
+            # Persist per-test results for non-worker mode
+            try:
+                cache_dir = args.work_dir / ".veri" / "cache"
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                per_test_path = cache_dir / "last_per_test.json"
+                with open(per_test_path, "w", encoding="utf-8") as f:
+                    json.dump(getattr(executor, "last_per_test", []), f)
+            except Exception as e:  # best-effort
+                print(f"Warning: could not write per-test results: {e}", file=sys.stderr)
 
             return exit_code
 
