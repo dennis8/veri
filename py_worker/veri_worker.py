@@ -10,7 +10,7 @@ import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from _pytest.nodes import Item
@@ -25,11 +25,15 @@ from contracts import (
 )
 from contracts.base import SchemaModel
 
-try:
-    import coverage
+# Type-safe coverage import
+if TYPE_CHECKING:
+    from coverage import Coverage
 
+try:
+    from coverage import Coverage
     COVERAGE_AVAILABLE = True
 except ImportError:
+    Coverage = None  # type: ignore[assignment,misc]
     COVERAGE_AVAILABLE = False
 
 
@@ -199,10 +203,10 @@ class VeriASTParser:
 
         except SyntaxError as e:
             print(f"Syntax error in {file_path}: {e}", file=sys.stderr)
-            print(f"  This file's imports will not be included in the import graph", file=sys.stderr)
+            print("  This file's imports will not be included in the import graph", file=sys.stderr)
         except Exception as e:
             print(f"Error parsing {file_path}: {e}", file=sys.stderr)
-            print(f"  This file's imports will not be included in the import graph", file=sys.stderr)
+            print("  This file's imports will not be included in the import graph", file=sys.stderr)
 
         return edges, dynamic_imports, unresolved_imports
 
@@ -361,7 +365,7 @@ class VeriCollector:
 
         class CollectionPlugin:
             def pytest_collection_modifyitems(
-                self, session: Any, config: Any, items: list[Item]
+                self, _session: Any, _config: Any, items: list[Item]
             ) -> None:
                 collected_items.extend(items)
 
@@ -451,19 +455,15 @@ class VeriCollector:
             markers = [mark.name for mark in item.iter_markers()]
 
             # Extract fixtures (from function signature)
-            fixtures = []
-            if hasattr(item, "fixturenames"):
-                fixtures = list(item.fixturenames)
+            fixtures = list(getattr(item, "fixturenames", []))
 
             # Extract parametrization info if present
             parametrize = None
             if hasattr(item, "callspec"):
-                params = (
-                    list(item.callspec.params.keys())
-                    if hasattr(item.callspec, "params")
-                    else []
-                )
-                ids = [str(item.callspec.id)] if hasattr(item.callspec, "id") else []
+                callspec = item.callspec
+                params = list(getattr(callspec, "params", {}).keys())
+                callspec_id = getattr(callspec, "id", None)
+                ids = [str(callspec_id)] if callspec_id is not None else []
                 parametrize = ParametrizeInfo(params=params, ids=ids)
 
             # Parse nodeid parts
@@ -676,13 +676,13 @@ class VeriExecutor:
 
     def _start_coverage(self, **kwargs: Any) -> None:
         """Initialize and start coverage collection"""
-        if not COVERAGE_AVAILABLE:
+        if not COVERAGE_AVAILABLE or Coverage is None:
             return
 
         # Create coverage instance with appropriate settings
         config_file = self.work_dir / ".coveragerc"
         if config_file.exists():
-            self.coverage_instance = coverage.Coverage(config_file=str(config_file))
+            self.coverage_instance = Coverage(config_file=str(config_file))
         else:
             # Use sensible defaults for incremental coverage
             source_dirs = kwargs.get("coverage_source_dirs", ["src"])
@@ -702,7 +702,7 @@ class VeriExecutor:
                 / (f".coverage.worker_{worker_id}" if worker_id else ".coverage")
             )
 
-            self.coverage_instance = coverage.Coverage(
+            self.coverage_instance = Coverage(
                 source=source_dirs,
                 omit=omit_patterns,
                 branch=True,
