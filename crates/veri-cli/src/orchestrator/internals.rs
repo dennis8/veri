@@ -9,6 +9,7 @@ use veri_core::config::Config;
 use veri_core::diagnostics::{DiagnosticReporter, VeriDiagnostic};
 use veri_core::import_graph::ImportGraphBuilder;
 use veri_core::planner::{PlannerConfig, TestPlanner};
+use veri_core::python_launcher::PythonRuntime;
 use veri_core::python_worker::{PythonWorker, TestRunOptions};
 use veri_core::scheduler::{SchedulerConfig, SchedulingStrategy, TestScheduler};
 use veri_core::security::{SecurityConfig, SecurityScanner};
@@ -80,13 +81,16 @@ fn normalize_paths(paths: &[String], work_dir: &std::path::Path) -> Vec<String> 
     out
 }
 
-pub(super) fn run_pytest_engine(cli: &Cli) -> Result<ExitCode> {
+pub(super) fn run_pytest_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     println!("🔄 Using pytest engine for compatibility");
 
     // Create Python worker
     let work_dir = detect_project_root_from_paths(&cli.paths).unwrap_or(std::env::current_dir()?);
     let work_dir = std::fs::canonicalize(&work_dir).unwrap_or(work_dir);
-    let worker = PythonWorker::new(&work_dir, work_dir.join(".veri").join("cache"));
+    let cache_dir = work_dir.join(".veri").join("cache");
+    let python_runtime_cfg = config.python();
+    let python_runtime = PythonRuntime::from_config(&work_dir, &python_runtime_cfg);
+    let worker = PythonWorker::from_runtime(&work_dir, &cache_dir, &python_runtime);
 
     // Build pytest arguments from CLI
     let mut pytest_args = Vec::new();
@@ -193,7 +197,7 @@ fn check_compatibility_and_fallback(
         println!(
             "🔄 Automatically falling back to pytest engine due to plugin compatibility issues"
         );
-        return Ok(Some(run_pytest_engine(cli)?));
+        return Ok(Some(run_pytest_engine(cli, config)?));
     }
 
     Ok(None)
@@ -277,13 +281,15 @@ pub(super) fn run_veri_engine(
     let work_dir = detect_project_root_from_paths(&cli.paths).unwrap_or(std::env::current_dir()?);
     let work_dir = std::fs::canonicalize(&work_dir).unwrap_or(work_dir);
     let cache_dir = work_dir.join(".veri").join("cache");
+    let python_runtime_cfg = config.python();
+    let python_runtime = PythonRuntime::from_config(&work_dir, &python_runtime_cfg);
 
     // Handle watch mode
     if cli.watch {
-        return watch_adapter.run(cli, &work_dir, &cache_dir);
+        return watch_adapter.run(cli, &work_dir, &cache_dir, &python_runtime);
     }
 
-    let worker = PythonWorker::new(&work_dir, &cache_dir);
+    let worker = PythonWorker::from_runtime(&work_dir, &cache_dir, &python_runtime);
 
     // Initialize diagnostics reporter
     let mut diagnostics = DiagnosticReporter::new(cli.quiet);
@@ -345,7 +351,8 @@ pub(super) fn run_veri_engine(
         // Build import graph only when impact analysis is needed
         if !cli.all {
             println!("🔍 Building import graph...");
-            let mut graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
+            let mut graph_builder =
+                ImportGraphBuilder::with_runtime(&work_dir, &cache_dir, &python_runtime);
             let (imports_graph, _revdeps_graph, _module_map) = graph_builder.build_graphs()?;
 
             println!(
@@ -384,7 +391,8 @@ pub(super) fn run_veri_engine(
         tests_index.tests.iter().map(|t| t.nodeid.clone()).collect()
     } else {
         // Load or build graphs for impact analysis
-        let mut graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
+        let mut graph_builder =
+            ImportGraphBuilder::with_runtime(&work_dir, &cache_dir, &python_runtime);
         let (imports_graph, revdeps_graph, module_map) = match graph_builder.load_cached_graphs()? {
             Some(graphs) => graphs,
             None => {
@@ -459,6 +467,7 @@ pub(super) fn run_veri_engine(
         cache_dir: &cache_dir,
         verbose: cli.verbose > 0,
         config,
+        python_runtime: python_runtime.clone(),
     };
     let test_result = execute_tests_parallel(
         &nodeids_to_run,
@@ -725,6 +734,7 @@ pub struct ParallelExecutionConfig<'a> {
     pub cache_dir: &'a std::path::Path,
     pub verbose: bool,
     pub config: &'a Config,
+    pub python_runtime: PythonRuntime,
 }
 
 /// Setup test scheduler with historical timing data
@@ -1029,22 +1039,17 @@ pub fn execute_tests_parallel(
 
     // Configure worker pool
     let worker_cfg = exec_config.config.worker.clone().unwrap_or_default();
-    let pool_config = WorkerPoolConfig {
-        worker_count,
-        startup_timeout: std::time::Duration::from_secs(
-            worker_cfg.startup_timeout_sec.unwrap_or(30),
-        ),
-        execution_timeout: std::time::Duration::from_secs(
-            worker_cfg.execution_timeout_sec.unwrap_or(300),
-        ),
-        heartbeat_interval: std::time::Duration::from_secs(
-            worker_cfg.heartbeat_interval_sec.unwrap_or(10),
-        ),
-        max_idle_time: std::time::Duration::from_secs(600),
-        enable_recycling: true,
-        work_dir: exec_config.work_dir.to_path_buf(),
-        cache_dir: exec_config.cache_dir.to_path_buf(),
-    };
+    let mut pool_config = WorkerPoolConfig::default();
+    pool_config.worker_count = worker_count;
+    pool_config.startup_timeout =
+        std::time::Duration::from_secs(worker_cfg.startup_timeout_sec.unwrap_or(30));
+    pool_config.execution_timeout =
+        std::time::Duration::from_secs(worker_cfg.execution_timeout_sec.unwrap_or(300));
+    pool_config.heartbeat_interval =
+        std::time::Duration::from_secs(worker_cfg.heartbeat_interval_sec.unwrap_or(10));
+    pool_config.work_dir = exec_config.work_dir.to_path_buf();
+    pool_config.cache_dir = exec_config.cache_dir.to_path_buf();
+    pool_config.apply_runtime(&exec_config.python_runtime);
 
     // Create and start worker pool
     let mut worker_pool = WorkerPool::new(pool_config);
@@ -1104,7 +1109,9 @@ pub(super) fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
     // Import graph status
     let work_dir = std::env::current_dir()?;
     let cache_dir = work_dir.join(".veri").join("cache");
-    let graph_builder = ImportGraphBuilder::new(&work_dir, &cache_dir);
+    let python_runtime_cfg = config.python();
+    let python_runtime = PythonRuntime::from_config(&work_dir, &python_runtime_cfg);
+    let graph_builder = ImportGraphBuilder::with_runtime(&work_dir, &cache_dir, &python_runtime);
 
     println!("Import Graph Status:");
     match graph_builder.load_cached_graphs()? {
@@ -1162,7 +1169,8 @@ pub(super) fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
                     if let Ok(Some((imports_graph, revdeps_graph, module_map))) =
                         graph_builder.load_cached_graphs()
                     {
-                        let worker = PythonWorker::new(&work_dir, &cache_dir);
+                        let worker =
+                            PythonWorker::from_runtime(&work_dir, &cache_dir, &python_runtime);
                         if worker.has_valid_cache() {
                             if let Ok(tests_index) = worker.collect_tests(&[], &[]) {
                                 let planner = TestPlanner::new(&work_dir, &cache_dir);

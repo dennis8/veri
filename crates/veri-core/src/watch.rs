@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use crate::import_graph::ImportGraphBuilder;
 use crate::planner::TestPlanner;
+use crate::python_launcher::PythonRuntime;
 use crate::python_worker::{PythonWorker, TestRunOptions};
 
 #[derive(Debug, Clone)]
@@ -89,10 +90,16 @@ pub struct WatchSession {
     gitignore: Option<ignore::gitignore::Gitignore>,
     ignore_globset: Option<globset::GlobSet>,
     tui: Option<WatchTui>,
+    python_runtime: PythonRuntime,
 }
 
 impl WatchSession {
-    pub fn new(work_dir: PathBuf, cache_dir: PathBuf, config: WatchConfig) -> Result<Self> {
+    pub fn new(
+        work_dir: PathBuf,
+        cache_dir: PathBuf,
+        config: WatchConfig,
+        python_runtime: PythonRuntime,
+    ) -> Result<Self> {
         let gitignore = if config.respect_gitignore {
             Self::load_gitignore(&work_dir)?
         } else {
@@ -129,6 +136,7 @@ impl WatchSession {
             gitignore,
             ignore_globset,
             tui,
+            python_runtime,
         })
     }
 
@@ -337,8 +345,10 @@ impl WatchSession {
         let start_time = Instant::now();
 
         // Initialize components
-        let worker = PythonWorker::new(&self.work_dir, &self.cache_dir);
-        let mut graph_builder = ImportGraphBuilder::new(&self.work_dir, &self.cache_dir);
+        let worker =
+            PythonWorker::from_runtime(&self.work_dir, &self.cache_dir, &self.python_runtime);
+        let mut graph_builder =
+            ImportGraphBuilder::with_runtime(&self.work_dir, &self.cache_dir, &self.python_runtime);
 
         // Load or build import graphs
         let (imports_graph, revdeps_graph, module_map) = match graph_builder.load_cached_graphs()? {
@@ -434,12 +444,11 @@ impl WatchSession {
         }
 
         // Run the selected tests via worker pool (single worker)
-        let pool_cfg = crate::worker_pool::WorkerPoolConfig {
-            worker_count: 1,
-            work_dir: self.work_dir.clone(),
-            cache_dir: self.cache_dir.clone(),
-            ..Default::default()
-        };
+        let mut pool_cfg = crate::worker_pool::WorkerPoolConfig::default();
+        pool_cfg.worker_count = 1;
+        pool_cfg.work_dir = self.work_dir.clone();
+        pool_cfg.cache_dir = self.cache_dir.clone();
+        pool_cfg.apply_runtime(&self.python_runtime);
         let mut pool = crate::worker_pool::WorkerPool::new(pool_cfg);
         pool.start()?;
         let batch = crate::scheduler::TestBatch {

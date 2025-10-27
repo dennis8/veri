@@ -4,12 +4,15 @@ use std::io::Read;
 use std::time::Instant;
 use veri_core::config::Config;
 use veri_core::event_stream::{generate_run_id, CIReporter};
+use veri_core::python_launcher::PythonRuntime;
 use veri_core::python_worker::{PythonWorker, TestRunOptions};
 use veri_core::sharder::{SharderConfig, TestSharder};
 
 pub fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Result<ExitCode> {
     let work_dir = std::env::current_dir()?;
     let cache_dir = work_dir.join(".veri").join("cache");
+    let python_runtime_cfg = config.python();
+    let python_runtime = PythonRuntime::from_config(&work_dir, &python_runtime_cfg);
 
     match command {
         Commands::Split { shards } => {
@@ -98,7 +101,7 @@ pub fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) ->
 
             println!("🚀 Executing {} tests...", nodeids.len());
             let start_time = Instant::now();
-            let worker = PythonWorker::new(&work_dir, &cache_dir);
+            let worker = PythonWorker::from_runtime(&work_dir, &cache_dir, &python_runtime);
             let tests_index = worker.collect_tests(&[], &[])?;
             let run_options = TestRunOptions {
                 verbose: cli_args.verbose > 0,
@@ -126,6 +129,7 @@ pub fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) ->
                 cache_dir: &cache_dir,
                 verbose: cli_args.verbose > 0,
                 config,
+                python_runtime: python_runtime.clone(),
             };
             let exit = crate::orchestrator::execute_tests_parallel(
                 &nodeids,

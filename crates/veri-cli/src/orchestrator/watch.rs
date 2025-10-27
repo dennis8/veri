@@ -3,23 +3,41 @@ use anyhow::Result;
 use std::path::Path;
 use veri_core::diagnostics::{DiagnosticReporter, VeriDiagnostic};
 use veri_core::import_graph::ImportGraphBuilder;
+use veri_core::python_launcher::PythonRuntime;
 use veri_core::python_worker::{PythonWorker, TestRunOptions};
 use veri_core::watch::{WatchConfig, WatchSession};
 
 pub trait WatchAdapter: Send {
-    fn run(&self, cli: &Cli, work_dir: &Path, cache_dir: &Path) -> Result<ExitCode>;
+    fn run(
+        &self,
+        cli: &Cli,
+        work_dir: &Path,
+        cache_dir: &Path,
+        runtime: &PythonRuntime,
+    ) -> Result<ExitCode>;
 }
 
 #[derive(Default)]
 pub struct DefaultWatchAdapter;
 
 impl WatchAdapter for DefaultWatchAdapter {
-    fn run(&self, cli: &Cli, work_dir: &Path, cache_dir: &Path) -> Result<ExitCode> {
-        run_watch_mode(cli, work_dir, cache_dir)
+    fn run(
+        &self,
+        cli: &Cli,
+        work_dir: &Path,
+        cache_dir: &Path,
+        runtime: &PythonRuntime,
+    ) -> Result<ExitCode> {
+        run_watch_mode(cli, work_dir, cache_dir, runtime)
     }
 }
 
-fn run_watch_mode(cli: &Cli, work_dir: &Path, cache_dir: &Path) -> Result<ExitCode> {
+fn run_watch_mode(
+    cli: &Cli,
+    work_dir: &Path,
+    cache_dir: &Path,
+    runtime: &PythonRuntime,
+) -> Result<ExitCode> {
     println!("👀 Starting watch mode...");
 
     let watch_config = WatchConfig {
@@ -53,7 +71,7 @@ fn run_watch_mode(cli: &Cli, work_dir: &Path, cache_dir: &Path) -> Result<ExitCo
         ],
     };
 
-    let worker = PythonWorker::new(work_dir, cache_dir);
+    let worker = PythonWorker::from_runtime(work_dir, cache_dir, runtime);
     if !worker.has_valid_cache() {
         println!("📋 Initial collection required...");
         match worker.collect_tests(&[], &[]) {
@@ -67,7 +85,7 @@ fn run_watch_mode(cli: &Cli, work_dir: &Path, cache_dir: &Path) -> Result<ExitCo
         }
 
         println!("🔍 Building import graph...");
-        let mut graph_builder = ImportGraphBuilder::new(work_dir, cache_dir);
+        let mut graph_builder = ImportGraphBuilder::with_runtime(work_dir, cache_dir, runtime);
         let mut diagnostics = DiagnosticReporter::new(false);
 
         match graph_builder.build_graphs() {
@@ -112,6 +130,7 @@ fn run_watch_mode(cli: &Cli, work_dir: &Path, cache_dir: &Path) -> Result<ExitCo
         work_dir.to_path_buf(),
         cache_dir.to_path_buf(),
         watch_config,
+        runtime.clone(),
     )?;
 
     watch_session.start()?;

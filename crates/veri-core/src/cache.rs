@@ -1,9 +1,13 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::sync::{Mutex, OnceLock};
+
+use serde::Deserialize;
 
 /// Cache key components for deterministic caching
 #[derive(Debug, Clone)]
@@ -18,6 +22,19 @@ pub struct CacheKey {
     pub conftest_digests: HashMap<String, String>,
     pub veri_config_digest: String,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+struct PythonEnvironmentSnapshot {
+    python_version: String,
+    #[serde(default)]
+    pytest_version: Option<String>,
+    #[serde(default)]
+    pytest_plugins: Vec<String>,
+    #[serde(default)]
+    site_packages_digest: Option<String>,
+}
+
+static PYTHON_ENV_SNAPSHOT: OnceLock<Mutex<Option<PythonEnvironmentSnapshot>>> = OnceLock::new();
 
 impl CacheKey {
     /// Create a cache key from the current environment
@@ -94,8 +111,8 @@ impl CacheKey {
 
     /// Get Python version from current interpreter
     fn get_python_version() -> Result<String> {
-        // For now, return a placeholder - in Phase 3 we'll get this from the Python worker
-        Ok("3.11.0".to_string())
+        let python_env = Self::python_env_snapshot()?;
+        Ok(python_env.python_version)
     }
 
     /// Get platform identifier
@@ -117,20 +134,22 @@ impl CacheKey {
 
     /// Get site-packages digest
     fn get_site_packages_digest() -> Result<Option<String>> {
-        // For now, return None - in Phase 3 we'll implement proper site-packages scanning
-        Ok(None)
+        let python_env = Self::python_env_snapshot()?;
+        Ok(python_env.site_packages_digest)
     }
 
     /// Get pytest version from current environment
     fn get_pytest_version() -> Result<String> {
-        // For now, return a placeholder - in Phase 3 we'll get this from the Python worker
-        Ok("7.4.0".to_string())
+        let python_env = Self::python_env_snapshot()?;
+        Ok(python_env
+            .pytest_version
+            .unwrap_or_else(|| "pytest-not-found".to_string()))
     }
 
     /// Get list of installed pytest plugins
     fn get_pytest_plugins() -> Result<Vec<String>> {
-        // For now, return empty list - in Phase 3 we'll scan for actual plugins
-        Ok(Vec::new())
+        let python_env = Self::python_env_snapshot()?;
+        Ok(python_env.pytest_plugins)
     }
 
     /// Get digests of all conftest.py files
@@ -151,12 +170,239 @@ impl CacheKey {
         Ok(digests)
     }
 
+    fn python_env_snapshot() -> Result<PythonEnvironmentSnapshot> {
+        let storage = PYTHON_ENV_SNAPSHOT.get_or_init(|| Mutex::new(None));
+
+        {
+            let guard = storage
+                .lock()
+                .expect("python environment snapshot mutex poisoned");
+            if let Some(snapshot) = &*guard {
+                return Ok(snapshot.clone());
+            }
+        }
+
+        let snapshot = Self::collect_python_environment_snapshot()?;
+
+        let mut guard = storage
+            .lock()
+            .expect("python environment snapshot mutex poisoned");
+        *guard = Some(snapshot.clone());
+
+        Ok(snapshot)
+    }
+
+    fn collect_python_environment_snapshot() -> Result<PythonEnvironmentSnapshot> {
+        let python = Self::find_python_executable()?;
+        let script = r#"
+import json
+import hashlib
+import platform
+
+result = {
+    "python_version": platform.python_version(),
+    "pytest_version": None,
+    "pytest_plugins": [],
+    "site_packages_digest": None,
+}
+
+# Determine pytest version
+try:
+    import pytest
+    result["pytest_version"] = getattr(pytest, "__version__", None)
+except ModuleNotFoundError:
+    result["pytest_version"] = None
+except Exception:
+    result["pytest_version"] = None
+
+plugins = set()
+package_records = []
+
+def add_package(name, version, location):
+    package_records.append({
+        "name": name or "",
+        "version": version or "",
+        "location": location or "",
+    })
+
+def add_plugin(name, version):
+    if not name:
+        return
+    display = f"{name}=={version}" if version else name
+    plugins.add(display)
+
+try:
+    import pkg_resources  # type: ignore
+except Exception:
+    pkg_resources = None
+
+if pkg_resources is not None:
+    try:
+        for dist in pkg_resources.working_set:
+            name = dist.project_name
+            version = dist.version
+            location = dist.location
+
+            add_package(name, version, location)
+
+        # Detect pytest plugins only via pytest11 entry points
+        try:
+            for entry_point in pkg_resources.iter_entry_points("pytest11"):
+                dist = getattr(entry_point, "dist", None)
+                if dist is not None:
+                    add_plugin(dist.project_name, dist.version)
+                else:
+                    add_plugin(entry_point.module_name, None)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+if not package_records or not plugins:
+    try:
+        try:
+            from importlib import metadata
+        except ImportError:
+            import importlib_metadata as metadata  # type: ignore
+
+        for dist in metadata.distributions():
+            name = getattr(dist, "metadata", {}).get("Name") if hasattr(dist, "metadata") else None
+            if not name and hasattr(dist, "name"):
+                name = getattr(dist, "name")
+            version = getattr(dist, "version", None)
+
+            add_package(name, version, "")
+
+        # Detect pytest plugins only via pytest11 entry points
+        try:
+            entry_points = metadata.entry_points()
+            if hasattr(entry_points, "select"):
+                selected = entry_points.select(group="pytest11")
+            else:
+                selected = entry_points.get("pytest11", [])
+            for entry in selected:
+                dist = getattr(entry, "dist", None)
+                if dist is not None:
+                    add_plugin(getattr(dist, "name", None), getattr(dist, "version", None))
+                else:
+                    add_plugin(getattr(entry, "name", None), None)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+seen_records = set()
+deduped_records = []
+for record in package_records:
+    key = (record["name"].lower(), record["version"], record["location"])
+    if key in seen_records:
+        continue
+    seen_records.add(key)
+    deduped_records.append(record)
+
+deduped_records.sort(key=lambda item: (item["name"].lower(), item["version"], item["location"]))
+plugin_list = sorted(list(plugins), key=lambda item: item.encode('ascii', 'ignore').decode().lower())
+
+if deduped_records:
+    digest_input = json.dumps(deduped_records, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    result["site_packages_digest"] = hashlib.sha256(digest_input).hexdigest()
+
+result["pytest_plugins"] = plugin_list
+
+print(json.dumps(result))
+"#;
+
+        let output = Command::new(&python)
+            .args(["-c", script])
+            .output()
+            .with_context(|| format!("Failed to run Python interpreter '{}'", python))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!(
+                "Python environment probe failed (status {}): {}",
+                output.status,
+                stderr.trim()
+            ));
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let mut snapshot: PythonEnvironmentSnapshot = serde_json::from_str(&stdout)
+            .context("Failed to parse Python environment snapshot JSON")?;
+
+        // Ensure deterministic ordering even if the Python helper returned duplicates
+        // Use ASCII lowercasing to match Python's behavior
+        snapshot
+            .pytest_plugins
+            .sort_by(|a, b| a.to_ascii_lowercase().cmp(&b.to_ascii_lowercase()));
+        snapshot.pytest_plugins.dedup();
+
+        // Deduplicate plugins that appear both with and without versions
+        // Keep only the versioned form when both exist (e.g., "foo==1.0" over "foo")
+        let mut seen_names = std::collections::HashSet::new();
+        let mut deduplicated = Vec::new();
+
+        // First pass: collect all versioned plugins
+        for plugin in &snapshot.pytest_plugins {
+            if plugin.contains("==") {
+                let name = plugin.split("==").next().unwrap();
+                seen_names.insert(name.to_string());
+                deduplicated.push(plugin.clone());
+            }
+        }
+
+        // Second pass: add unversioned plugins only if no versioned form exists
+        for plugin in &snapshot.pytest_plugins {
+            if !plugin.contains("==") && !seen_names.contains(plugin) {
+                deduplicated.push(plugin.clone());
+            }
+        }
+
+        snapshot.pytest_plugins = deduplicated;
+
+        Ok(snapshot)
+    }
+
+    fn find_python_executable() -> Result<String> {
+        let candidates = ["python3", "python", "py"];
+        for candidate in candidates {
+            let result = Command::new(candidate).arg("--version").output();
+            if let Ok(output) = result {
+                if output.status.success() {
+                    return Ok(candidate.to_string());
+                }
+            }
+        }
+
+        Err(anyhow!(
+            "Could not find a Python interpreter (checked python3, python, py)"
+        ))
+    }
+
     /// Recursively find all conftest.py files
     fn find_conftest_files(dir: &Path) -> Result<Vec<PathBuf>> {
+        let mut visited = std::collections::HashSet::new();
+        Self::find_conftest_files_impl(dir, &mut visited)
+    }
+
+    fn find_conftest_files_impl(
+        dir: &Path,
+        visited: &mut std::collections::HashSet<PathBuf>,
+    ) -> Result<Vec<PathBuf>> {
         let mut conftest_files = Vec::new();
 
         if !dir.is_dir() {
             return Ok(conftest_files);
+        }
+
+        // Protect against symlink loops by tracking canonical paths
+        let canonical = match dir.canonicalize() {
+            Ok(p) => p,
+            Err(_) => return Ok(conftest_files), // Skip if canonicalization fails
+        };
+
+        if !visited.insert(canonical) {
+            return Ok(conftest_files); // Already visited, avoid loop
         }
 
         for entry in fs::read_dir(dir)? {
@@ -173,8 +419,13 @@ impl CacheKey {
                         && dir_name != "node_modules"
                         && dir_name != "__pycache__"
                         && dir_name != "target"
+                        && dir_name != "venv"
+                        && dir_name != ".venv"
+                        && dir_name != "dist"
+                        && dir_name != "build"
+                        && dir_name != ".git"
                     {
-                        conftest_files.extend(Self::find_conftest_files(&path)?);
+                        conftest_files.extend(Self::find_conftest_files_impl(&path, visited)?);
                     }
                 }
             }

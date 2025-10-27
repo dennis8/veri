@@ -8,6 +8,7 @@ pub mod flaky;
 pub mod import_graph;
 pub mod paths;
 pub mod planner;
+pub mod python_launcher;
 pub mod python_worker;
 pub mod scheduler;
 pub mod schemas;

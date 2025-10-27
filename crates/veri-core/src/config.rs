@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -70,6 +71,9 @@ pub struct Config {
 
     /// Worker pool tuning
     pub worker: Option<WorkerConfig>,
+
+    /// Python runtime configuration
+    pub python: Option<PythonRuntimeConfig>,
 
     /// Automatic retry of failed tests
     pub auto_retry: Option<bool>,
@@ -177,6 +181,7 @@ impl Default for Config {
             telemetry: None,
             flaky: None,
             worker: None,
+            python: None,
             auto_retry: Some(false),
             retry_count: Some(1),
         }
@@ -372,6 +377,9 @@ impl Config {
         if other.worker.is_some() {
             self.worker = other.worker;
         }
+        if other.python.is_some() {
+            self.python = other.python;
+        }
     }
 
     /// Apply CLI arguments to override config values
@@ -483,6 +491,11 @@ impl Config {
         self.telemetry.clone().unwrap_or_default()
     }
 
+    /// Get python runtime configuration with defaults.
+    pub fn python(&self) -> PythonRuntimeConfig {
+        self.python.clone().unwrap_or_default()
+    }
+
     /// Check if network access should be blocked
     pub fn should_block_network(&self) -> bool {
         self.security().no_network.unwrap_or(false) || env::var("VERI_NO_NETWORK").is_ok()
@@ -530,6 +543,66 @@ impl Default for WorkerConfig {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum PythonBackendConfig {
+    /// Launch veri_worker via `uv run`.
+    Uv {
+        #[serde(default)]
+        binary: Option<String>,
+        #[serde(default)]
+        project: Option<PathBuf>,
+        #[serde(default)]
+        enabled: Option<bool>,
+    },
+    /// Launch veri_worker via a system python interpreter.
+    Python {
+        #[serde(default)]
+        executable: Option<String>,
+        #[serde(default)]
+        candidates: Option<Vec<String>>,
+        #[serde(default)]
+        enabled: Option<bool>,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PythonRuntimeConfig {
+    /// Optional explicit path to the `py_worker` project.
+    pub py_worker_path: Option<PathBuf>,
+    /// Additional PYTHONPATH entries to prepend.
+    #[serde(default)]
+    pub extra_pythonpath: Vec<PathBuf>,
+    /// Optional overrides for environment variables when launching workers.
+    #[serde(default)]
+    pub env: HashMap<String, String>,
+    /// Ordered list of backends to try.
+    #[serde(default)]
+    pub backends: Vec<PythonBackendConfig>,
+}
+
+impl Default for PythonRuntimeConfig {
+    fn default() -> Self {
+        Self {
+            py_worker_path: None,
+            extra_pythonpath: Vec::new(),
+            env: HashMap::new(),
+            backends: vec![
+                PythonBackendConfig::Uv {
+                    binary: Some("uv".to_string()),
+                    project: None,
+                    enabled: Some(true),
+                },
+                PythonBackendConfig::Python {
+                    executable: None,
+                    candidates: None,
+                    enabled: Some(true),
+                },
+            ],
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -543,6 +616,7 @@ mod tests {
         assert_eq!(config.cache_dir(), PathBuf::from(".veri/cache"));
         assert_eq!(config.log_level(), "INFO");
         assert!(!config.no_color());
+        assert!(!config.python().backends.is_empty());
     }
 
     #[test]

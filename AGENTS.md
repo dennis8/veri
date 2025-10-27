@@ -17,7 +17,8 @@
 ## Coding Style & Naming Conventions
 - Rust: `rustfmt` defaults; lint with `clippy -D warnings`. Modules/files `snake_case`; types `PascalCase`; functions `snake_case`.
 - Python: format with `ruff format .`; lint with `ruff check .`; type-check with `mypy .`. Modules/files `snake_case`; classes `PascalCase`; 4-space indents.
-- Keep public APIs stable under `schemas/`; document breaking changes in `docs/MIGRATION.md`.
+- **Backward Compatibility**: Not a requirement for this early-stage project. Breaking changes are acceptable if they improve architecture. Document significant changes in `docs/MIGRATION.md`.
+- Keep JSON Schema contracts stable under `schemas/` (used for Rust ↔ Python communication).
 
 ## Testing Guidelines
 - Rust unit tests live alongside code as `mod tests { ... }`; CLI tests in `crates/veri-cli/src/cli_tests.rs`. Run subset: `cargo test scheduler`.

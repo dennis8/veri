@@ -10,6 +10,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::python_launcher::PythonRuntime;
+
 /// Import graph data structure matching imports.graph.json schema
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ImportsGraph {
@@ -143,6 +145,24 @@ impl ImportGraphBuilder {
         let work_dir = work_dir.into();
         let cache_dir = cache_dir.into();
         let py_worker = crate::python_worker::PythonWorker::new(&work_dir, &cache_dir);
+
+        Self {
+            work_dir,
+            cache_dir,
+            module_map: ModuleMap::default(),
+            py_worker,
+        }
+    }
+
+    pub fn with_runtime(
+        work_dir: impl Into<PathBuf>,
+        cache_dir: impl Into<PathBuf>,
+        runtime: &PythonRuntime,
+    ) -> Self {
+        let work_dir = work_dir.into();
+        let cache_dir = cache_dir.into();
+        let py_worker =
+            crate::python_worker::PythonWorker::from_runtime(&work_dir, &cache_dir, runtime);
 
         Self {
             work_dir,

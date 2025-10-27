@@ -9,13 +9,15 @@ use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
+use std::ffi::OsString;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::python_launcher::{PythonLaunchContext, PythonLauncher, PythonRuntime};
 use crate::python_worker::TestRunOptions;
 use crate::scheduler::TestBatch;
 
@@ -38,10 +40,25 @@ pub struct WorkerPoolConfig {
     pub work_dir: PathBuf,
     /// Cache directory for workers
     pub cache_dir: PathBuf,
+    /// Python launcher shared across worker invocations
+    pub python_launcher: PythonLauncher,
+    /// PYTHONPATH entries to apply when launching workers
+    pub python_paths: Vec<PathBuf>,
+    /// Additional environment variables to set when launching workers
+    pub python_extra_env: Vec<(OsString, OsString)>,
+    /// Optional explicit py_worker project path for uv
+    pub py_worker_path: Option<PathBuf>,
 }
 
 impl Default for WorkerPoolConfig {
     fn default() -> Self {
+        let work_dir = std::env::current_dir().unwrap_or_default();
+        let cache_dir = work_dir.join(".veri").join("cache");
+        let py_worker_path = crate::paths::find_py_worker_path(&work_dir);
+        let mut python_paths = Vec::new();
+        if let Some(path) = &py_worker_path {
+            python_paths.push(path.clone());
+        }
         Self {
             worker_count: num_cpus::get().max(1),
             startup_timeout: Duration::from_secs(30),
@@ -49,12 +66,42 @@ impl Default for WorkerPoolConfig {
             heartbeat_interval: Duration::from_secs(10),
             max_idle_time: Duration::from_secs(600), // 10 minutes
             enable_recycling: true,
-            work_dir: std::env::current_dir().unwrap_or_default(),
-            cache_dir: std::env::current_dir()
-                .unwrap_or_default()
-                .join(".veri")
-                .join("cache"),
+            work_dir,
+            cache_dir,
+            python_launcher: PythonLauncher::with_defaults(),
+            python_paths,
+            python_extra_env: Vec::new(),
+            py_worker_path,
         }
+    }
+}
+
+impl WorkerPoolConfig {
+    /// Recompute python launcher context after mutating work or cache directories.
+    pub fn recompute_python_context(&mut self) {
+        self.py_worker_path = crate::paths::find_py_worker_path(&self.work_dir);
+        let mut new_paths = Vec::new();
+        if let Some(path) = &self.py_worker_path {
+            new_paths.push(path.clone());
+        }
+        for entry in std::mem::take(&mut self.python_paths) {
+            let is_py_worker = match &self.py_worker_path {
+                Some(py_worker) => py_worker == &entry,
+                None => false,
+            };
+            if !is_py_worker {
+                new_paths.push(entry);
+            }
+        }
+        self.python_paths = new_paths;
+    }
+
+    /// Apply shared Python runtime settings (launcher, PYTHONPATH, env).
+    pub fn apply_runtime(&mut self, runtime: &PythonRuntime) {
+        self.python_launcher = runtime.launcher.clone();
+        self.python_paths = runtime.python_paths.clone();
+        self.python_extra_env = runtime.extra_env.clone();
+        self.py_worker_path = runtime.py_worker_path.clone();
     }
 }
 
@@ -213,64 +260,12 @@ impl WorkerPool {
         }
     }
 
-    /// Set up the worker script in the cache directory
-    fn setup_worker_script(&self) -> Result<()> {
-        let worker_script_dest = self.config.cache_dir.join("veri_worker.py");
-
-        // Find the worker script in the source tree
-        // Try common locations relative to the working directory
-        let potential_paths = [
-            self.config
-                .work_dir
-                .join("py_worker")
-                .join("veri_worker.py"),
-            self.config.work_dir.join("veri_worker.py"),
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .join("py_worker")
-                .join("veri_worker.py"),
-        ];
-
-        let mut worker_script_src = None;
-        for path in &potential_paths {
-            if path.exists() {
-                worker_script_src = Some(path.clone());
-                break;
-            }
-        }
-
-        let worker_script_src =
-            worker_script_src.ok_or_else(|| anyhow!("Could not find veri_worker.py script"))?;
-
-        debug!(
-            "Copying worker script from {} to {}",
-            worker_script_src.display(),
-            worker_script_dest.display()
-        );
-
-        std::fs::copy(&worker_script_src, &worker_script_dest).with_context(|| {
-            format!(
-                "Failed to copy worker script from {} to {}",
-                worker_script_src.display(),
-                worker_script_dest.display()
-            )
-        })?;
-
-        Ok(())
-    }
-
     /// Initialize the worker pool and start worker processes
     pub fn start(&mut self) -> Result<()> {
         info!(
             "Starting worker pool with {} workers",
             self.config.worker_count
         );
-
-        // Set up worker script
-        self.setup_worker_script()?;
 
         // Initialize worker processes
         for i in 0..self.config.worker_count {
@@ -551,68 +546,23 @@ impl WorkerPool {
     }
 
     /// Build command for starting a worker process
-    fn build_worker_command(
-        worker_id: usize,
-        work_dir: &Path,
-        cache_dir: &Path,
-    ) -> Result<Command> {
-        let mut cmd;
-        if let Some(py_worker_path) = Self::find_py_worker_path(work_dir) {
-            cmd = Command::new("uv");
-            cmd.arg("run")
-                .arg("--project")
-                .arg(&py_worker_path)
-                .arg("python");
-            // Execute the cached worker script to avoid module import issues
-            let script_path = cache_dir.join("veri_worker.py");
-            let script_abs = std::fs::canonicalize(&script_path).unwrap_or(script_path);
-            cmd.arg(&script_abs);
-            // Run uv from py_worker so it resolves deps into that project
-            cmd.current_dir(&py_worker_path);
-        } else {
-            // Fallback to system python and cached script
-            let python_candidates = ["python3", "python", "py"];
-            let mut python_executable = None;
-            for candidate in &python_candidates {
-                if let Ok(output) = Command::new(candidate).arg("--version").output() {
-                    if output.status.success() {
-                        python_executable = Some(candidate.to_string());
-                        break;
-                    }
-                }
-            }
-            let python_executable =
-                python_executable.ok_or_else(|| anyhow!("Could not find Python executable"))?;
-            let worker_script = cache_dir.join("veri_worker.py");
-            cmd = Command::new(python_executable);
-            cmd.arg(&worker_script);
-        }
-
-        cmd.env("VERI_WORKER_ID", worker_id.to_string())
-            .arg("--worker-mode")
-            .arg("--worker-id")
-            .arg(worker_id.to_string())
-            .arg("--cache-dir")
-            .arg(cache_dir)
-            .arg("--work-dir")
-            .arg(work_dir)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        Ok(cmd)
-    }
-
     /// Start an individual worker process
     fn start_worker_process(&mut self, worker: &mut WorkerProcess) -> Result<()> {
         debug!("Starting worker process {}", worker.id);
 
-        let mut cmd =
-            Self::build_worker_command(worker.id, &self.config.work_dir, &self.config.cache_dir)?;
-
-        let mut process = cmd
-            .spawn()
-            .map_err(|e| anyhow!("Failed to start worker process {}: {}", worker.id, e))?;
+        let args =
+            Self::worker_launch_args(worker.id, &self.config.work_dir, &self.config.cache_dir);
+        let ctx = self.launch_context();
+        let mut process = self
+            .config
+            .python_launcher
+            .spawn_with(&ctx, &args, |cmd| {
+                cmd.env("VERI_WORKER_ID", worker.id.to_string());
+                cmd.stdin(Stdio::piped());
+                cmd.stdout(Stdio::piped());
+                cmd.stderr(Stdio::piped());
+            })
+            .with_context(|| format!("Failed to start worker process {}", worker.id))?;
 
         // Set up writer thread (stdin)
         let stdin = process
@@ -666,8 +616,28 @@ impl WorkerPool {
         Ok(())
     }
 
-    fn find_py_worker_path(start: &Path) -> Option<PathBuf> {
-        crate::paths::find_py_worker_path(start)
+    fn launch_context(&self) -> PythonLaunchContext<'_> {
+        PythonLaunchContext::new(
+            &self.config.work_dir,
+            &self.config.cache_dir,
+            &self.config.python_paths,
+            self.config.py_worker_path.as_deref(),
+            &self.config.python_extra_env,
+        )
+    }
+
+    fn worker_launch_args(worker_id: usize, work_dir: &Path, cache_dir: &Path) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "veri_worker".to_string(),
+            "--worker-mode".to_string(),
+            "--worker-id".to_string(),
+            worker_id.to_string(),
+            "--cache-dir".to_string(),
+            cache_dir.to_string_lossy().to_string(),
+            "--work-dir".to_string(),
+            work_dir.to_string_lossy().to_string(),
+        ]
     }
 
     fn spawn_writer_thread(mut stdin: std::process::ChildStdin, rx: Receiver<WorkerMessage>) {
@@ -979,5 +949,24 @@ mod tests {
         assert!(config.startup_timeout > Duration::ZERO);
         assert!(config.execution_timeout > Duration::ZERO);
         assert!(config.enable_recycling);
+    }
+
+    #[test]
+    fn test_apply_runtime_sets_launcher_and_paths() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let mut runtime_cfg = crate::config::PythonRuntimeConfig::default();
+        runtime_cfg
+            .extra_pythonpath
+            .push(PathBuf::from("runtime_extra"));
+        let runtime =
+            crate::python_launcher::PythonRuntime::from_config(tempdir.path(), &runtime_cfg);
+
+        let mut pool_cfg = WorkerPoolConfig::default();
+        pool_cfg.work_dir = tempdir.path().to_path_buf();
+        pool_cfg.cache_dir = tempdir.path().join(".veri").join("cache");
+        pool_cfg.apply_runtime(&runtime);
+
+        assert_eq!(pool_cfg.python_paths, runtime.python_paths);
+        assert_eq!(pool_cfg.py_worker_path, runtime.py_worker_path);
     }
 }

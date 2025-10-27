@@ -4,7 +4,9 @@
 //! that handles pytest collection and execution.
 
 use crate::diagnostics::{DiagnosticReporter, VeriDiagnostic};
+use crate::python_launcher::{PythonLaunchContext, PythonLauncher, PythonRuntime};
 use anyhow::{anyhow, Context, Result};
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
@@ -16,7 +18,10 @@ pub use crate::schemas::{
 pub struct PythonWorker {
     work_dir: PathBuf,
     cache_dir: PathBuf,
-    python_executable: String,
+    py_worker_path: Option<PathBuf>,
+    python_paths: Vec<PathBuf>,
+    extra_env: Vec<(OsString, OsString)>,
+    launcher: PythonLauncher,
 }
 
 impl PythonWorker {
@@ -25,19 +30,72 @@ impl PythonWorker {
         let work_dir = work_dir.into();
         let cache_dir = cache_dir.into();
 
-        // Always use uv run for consistent dependency management
-        let python_executable = "uv".to_string();
+        let py_worker_path = crate::paths::find_py_worker_path(&work_dir);
+        let mut python_paths = Vec::new();
+        if let Some(path) = &py_worker_path {
+            python_paths.push(path.clone());
+        }
 
         Self {
             work_dir,
             cache_dir,
-            python_executable,
+            py_worker_path,
+            python_paths,
+            extra_env: Vec::new(),
+            launcher: PythonLauncher::with_defaults(),
         }
     }
-    /// Set the Python executable to use
-    pub fn with_python_executable(mut self, executable: String) -> Self {
-        self.python_executable = executable;
+
+    /// Override the launcher (useful for tests or alternate environments).
+    pub fn with_launcher(mut self, launcher: PythonLauncher) -> Self {
+        self.launcher = launcher;
         self
+    }
+
+    /// Override the PYTHONPATH entries.
+    pub fn with_python_paths(mut self, paths: Vec<PathBuf>) -> Self {
+        self.python_paths = paths;
+        self
+    }
+
+    /// Override environment variables injected into spawned processes.
+    pub fn with_extra_env(mut self, env: Vec<(OsString, OsString)>) -> Self {
+        self.extra_env = env;
+        self
+    }
+
+    /// Override the detected py_worker project path.
+    pub fn with_py_worker_path(mut self, py_worker_path: Option<PathBuf>) -> Self {
+        self.py_worker_path = py_worker_path;
+        if let Some(path) = &self.py_worker_path {
+            if !self.python_paths.iter().any(|p| p == path) {
+                self.python_paths.insert(0, path.clone());
+            }
+        }
+        self
+    }
+
+    /// Construct a worker using a shared Python runtime definition.
+    pub fn from_runtime(
+        work_dir: impl Into<PathBuf>,
+        cache_dir: impl Into<PathBuf>,
+        runtime: &PythonRuntime,
+    ) -> Self {
+        Self::new(work_dir, cache_dir)
+            .with_launcher(runtime.launcher.clone())
+            .with_python_paths(runtime.python_paths.clone())
+            .with_extra_env(runtime.extra_env.clone())
+            .with_py_worker_path(runtime.py_worker_path.clone())
+    }
+
+    fn launch_context(&self) -> PythonLaunchContext<'_> {
+        PythonLaunchContext::new(
+            &self.work_dir,
+            &self.cache_dir,
+            &self.python_paths,
+            self.py_worker_path.as_deref(),
+            &self.extra_env,
+        )
     }
 
     /// Collect tests using pytest and generate indexes
@@ -176,12 +234,8 @@ impl PythonWorker {
 
     /// Get list of installed pytest plugins
     pub fn get_pytest_plugins(&self) -> Result<Vec<String>> {
-        // Run Python to get installed pytest plugins (prefer python3, then python)
-        let python = self.get_python_executable()?;
-        let output = Command::new(&python)
-            .args([
-                "-c",
-                r#"
+        let ctx = self.launch_context();
+        let script = r#"
 import pkg_resources
 import json
 import sys
@@ -215,11 +269,13 @@ try:
 except Exception as e:
     print(json.dumps([]), file=sys.stderr)
     print(f"Error getting plugins: {e}", file=sys.stderr)
-"#,
-            ])
-            .current_dir(&self.work_dir)
-            .output()
-            .with_context(|| format!("Failed to run Python to get pytest plugins using '{}')", python))?;
+#,
+        "#;
+        let args = vec!["-c".to_string(), script.to_string()];
+        let output = self
+            .launcher
+            .run(&ctx, &args)
+            .with_context(|| "Failed to execute python command for pytest plugin discovery")?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -251,182 +307,17 @@ except Exception as e:
         self.cache_dir.join("markers.index.json")
     }
 
-    /// Run a Python command with the configured executable
+    /// Run a Python command with the configured launcher.
     fn run_python_command(&self, args: &[String]) -> Result<Output> {
         log::debug!(
             "run_python_command cwd={} args={:?}",
             self.work_dir.display(),
             args
         );
-        // Prefer running via `uv run -m veri_worker` if uv is available; otherwise
-        // fall back to executing the cached veri_worker.py with the system Python.
-        let uv_available = Command::new("uv").arg("--version").output().is_ok();
-
-        if uv_available {
-            // Prefer using the target project's environment so its dependencies resolve.
-            // Make veri_worker importable by adding py_worker/ to PYTHONPATH.
-            let py_worker_path = self.find_py_worker_path();
-            let mut cmd = Command::new("uv");
-            cmd.arg("run");
-            cmd.arg("--project");
-            cmd.arg(&self.work_dir);
-            if let Some(py_worker) = &py_worker_path {
-                // Ensure the worker module is importable within the project's env
-                if let Ok(existing) = std::env::var("PYTHONPATH") {
-                    let mut val = py_worker.to_string_lossy().to_string();
-                    val.push(std::path::MAIN_SEPARATOR);
-                    val.push_str(&existing);
-                    cmd.env("PYTHONPATH", val);
-                } else {
-                    cmd.env("PYTHONPATH", py_worker);
-                }
-            }
-
-            cmd.args(args);
-            cmd.current_dir(&self.work_dir);
-            // Try uv path first
-            match cmd.output().context("Failed to execute 'uv run' command") {
-                Ok(out) => {
-                    log::debug!(
-                        "uv run status={} stdout_len={} stderr_len={}",
-                        out.status,
-                        out.stdout.len(),
-                        out.stderr.len()
-                    );
-                    // If uv executed but returned failure, attempt python fallback
-                    if !out.status.success() {
-                        log::debug!("uv run failed; attempting python fallback");
-                        let python = self.get_python_executable()?;
-                        let worker_script = self.ensure_worker_script()?;
-                        let adjusted = Self::adjust_args_for_script(args);
-                        let mut py = Command::new(&python);
-                        let fb = py
-                            .arg(worker_script)
-                            .args(&adjusted)
-                            .current_dir(&self.work_dir)
-                            .output()
-                            .with_context(|| {
-                                format!(
-                                    "Failed to execute Python worker via '{}' after uv failure",
-                                    python
-                                )
-                            })?;
-                        return Ok(fb);
-                    }
-                    return Ok(out);
-                }
-                Err(e) => {
-                    // If uv failed to spawn at all, fall back immediately
-                    log::debug!("uv run spawn error: {} — attempting python fallback", e);
-                    let python = self.get_python_executable()?;
-                    let worker_script = self.ensure_worker_script()?;
-                    let adjusted = Self::adjust_args_for_script(args);
-                    let mut py = Command::new(&python);
-                    return py
-                        .arg(worker_script)
-                        .args(&adjusted)
-                        .current_dir(&self.work_dir)
-                        .output()
-                        .with_context(|| {
-                            format!(
-                                "Failed to execute Python worker via '{}' after uv error: {}",
-                                python, e
-                            )
-                        });
-                }
-            }
-        }
-
-        // Fallback: run the worker script directly with python3/python
-        let python = self.get_python_executable()?;
-        let worker_script = self.ensure_worker_script()?;
-
-        let adjusted = Self::adjust_args_for_script(args);
-
-        let mut cmd = Command::new(&python);
-        cmd.arg(worker_script)
-            .args(&adjusted)
-            .current_dir(&self.work_dir);
-        log::debug!("python fallback using {} args={:?}", python, adjusted);
-        cmd.output().with_context(|| {
-            format!(
-                "Failed to execute Python worker via '{}' (uv not found)",
-                python
-            )
-        })
-    }
-
-    fn adjust_args_for_script(args: &[String]) -> Vec<String> {
-        // The incoming args are typically ["-m", "veri_worker", <rest>]. When
-        // running the script file directly, drop the "-m veri_worker" prefix.
-        let mut adjusted: Vec<String> = Vec::new();
-        let mut iter = args.iter();
-        if let (Some(first), Some(second)) = (iter.next(), iter.next()) {
-            if first == "-m" && second == "veri_worker" {
-                adjusted.extend(iter.cloned());
-            } else {
-                adjusted = args.to_vec();
-            }
-        } else {
-            adjusted = args.to_vec();
-        }
-        adjusted
-    }
-
-    /// Find the py_worker directory path
-    fn find_py_worker_path(&self) -> Option<PathBuf> {
-        crate::paths::find_py_worker_path(&self.work_dir)
-    }
-
-    /// Ensure the worker script is available in the cache dir and return its path
-    fn ensure_worker_script(&self) -> Result<PathBuf> {
-        let dest = self.cache_dir.join("veri_worker.py");
-        if dest.exists() {
-            return Ok(dest);
-        }
-
-        // Try to locate the source worker script in common locations
-        let mut candidates: Vec<PathBuf> = Vec::new();
-        // 1) work_dir/py_worker/veri_worker.py
-        candidates.push(self.work_dir.join("py_worker").join("veri_worker.py"));
-        // 2) repo-relative to this crate (../../py_worker/veri_worker.py)
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        if let Some(p) = manifest_dir.parent().and_then(|p| p.parent()) {
-            candidates.push(p.join("py_worker").join("veri_worker.py"));
-        }
-        // 3) work_dir/veri_worker.py
-        candidates.push(self.work_dir.join("veri_worker.py"));
-
-        let src = candidates
-            .into_iter()
-            .find(|p| p.exists())
-            .ok_or_else(|| anyhow!("Could not find veri_worker.py; expected under py_worker/"))?;
-
-        std::fs::create_dir_all(&self.cache_dir)
-            .context("Failed to create cache directory for worker script")?;
-        std::fs::copy(&src, &dest).with_context(|| {
-            format!(
-                "Failed to copy worker script from {} to {}",
-                src.display(),
-                dest.display()
-            )
-        })?;
-        Ok(dest)
-    }
-
-    /// Find a usable Python executable (python3, then python, then py on Windows)
-    fn get_python_executable(&self) -> Result<String> {
-        let candidates = ["python3", "python", "py"];
-        for c in &candidates {
-            if let Ok(out) = Command::new(c).arg("--version").output() {
-                if out.status.success() {
-                    return Ok(c.to_string());
-                }
-            }
-        }
-        Err(anyhow!(
-            "Could not find a Python interpreter (tried python3, python, py)"
-        ))
+        let ctx = self.launch_context();
+        self.launcher
+            .run(&ctx, args)
+            .with_context(|| format!("Failed to execute python command for args {:?}", args))
     }
 
     /// Check for Python environment issues and generate diagnostics

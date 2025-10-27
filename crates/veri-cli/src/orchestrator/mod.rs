@@ -87,7 +87,7 @@ impl Orchestrator {
         }
 
         match self.cli.engine {
-            Engine::Pytest => run_pytest_engine(&self.cli),
+            Engine::Pytest => run_pytest_engine(&self.cli, &self.config),
             Engine::Veri => run_veri_engine(
                 &self.cli,
                 &self.config,
@@ -144,7 +144,13 @@ mod orchestrator_tests {
     }
 
     impl WatchAdapter for TestWatchAdapter {
-        fn run(&self, _cli: &Cli, _work_dir: &Path, _cache_dir: &Path) -> Result<ExitCode> {
+        fn run(
+            &self,
+            _cli: &Cli,
+            _work_dir: &Path,
+            _cache_dir: &Path,
+            _runtime: &veri_core::python_launcher::PythonRuntime,
+        ) -> Result<ExitCode> {
             self.invoked.store(true, Ordering::SeqCst);
             Ok(self.exit)
         }
