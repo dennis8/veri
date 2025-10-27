@@ -357,7 +357,7 @@ impl SystemPythonBackend {
     }
 
     fn resolve_python(&self) -> Result<String> {
-        if let Some(existing) = self.resolved.lock().unwrap().clone() {
+        if let Some(existing) = self.resolved.lock().unwrap_or_else(|e| e.into_inner()).clone() {
             return Ok(existing);
         }
 
@@ -369,7 +369,7 @@ impl SystemPythonBackend {
                 .status()
                 .is_ok()
             {
-                let mut guard = self.resolved.lock().unwrap();
+                let mut guard = self.resolved.lock().unwrap_or_else(|e| e.into_inner());
                 let value = candidate.clone();
                 *guard = Some(value.clone());
                 return Ok(value);

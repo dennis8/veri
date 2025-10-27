@@ -565,7 +565,7 @@ impl FlakyReport {
             println!("Flaky Tests:");
 
             let mut sorted_tests = self.flaky_tests.clone();
-            sorted_tests.sort_by(|a, b| b.flaky_score.partial_cmp(&a.flaky_score).unwrap());
+            sorted_tests.sort_by(|a, b| b.flaky_score.total_cmp(&a.flaky_score));
 
             for (i, test) in sorted_tests.iter().take(10).enumerate() {
                 let color = if test.flaky_score > 0.5 { red } else { yellow };

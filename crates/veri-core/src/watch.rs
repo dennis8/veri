@@ -107,19 +107,24 @@ impl WatchSession {
         };
 
         // Build globset for ignore patterns
-        let ignore_globset = if !config.ignore_patterns.is_empty() {
-            let mut builder = GlobSetBuilder::new();
-            for pattern in &config.ignore_patterns {
-                if let Ok(glob) = Glob::new(pattern) {
-                    builder.add(glob);
-                } else {
-                    warn!("Invalid glob pattern: {}", pattern);
+        let ignore_globset = (!config.ignore_patterns.is_empty())
+            .then(|| {
+                let mut builder = GlobSetBuilder::new();
+                let mut valid_count = 0;
+
+                for pattern in &config.ignore_patterns {
+                    match Glob::new(pattern) {
+                        Ok(glob) => {
+                            builder.add(glob);
+                            valid_count += 1;
+                        }
+                        Err(_) => warn!("Invalid ignore pattern: {}", pattern),
+                    }
                 }
-            }
-            builder.build().ok()
-        } else {
-            None
-        };
+
+                (valid_count > 0).then(|| builder.build().ok()).flatten()
+            })
+            .flatten();
 
         let tui = if config.enable_tui {
             Some(WatchTui::new()?)

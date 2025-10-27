@@ -327,7 +327,8 @@ pub(super) fn run_veri_engine(
     };
 
     // Collect tests (only once!)
-    let tests_index = if needs_collection {
+    let (tests_index, collection_time_ms) = if needs_collection {
+        let collection_start = std::time::Instant::now();
         println!("📋 Collecting tests...");
 
         // Collect tests
@@ -372,10 +373,12 @@ pub(super) fn run_veri_engine(
             return Ok(ExitCode::Success);
         }
 
-        tests_index
+        let collection_time_ms = collection_start.elapsed().as_millis() as u64;
+        (tests_index, collection_time_ms)
     } else {
-        // Load cached tests
-        worker.collect_tests(&collection_paths, &cli.ignore)?
+        // Load cached tests (no collection time measured)
+        let tests_index = worker.collect_tests(&collection_paths, &cli.ignore)?;
+        (tests_index, 0)
     };
 
     // Report any diagnostics from collection phase
@@ -479,16 +482,21 @@ pub(super) fn run_veri_engine(
 
     let execution_duration = start_time.elapsed();
 
+    // Get actual Python version from cache key
+    let config_digest = compute_config_digest(config)?;
+    let cache_key = CacheKey::from_environment(config_digest, Some(&python_runtime.launcher))?;
+    let python_version = Some(cache_key.python_version);
+
     // Record telemetry for this run
     let run_event = RunEvent {
         test_count: nodeids_to_run.len() as u32,
         worker_count: worker_count as u32,
-        collection_time_ms: 0, // TODO: Measure collection time separately
+        collection_time_ms,
         execution_time_ms: execution_duration.as_millis() as u64,
         coverage_enabled: cli.cov || cli.cov_merge_full,
         watch_mode: cli.watch,
         ci_mode: cli.ci,
-        python_version: worker.get_pytest_plugins().ok().map(|_| "3.12".to_string()), // TODO: Get actual Python version
+        python_version,
         features_used: {
             let mut features = Vec::new();
             if cli.cov || cli.cov_merge_full {

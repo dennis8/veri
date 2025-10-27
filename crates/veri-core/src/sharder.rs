@@ -228,7 +228,7 @@ impl TestSharder {
             .collect();
 
         // Sort by duration descending (longest first for better bin packing)
-        test_items.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        test_items.sort_by(|a, b| b.1.total_cmp(&a.1));
 
         // Initialize shards
         let mut shards: Vec<Shard> = (0..num_shards)
@@ -246,13 +246,9 @@ impl TestSharder {
             let min_shard_idx = shards
                 .iter()
                 .enumerate()
-                .min_by(|a, b| {
-                    a.1.estimated_duration
-                        .partial_cmp(&b.1.estimated_duration)
-                        .unwrap()
-                })
+                .min_by(|a, b| a.1.estimated_duration.total_cmp(&b.1.estimated_duration))
                 .map(|(i, _)| i)
-                .unwrap();
+                .expect("shards vector is not empty");
 
             shards[min_shard_idx].tests.push(ShardTest {
                 nodeid: test.nodeid.clone(),
@@ -297,10 +293,7 @@ impl TestSharder {
             .collect();
 
         // Sort by priority first (failed tests first), then by duration descending
-        test_items.sort_by(|a, b| match a.2.cmp(&b.2) {
-            std::cmp::Ordering::Equal => b.1.partial_cmp(&a.1).unwrap(),
-            other => other,
-        });
+        test_items.sort_by(|a, b| a.2.cmp(&b.2).then_with(|| b.1.total_cmp(&a.1)));
 
         // Initialize shards
         let mut shards: Vec<Shard> = (0..num_shards)
