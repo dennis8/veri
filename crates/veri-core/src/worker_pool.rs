@@ -961,9 +961,11 @@ mod tests {
         let runtime =
             crate::python_launcher::PythonRuntime::from_config(tempdir.path(), &runtime_cfg);
 
-        let mut pool_cfg = WorkerPoolConfig::default();
-        pool_cfg.work_dir = tempdir.path().to_path_buf();
-        pool_cfg.cache_dir = tempdir.path().join(".veri").join("cache");
+        let mut pool_cfg = WorkerPoolConfig {
+            work_dir: tempdir.path().to_path_buf(),
+            cache_dir: tempdir.path().join(".veri").join("cache"),
+            ..Default::default()
+        };
         pool_cfg.apply_runtime(&runtime);
 
         assert_eq!(pool_cfg.python_paths, runtime.python_paths);

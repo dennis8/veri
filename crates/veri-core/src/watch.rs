@@ -449,10 +449,12 @@ impl WatchSession {
         }
 
         // Run the selected tests via worker pool (single worker)
-        let mut pool_cfg = crate::worker_pool::WorkerPoolConfig::default();
-        pool_cfg.worker_count = 1;
-        pool_cfg.work_dir = self.work_dir.clone();
-        pool_cfg.cache_dir = self.cache_dir.clone();
+        let mut pool_cfg = crate::worker_pool::WorkerPoolConfig {
+            worker_count: 1,
+            work_dir: self.work_dir.clone(),
+            cache_dir: self.cache_dir.clone(),
+            ..Default::default()
+        };
         pool_cfg.apply_runtime(&self.python_runtime);
         let mut pool = crate::worker_pool::WorkerPool::new(pool_cfg);
         pool.start()?;

@@ -512,8 +512,10 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
         let explicit_py_worker = tempdir.path().join("py_worker_override");
         std::fs::create_dir_all(&explicit_py_worker).unwrap();
-        let mut cfg = PythonRuntimeConfig::default();
-        cfg.py_worker_path = Some(explicit_py_worker.clone());
+        let mut cfg = PythonRuntimeConfig {
+            py_worker_path: Some(explicit_py_worker.clone()),
+            ..Default::default()
+        };
         cfg.extra_pythonpath.push(PathBuf::from("extra_lib"));
 
         let runtime = PythonRuntime::from_config(tempdir.path(), &cfg);
@@ -529,19 +531,21 @@ mod tests {
 
     #[test]
     fn runtime_skips_disabled_backends() {
-        let mut cfg = PythonRuntimeConfig::default();
-        cfg.backends = vec![
-            PythonBackendConfig::Uv {
-                binary: Some("uv".to_string()),
-                project: None,
-                enabled: Some(false),
-            },
-            PythonBackendConfig::Python {
-                executable: Some("python3".to_string()),
-                candidates: None,
-                enabled: Some(true),
-            },
-        ];
+        let cfg = PythonRuntimeConfig {
+            backends: vec![
+                PythonBackendConfig::Uv {
+                    binary: Some("uv".to_string()),
+                    project: None,
+                    enabled: Some(false),
+                },
+                PythonBackendConfig::Python {
+                    executable: Some("python3".to_string()),
+                    candidates: None,
+                    enabled: Some(true),
+                },
+            ],
+            ..Default::default()
+        };
         let tempdir = tempfile::tempdir().unwrap();
         let runtime = PythonRuntime::from_config(tempdir.path(), &cfg);
         assert_eq!(runtime.launcher.backends.len(), 1);
@@ -619,12 +623,14 @@ mod tests {
         let cache_dir = work_dir.join(".veri").join("cache");
 
         // Create runtime with only system python backend
-        let mut cfg = PythonRuntimeConfig::default();
-        cfg.backends = vec![PythonBackendConfig::Python {
-            executable: None,
-            candidates: Some(vec!["python3".to_string(), "python".to_string()]),
-            enabled: Some(true),
-        }];
+        let cfg = PythonRuntimeConfig {
+            backends: vec![PythonBackendConfig::Python {
+                executable: None,
+                candidates: Some(vec!["python3".to_string(), "python".to_string()]),
+                enabled: Some(true),
+            }],
+            ..Default::default()
+        };
 
         let runtime = PythonRuntime::from_config(work_dir, &cfg);
 
@@ -658,19 +664,21 @@ mod tests {
     #[test]
     fn test_backend_ordering_matters() {
         // Create config with specific backend order
-        let mut cfg = PythonRuntimeConfig::default();
-        cfg.backends = vec![
-            PythonBackendConfig::Python {
-                executable: Some("python3".to_string()),
-                candidates: None,
-                enabled: Some(true),
-            },
-            PythonBackendConfig::Uv {
-                binary: Some("uv".to_string()),
-                project: None,
-                enabled: Some(true),
-            },
-        ];
+        let cfg = PythonRuntimeConfig {
+            backends: vec![
+                PythonBackendConfig::Python {
+                    executable: Some("python3".to_string()),
+                    candidates: None,
+                    enabled: Some(true),
+                },
+                PythonBackendConfig::Uv {
+                    binary: Some("uv".to_string()),
+                    project: None,
+                    enabled: Some(true),
+                },
+            ],
+            ..Default::default()
+        };
 
         let tempdir = tempfile::tempdir().unwrap();
         let runtime = PythonRuntime::from_config(tempdir.path(), &cfg);

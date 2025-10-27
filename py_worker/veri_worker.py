@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 try:
     from coverage import Coverage
+
     COVERAGE_AVAILABLE = True
 except ImportError:
     Coverage = None  # type: ignore[assignment,misc]
@@ -115,8 +116,14 @@ class VeriASTParser:
             total_modules = max(1, len(self.module_map.get("modules", {})))
             error_rate = len(parse_errors) / total_modules
             if error_rate > 0.1:  # More than 10% failure rate
-                print(f"⚠️  High import parse error rate: {len(parse_errors)} files failed", file=sys.stderr)
-                print("ℹ️  This may result in incomplete import graphs and reduced test impact accuracy", file=sys.stderr)
+                print(
+                    f"⚠️  High import parse error rate: {len(parse_errors)} files failed",
+                    file=sys.stderr,
+                )
+                print(
+                    "ℹ️  This may result in incomplete import graphs and reduced test impact accuracy",
+                    file=sys.stderr,
+                )
 
         return {
             "version": "0.1.0",
@@ -203,10 +210,16 @@ class VeriASTParser:
 
         except SyntaxError as e:
             print(f"Syntax error in {file_path}: {e}", file=sys.stderr)
-            print("  This file's imports will not be included in the import graph", file=sys.stderr)
+            print(
+                "  This file's imports will not be included in the import graph",
+                file=sys.stderr,
+            )
         except Exception as e:
             print(f"Error parsing {file_path}: {e}", file=sys.stderr)
-            print("  This file's imports will not be included in the import graph", file=sys.stderr)
+            print(
+                "  This file's imports will not be included in the import graph",
+                file=sys.stderr,
+            )
 
         return edges, dynamic_imports, unresolved_imports
 

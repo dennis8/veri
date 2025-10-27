@@ -16,6 +16,7 @@ from _pytest.nodes import Item
 
 try:
     import coverage
+
     COVERAGE_AVAILABLE = True
 except ImportError:
     COVERAGE_AVAILABLE = False
@@ -30,12 +31,42 @@ class VeriASTParser:
         self.builtin_modules = set(sys.builtin_module_names)
         # Add common standard library modules
         self.stdlib_modules = self.builtin_modules | {
-            'os', 'sys', 'math', 'time', 'datetime', 'json', 'urllib', 'http',
-            'threading', 'multiprocessing', 'subprocess', 'pathlib', 'shutil',
-            'typing', 'collections', 'itertools', 'functools', 'operator',
-            'logging', 're', 'ast', 'inspect', 'importlib', 'pkgutil',
-            'unittest', 'pytest', 'argparse', 'configparser', 'sqlite3',
-            'email', 'xml', 'html', 'csv', 'gzip', 'zipfile', 'tarfile'
+            "os",
+            "sys",
+            "math",
+            "time",
+            "datetime",
+            "json",
+            "urllib",
+            "http",
+            "threading",
+            "multiprocessing",
+            "subprocess",
+            "pathlib",
+            "shutil",
+            "typing",
+            "collections",
+            "itertools",
+            "functools",
+            "operator",
+            "logging",
+            "re",
+            "ast",
+            "inspect",
+            "importlib",
+            "pkgutil",
+            "unittest",
+            "pytest",
+            "argparse",
+            "configparser",
+            "sqlite3",
+            "email",
+            "xml",
+            "html",
+            "csv",
+            "gzip",
+            "zipfile",
+            "tarfile",
         }
 
     def parse_imports_from_files(self) -> dict[str, Any]:
@@ -48,35 +79,40 @@ class VeriASTParser:
         unresolved_imports = []
 
         # Process each module in the module map
-        for file_path, module_info in self.module_map['modules'].items():
+        for file_path, module_info in self.module_map["modules"].items():
             try:
                 full_path = self.work_dir / file_path
-                if full_path.exists() and full_path.suffix == '.py':
-                    file_edges, file_dynamic, file_unresolved = self._parse_file_imports(
-                        full_path, module_info['module_name']
+                if full_path.exists() and full_path.suffix == ".py":
+                    file_edges, file_dynamic, file_unresolved = (
+                        self._parse_file_imports(full_path, module_info["module_name"])
                     )
                     edges.extend(file_edges)
                     dynamic_imports.extend(file_dynamic)
                     unresolved_imports.extend(file_unresolved)
             except Exception as e:
-                print(f"Warning: Failed to parse imports from {file_path}: {e}", file=sys.stderr)
+                print(
+                    f"Warning: Failed to parse imports from {file_path}: {e}",
+                    file=sys.stderr,
+                )
 
         return {
-            'version': '0.1.0',
-            'generated_at': datetime.now(UTC).isoformat() + 'Z',
-            'edges': edges,
-            'dynamic_imports': dynamic_imports,
-            'unresolved_imports': unresolved_imports
+            "version": "0.1.0",
+            "generated_at": datetime.now(UTC).isoformat() + "Z",
+            "edges": edges,
+            "dynamic_imports": dynamic_imports,
+            "unresolved_imports": unresolved_imports,
         }
 
-    def _parse_file_imports(self, file_path: Path, from_module: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    def _parse_file_imports(
+        self, file_path: Path, from_module: str
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
         """Parse imports from a single Python file"""
         edges = []
         dynamic_imports = []
         unresolved_imports = []
 
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content, filename=str(file_path))
@@ -93,8 +129,13 @@ class VeriASTParser:
                 if isinstance(node, ast.Import):
                     for alias in node.names:
                         edge, unresolved = self._process_import(
-                            from_module, alias.name, alias.asname, node.lineno,
-                            'import', [], len(conditional_stack) > 0
+                            from_module,
+                            alias.name,
+                            alias.asname,
+                            node.lineno,
+                            "import",
+                            [],
+                            len(conditional_stack) > 0,
                         )
                         if edge:
                             edges.append(edge)
@@ -107,17 +148,24 @@ class VeriASTParser:
 
                     # Handle relative imports
                     if level > 0:
-                        resolved_module = self._resolve_relative_import(from_module, module_name, level)
-                        import_type = 'relative'
+                        resolved_module = self._resolve_relative_import(
+                            from_module, module_name, level
+                        )
+                        import_type = "relative"
                     else:
                         resolved_module = module_name
-                        import_type = 'from'
+                        import_type = "from"
 
                     names = [alias.name for alias in node.names] if node.names else []
 
                     edge, unresolved = self._process_import(
-                        from_module, resolved_module, None, node.lineno,
-                        import_type, names, len(conditional_stack) > 0
+                        from_module,
+                        resolved_module,
+                        None,
+                        node.lineno,
+                        import_type,
+                        names,
+                        len(conditional_stack) > 0,
                     )
                     if edge:
                         edges.append(edge)
@@ -137,9 +185,16 @@ class VeriASTParser:
 
         return edges, dynamic_imports, unresolved_imports
 
-    def _process_import(self, from_module: str, to_module: str, alias: str | None,
-                       line: int, import_type: str, names: list[str],
-                       is_conditional: bool) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    def _process_import(
+        self,
+        from_module: str,
+        to_module: str,
+        alias: str | None,
+        line: int,
+        import_type: str,
+        names: list[str],
+        is_conditional: bool,
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         """Process a single import and return edge or unresolved import"""
 
         if not to_module:
@@ -148,27 +203,29 @@ class VeriASTParser:
         # Check if this is a local module
         if self._is_local_module(to_module):
             return {
-                'from_module': from_module,
-                'to_module': to_module,
-                'import_type': import_type,
-                'line': line,
-                'names': names,
-                'alias': alias,
-                'is_conditional': is_conditional
+                "from_module": from_module,
+                "to_module": to_module,
+                "import_type": import_type,
+                "line": line,
+                "names": names,
+                "alias": alias,
+                "is_conditional": is_conditional,
             }, None
         else:
             # Unresolved import (third-party or builtin)
             return None, {
-                'from_module': from_module,
-                'import_name': to_module,
-                'line': line,
-                'is_third_party': not self._is_builtin_module(to_module),
-                'is_builtin': self._is_builtin_module(to_module)
+                "from_module": from_module,
+                "import_name": to_module,
+                "line": line,
+                "is_third_party": not self._is_builtin_module(to_module),
+                "is_builtin": self._is_builtin_module(to_module),
             }
 
-    def _resolve_relative_import(self, from_module: str, module_name: str, level: int) -> str:
+    def _resolve_relative_import(
+        self, from_module: str, module_name: str, level: int
+    ) -> str:
         """Resolve relative import to absolute module name"""
-        module_parts = from_module.split('.')
+        module_parts = from_module.split(".")
 
         # Go up 'level' number of packages
         if level > len(module_parts):
@@ -178,70 +235,73 @@ class VeriASTParser:
         base_parts = module_parts[:-level] if level > 0 else module_parts
 
         if module_name:
-            return '.'.join(base_parts + [module_name])
+            return ".".join(base_parts + [module_name])
         else:
-            return '.'.join(base_parts)
+            return ".".join(base_parts)
 
     def _is_local_module(self, module_name: str) -> bool:
         """Check if a module is local to this project"""
         # Check if module is in our module map
-        for module_info in self.module_map['modules'].values():
-            if module_info['module_name'] == module_name:
+        for module_info in self.module_map["modules"].values():
+            if module_info["module_name"] == module_name:
                 return True
 
         # Check if it's a submodule of any local package
-        for module_info in self.module_map['modules'].values():
-            if module_name.startswith(module_info['module_name'] + '.'):
+        for module_info in self.module_map["modules"].values():
+            if module_name.startswith(module_info["module_name"] + "."):
                 return True
 
         return False
 
     def _is_builtin_module(self, module_name: str) -> bool:
         """Check if a module is a Python builtin or standard library module"""
-        return module_name.split('.')[0] in self.stdlib_modules
+        return module_name.split(".")[0] in self.stdlib_modules
 
-    def _detect_dynamic_import(self, from_module: str, node: ast.Call) -> dict[str, Any] | None:
+    def _detect_dynamic_import(
+        self, from_module: str, node: ast.Call
+    ) -> dict[str, Any] | None:
         """Detect dynamic import patterns"""
         # Check for importlib.import_module
-        if (isinstance(node.func, ast.Attribute) and
-            isinstance(node.func.value, ast.Name) and
-            node.func.value.id == 'importlib' and
-            node.func.attr == 'import_module'):
-
+        if (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "importlib"
+            and node.func.attr == "import_module"
+        ):
             argument = None
             if node.args and isinstance(node.args[0], ast.Constant):
                 argument = str(node.args[0].value)
 
             return {
-                'from_module': from_module,
-                'line': node.lineno,
-                'function': 'importlib.import_module',
-                'argument': argument,
-                'reason': 'Dynamic module import via importlib.import_module'
+                "from_module": from_module,
+                "line": node.lineno,
+                "function": "importlib.import_module",
+                "argument": argument,
+                "reason": "Dynamic module import via importlib.import_module",
             }
 
         # Check for __import__
-        elif (isinstance(node.func, ast.Name) and node.func.id == '__import__'):
+        elif isinstance(node.func, ast.Name) and node.func.id == "__import__":
             argument = None
             if node.args and isinstance(node.args[0], ast.Constant):
                 argument = str(node.args[0].value)
 
             return {
-                'from_module': from_module,
-                'line': node.lineno,
-                'function': '__import__',
-                'argument': argument,
-                'reason': 'Dynamic module import via __import__'
+                "from_module": from_module,
+                "line": node.lineno,
+                "function": "__import__",
+                "argument": argument,
+                "reason": "Dynamic module import via __import__",
             }
 
         # Check for exec/eval with import-like patterns
-        elif isinstance(node.func, ast.Name) and node.func.id in ['exec', 'eval']:
+        elif isinstance(node.func, ast.Name) and node.func.id in ["exec", "eval"]:
             return {
-                'from_module': from_module,
-                'line': node.lineno,
-                'function': node.func.id,
-                'argument': None,
-                'reason': f'Potential dynamic import via {node.func.id}'
+                "from_module": from_module,
+                "line": node.lineno,
+                "function": node.func.id,
+                "argument": None,
+                "reason": f"Potential dynamic import via {node.func.id}",
             }
 
         return None
@@ -261,7 +321,7 @@ class VeriCollector:
         Returns collected test information in tests.index schema format
         """
         # Configure pytest for collection only
-        args = ['--collect-only', '--quiet']
+        args = ["--collect-only", "--quiet"]
         if paths:
             args.extend(paths)
 
@@ -275,15 +335,24 @@ class VeriCollector:
 
             def pytest_collectreport(self, report):
                 if report.failed:
-                    collection_errors.append({
-                        'path': str(report.nodeid.split('::')[0]) if '::' in report.nodeid else str(report.nodeid),
-                        'line': None,
-                        'error_type': type(report.longrepr).__name__ if hasattr(report, 'longrepr') else 'CollectionError',
-                        'message': str(report.longrepr) if hasattr(report, 'longrepr') else 'Unknown collection error'
-                    })
+                    collection_errors.append(
+                        {
+                            "path": str(report.nodeid.split("::")[0])
+                            if "::" in report.nodeid
+                            else str(report.nodeid),
+                            "line": None,
+                            "error_type": type(report.longrepr).__name__
+                            if hasattr(report, "longrepr")
+                            else "CollectionError",
+                            "message": str(report.longrepr)
+                            if hasattr(report, "longrepr")
+                            else "Unknown collection error",
+                        }
+                    )
 
         # Run pytest collection from the correct working directory
         import os
+
         plugin = CollectionPlugin()
         original_cwd = os.getcwd()
         try:
@@ -301,12 +370,12 @@ class VeriCollector:
 
         # Build index structure
         index_data = {
-            'version': '0.1.0',
-            'generated_at': datetime.now(UTC).isoformat() + 'Z',
-            'python_version': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-            'pytest_version': pytest.__version__,
-            'tests': tests,
-            'collection_errors': collection_errors
+            "version": "0.1.0",
+            "generated_at": datetime.now(UTC).isoformat() + "Z",
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "pytest_version": pytest.__version__,
+            "tests": tests,
+            "collection_errors": collection_errors,
         }
 
         return index_data
@@ -315,15 +384,15 @@ class VeriCollector:
         """Extract test metadata from pytest Item"""
         try:
             # Get file path relative to work directory - handle both old and new pytest versions
-            if hasattr(item, 'path'):
+            if hasattr(item, "path"):
                 # New pytest versions use .path (pathlib.Path)
                 file_path = item.path
-            elif hasattr(item, 'fspath'):
+            elif hasattr(item, "fspath"):
                 # Older pytest versions use .fspath
                 file_path = Path(str(item.fspath))
             else:
                 # Fallback
-                file_path = Path(item.nodeid.split('::')[0])
+                file_path = Path(item.nodeid.split("::")[0])
 
             # Ensure work_dir is absolute for proper relative path calculation
             work_dir_abs = Path(self.work_dir).resolve()
@@ -333,48 +402,59 @@ class VeriCollector:
                 rel_path = file_path_abs.relative_to(work_dir_abs)
             except ValueError:
                 # If we can't make it relative, try using the nodeid file part
-                rel_path = Path(item.nodeid.split('::')[0])
+                rel_path = Path(item.nodeid.split("::")[0])
 
             # Extract markers
             markers = [mark.name for mark in item.iter_markers()]
 
             # Extract fixtures (from function signature)
             fixtures = []
-            if hasattr(item, 'fixturenames'):
+            if hasattr(item, "fixturenames"):
                 fixtures = list(item.fixturenames)
 
             # Extract parametrization info if present
             parametrize = None
-            if hasattr(item, 'callspec'):
+            if hasattr(item, "callspec"):
                 parametrize = {
-                    'params': list(item.callspec.params.keys()) if hasattr(item.callspec, 'params') else [],
-                    'ids': [item.callspec.id] if hasattr(item.callspec, 'id') else []
+                    "params": list(item.callspec.params.keys())
+                    if hasattr(item.callspec, "params")
+                    else [],
+                    "ids": [item.callspec.id] if hasattr(item.callspec, "id") else [],
                 }
 
             # Parse nodeid parts
-            nodeid_parts = item.nodeid.split('::')
+            nodeid_parts = item.nodeid.split("::")
             function_part = nodeid_parts[-1]
             class_part = nodeid_parts[1] if len(nodeid_parts) > 2 else None
 
             # Extract module path
-            module_path = str(rel_path).replace('/', '.').replace('\\', '.').replace('.py', '')
+            module_path = (
+                str(rel_path).replace("/", ".").replace("\\", ".").replace(".py", "")
+            )
 
             # Normalize path to use forward slashes consistently
-            normalized_path = str(rel_path).replace('\\', '/')
+            normalized_path = str(rel_path).replace("\\", "/")
 
             return {
-                'nodeid': item.nodeid,
-                'path': normalized_path,
-                'line': (item.location[1] + 1) if (item.location and item.location[1] is not None) else 1,  # pytest uses 0-based lines
-                'function': function_part.split('[')[0],  # Remove parametrization suffix
-                'class': class_part,
-                'module': module_path,
-                'markers': markers,
-                'fixtures': fixtures,
-                'parametrize': parametrize
+                "nodeid": item.nodeid,
+                "path": normalized_path,
+                "line": (item.location[1] + 1)
+                if (item.location and item.location[1] is not None)
+                else 1,  # pytest uses 0-based lines
+                "function": function_part.split("[")[
+                    0
+                ],  # Remove parametrization suffix
+                "class": class_part,
+                "module": module_path,
+                "markers": markers,
+                "fixtures": fixtures,
+                "parametrize": parametrize,
             }
         except Exception as e:
-            print(f"Warning: Failed to extract info for {item.nodeid}: {e}", file=sys.stderr)
+            print(
+                f"Warning: Failed to extract info for {item.nodeid}: {e}",
+                file=sys.stderr,
+            )
             return None
 
     def collect_markers(self, tests_data: dict[str, Any]) -> dict[str, Any]:
@@ -386,28 +466,28 @@ class VeriCollector:
         test_markers = {}
 
         # Analyze markers from tests
-        for test in tests_data['tests']:
-            nodeid = test['nodeid']
-            test_markers[nodeid] = test['markers']
+        for test in tests_data["tests"]:
+            nodeid = test["nodeid"]
+            test_markers[nodeid] = test["markers"]
 
-            for marker_name in test['markers']:
+            for marker_name in test["markers"]:
                 if marker_name not in markers_info:
                     markers_info[marker_name] = {
-                        'name': marker_name,
-                        'description': None,
-                        'registered': False,  # Would need pytest config to determine this
-                        'usage_count': 0,
-                        'first_seen': test['path'],
-                        'common_args': []
+                        "name": marker_name,
+                        "description": None,
+                        "registered": False,  # Would need pytest config to determine this
+                        "usage_count": 0,
+                        "first_seen": test["path"],
+                        "common_args": [],
                     }
-                markers_info[marker_name]['usage_count'] += 1
+                markers_info[marker_name]["usage_count"] += 1
 
         # Build markers index
         markers_data = {
-            'version': '0.1.0',
-            'generated_at': datetime.now(UTC).isoformat() + 'Z',
-            'markers': markers_info,
-            'test_markers': test_markers
+            "version": "0.1.0",
+            "generated_at": datetime.now(UTC).isoformat() + "Z",
+            "markers": markers_info,
+            "test_markers": test_markers,
         }
 
         return markers_data
@@ -415,7 +495,7 @@ class VeriCollector:
     def save_index(self, data: dict[str, Any], filename: str) -> None:
         """Save index data to cache directory"""
         index_path = self.cache_dir / filename
-        with open(index_path, 'w') as f:
+        with open(index_path, "w") as f:
             json.dump(data, f, indent=2)
         print(f"Saved {filename} to {index_path}")
 
@@ -437,9 +517,12 @@ class VeriExecutor:
             return 0
 
         # Handle coverage if enabled
-        if kwargs.get('coverage'):
+        if kwargs.get("coverage"):
             if not COVERAGE_AVAILABLE:
-                print("Warning: coverage package not available, skipping coverage collection", file=sys.stderr)
+                print(
+                    "Warning: coverage package not available, skipping coverage collection",
+                    file=sys.stderr,
+                )
             else:
                 self._start_coverage(**kwargs)
 
@@ -449,33 +532,34 @@ class VeriExecutor:
         args.extend(nodeids)
 
         # Add common pytest args based on kwargs
-        if kwargs.get('verbose'):
-            args.append('-v')
-        if kwargs.get('quiet'):
-            args.append('-q')
-        if kwargs.get('no_capture'):
-            args.append('-s')
-        if kwargs.get('exitfirst'):
-            args.append('-x')
-        if maxfail := kwargs.get('maxfail'):
-            args.extend(['--maxfail', str(maxfail)])
-        if junit_xml := kwargs.get('junit_xml'):
-            args.extend(['--junit-xml', str(junit_xml)])
-        if workers := kwargs.get('workers'):
-            if workers != '1':
-                args.extend(['-n', str(workers)])
+        if kwargs.get("verbose"):
+            args.append("-v")
+        if kwargs.get("quiet"):
+            args.append("-q")
+        if kwargs.get("no_capture"):
+            args.append("-s")
+        if kwargs.get("exitfirst"):
+            args.append("-x")
+        if maxfail := kwargs.get("maxfail"):
+            args.extend(["--maxfail", str(maxfail)])
+        if junit_xml := kwargs.get("junit_xml"):
+            args.extend(["--junit-xml", str(junit_xml)])
+        if workers := kwargs.get("workers"):
+            if workers != "1":
+                args.extend(["-n", str(workers)])
 
         # Run pytest from the correct working directory
         import os
+
         original_cwd = os.getcwd()
         try:
             os.chdir(self.work_dir)
             exit_code = pytest.main(args)
-            
+
             # Stop coverage and save data
-            if kwargs.get('coverage') and COVERAGE_AVAILABLE and self.coverage_instance:
+            if kwargs.get("coverage") and COVERAGE_AVAILABLE and self.coverage_instance:
                 self._stop_coverage(**kwargs)
-                
+
             return exit_code
         finally:
             os.chdir(original_cwd)
@@ -484,26 +568,26 @@ class VeriExecutor:
         """Initialize and start coverage collection"""
         if not COVERAGE_AVAILABLE:
             return
-            
+
         # Create coverage instance with appropriate settings
-        config_file = self.work_dir / '.coveragerc'
+        config_file = self.work_dir / ".coveragerc"
         if config_file.exists():
             self.coverage_instance = coverage.Coverage(config_file=str(config_file))
         else:
             # Use sensible defaults for incremental coverage
-            source_dirs = kwargs.get('coverage_source_dirs', ['src'])
-            omit_patterns = kwargs.get('coverage_omit', [
-                '*/tests/*', '*/test_*', '*/__pycache__/*', 
-                '*/venv/*', '*/.venv/*'
-            ])
-            
+            source_dirs = kwargs.get("coverage_source_dirs", ["src"])
+            omit_patterns = kwargs.get(
+                "coverage_omit",
+                ["*/tests/*", "*/test_*", "*/__pycache__/*", "*/venv/*", "*/.venv/*"],
+            )
+
             self.coverage_instance = coverage.Coverage(
                 source=source_dirs,
                 omit=omit_patterns,
                 branch=True,
-                data_file=str(self.work_dir / '.veri' / 'cache' / '.coverage')
+                data_file=str(self.work_dir / ".veri" / "cache" / ".coverage"),
             )
-        
+
         # Start coverage measurement
         self.coverage_instance.start()
         print("Started coverage collection")
@@ -512,35 +596,37 @@ class VeriExecutor:
         """Stop coverage collection and generate reports"""
         if not self.coverage_instance:
             return
-            
+
         # Stop coverage measurement
         self.coverage_instance.stop()
         self.coverage_instance.save()
-        
+
         # Generate JSON report for veri to process
-        cache_dir = self.work_dir / '.veri' / 'cache'
+        cache_dir = self.work_dir / ".veri" / "cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
-        
-        json_report_path = cache_dir / 'coverage.json'
-        
+
+        json_report_path = cache_dir / "coverage.json"
+
         try:
             # Generate JSON report
-            with open(json_report_path, 'w') as json_file:
+            with open(json_report_path, "w") as json_file:
                 self.coverage_instance.json_report(outfile=json_file, pretty_print=True)
-            
+
             print(f"Coverage data saved to {json_report_path}")
-            
+
             # Generate additional reports if requested
-            if kwargs.get('coverage_xml'):
-                xml_path = kwargs.get('coverage_xml_path', self.work_dir / 'coverage.xml')
+            if kwargs.get("coverage_xml"):
+                xml_path = kwargs.get(
+                    "coverage_xml_path", self.work_dir / "coverage.xml"
+                )
                 self.coverage_instance.xml_report(outfile=str(xml_path))
                 print(f"Coverage XML report saved to {xml_path}")
-                
-            if kwargs.get('coverage_html'):
-                html_dir = kwargs.get('coverage_html_dir', self.work_dir / 'htmlcov')
+
+            if kwargs.get("coverage_html"):
+                html_dir = kwargs.get("coverage_html_dir", self.work_dir / "htmlcov")
                 self.coverage_instance.html_report(directory=str(html_dir))
                 print(f"Coverage HTML report saved to {html_dir}")
-                
+
         except Exception as e:
             print(f"Error generating coverage reports: {e}", file=sys.stderr)
 
@@ -557,19 +643,19 @@ class VeriExecutor:
                 skip_next = False
                 continue
 
-            if arg in ['--engine', '--explain']:
-                if arg == '--engine' and i + 1 < len(original_args):
+            if arg in ["--engine", "--explain"]:
+                if arg == "--engine" and i + 1 < len(original_args):
                     skip_next = True
                 continue
 
             # Convert veri args to pytest equivalents
-            if arg == '--workers':
-                if i + 1 < len(original_args) and original_args[i + 1] != '1':
-                    pytest_args.extend(['-n', original_args[i + 1]])
+            if arg == "--workers":
+                if i + 1 < len(original_args) and original_args[i + 1] != "1":
+                    pytest_args.extend(["-n", original_args[i + 1]])
                 skip_next = True
-            elif arg == '--no-capture':
-                pytest_args.append('-s')
-            elif arg in ['-a', '--all']:
+            elif arg == "--no-capture":
+                pytest_args.append("-s")
+            elif arg in ["-a", "--all"]:
                 # pytest doesn't need explicit "all" flag
                 continue
             else:
@@ -577,6 +663,7 @@ class VeriExecutor:
 
         # Run pytest from the correct working directory
         import os
+
         original_cwd = os.getcwd()
         try:
             os.chdir(self.work_dir)
@@ -586,51 +673,80 @@ class VeriExecutor:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='veri Python worker - pytest compatibility shim and AST parser')
-    parser.add_argument('command', choices=['collect', 'run', 'pytest-engine', 'parse-imports'],
-                       help='Command to execute')
-    parser.add_argument('--work-dir', type=Path, default=Path.cwd(),
-                       help='Working directory (default: current)')
-    parser.add_argument('--cache-dir', type=Path, default=Path.cwd() / '.veri' / 'cache',
-                       help='Cache directory for storing indexes')
-    parser.add_argument('--paths', nargs='*', default=[],
-                       help='Test paths or patterns')
-    parser.add_argument('--nodeids', nargs='*', default=[],
-                       help='Specific test nodeids to run')
-    parser.add_argument('--verbose', action='store_true',
-                       help='Verbose output')
-    parser.add_argument('--quiet', action='store_true',
-                       help='Quiet output')
-    parser.add_argument('--no-capture', action='store_true',
-                       help='Disable output capture')
-    parser.add_argument('--exitfirst', action='store_true',
-                       help='Exit after first failure')
-    parser.add_argument('--maxfail', type=int,
-                       help='Stop after N failures')
-    parser.add_argument('--junit-xml', type=Path,
-                       help='JUnit XML output path')
-    parser.add_argument('--workers', default='1',
-                       help='Number of workers for parallel execution')
-    parser.add_argument('--coverage', action='store_true',
-                       help='Enable coverage collection')
-    parser.add_argument('--coverage-xml', action='store_true',
-                       help='Generate XML coverage report')
-    parser.add_argument('--coverage-html', action='store_true',
-                       help='Generate HTML coverage report')
-    parser.add_argument('--coverage-source-dirs', nargs='*', default=['src'],
-                       help='Source directories for coverage')
-    parser.add_argument('--coverage-omit', nargs='*', 
-                       default=['*/tests/*', '*/test_*', '*/__pycache__/*', '*/venv/*', '*/.venv/*'],
-                       help='Patterns to omit from coverage')
-    parser.add_argument('--pytest-args', nargs='*', default=[],
-                       help='Additional arguments to pass to pytest')
-    parser.add_argument('--module-map', type=Path,
-                       help='Path to module map JSON file (for parse-imports command)')
+    parser = argparse.ArgumentParser(
+        description="veri Python worker - pytest compatibility shim and AST parser"
+    )
+    parser.add_argument(
+        "command",
+        choices=["collect", "run", "pytest-engine", "parse-imports"],
+        help="Command to execute",
+    )
+    parser.add_argument(
+        "--work-dir",
+        type=Path,
+        default=Path.cwd(),
+        help="Working directory (default: current)",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=Path.cwd() / ".veri" / "cache",
+        help="Cache directory for storing indexes",
+    )
+    parser.add_argument("--paths", nargs="*", default=[], help="Test paths or patterns")
+    parser.add_argument(
+        "--nodeids", nargs="*", default=[], help="Specific test nodeids to run"
+    )
+    parser.add_argument("--verbose", action="store_true", help="Verbose output")
+    parser.add_argument("--quiet", action="store_true", help="Quiet output")
+    parser.add_argument(
+        "--no-capture", action="store_true", help="Disable output capture"
+    )
+    parser.add_argument(
+        "--exitfirst", action="store_true", help="Exit after first failure"
+    )
+    parser.add_argument("--maxfail", type=int, help="Stop after N failures")
+    parser.add_argument("--junit-xml", type=Path, help="JUnit XML output path")
+    parser.add_argument(
+        "--workers", default="1", help="Number of workers for parallel execution"
+    )
+    parser.add_argument(
+        "--coverage", action="store_true", help="Enable coverage collection"
+    )
+    parser.add_argument(
+        "--coverage-xml", action="store_true", help="Generate XML coverage report"
+    )
+    parser.add_argument(
+        "--coverage-html", action="store_true", help="Generate HTML coverage report"
+    )
+    parser.add_argument(
+        "--coverage-source-dirs",
+        nargs="*",
+        default=["src"],
+        help="Source directories for coverage",
+    )
+    parser.add_argument(
+        "--coverage-omit",
+        nargs="*",
+        default=["*/tests/*", "*/test_*", "*/__pycache__/*", "*/venv/*", "*/.venv/*"],
+        help="Patterns to omit from coverage",
+    )
+    parser.add_argument(
+        "--pytest-args",
+        nargs="*",
+        default=[],
+        help="Additional arguments to pass to pytest",
+    )
+    parser.add_argument(
+        "--module-map",
+        type=Path,
+        help="Path to module map JSON file (for parse-imports command)",
+    )
 
     args = parser.parse_args()
 
     try:
-        if args.command == 'collect':
+        if args.command == "collect":
             # Collection mode - generate tests.index and markers.index
             collector = VeriCollector(args.work_dir, args.cache_dir)
 
@@ -640,27 +756,35 @@ def main():
 
             # Collect tests
             tests_data = collector.collect_tests(args.paths if args.paths else None)
-            collector.save_index(tests_data, 'tests.index.json')
+            collector.save_index(tests_data, "tests.index.json")
 
             # Collect markers
             markers_data = collector.collect_markers(tests_data)
-            collector.save_index(markers_data, 'markers.index.json')
+            collector.save_index(markers_data, "markers.index.json")
 
             print(f"Collected {len(tests_data['tests'])} tests")
-            if tests_data['collection_errors']:
-                print(f"Warning: {len(tests_data['collection_errors'])} collection errors")
+            if tests_data["collection_errors"]:
+                print(
+                    f"Warning: {len(tests_data['collection_errors'])} collection errors"
+                )
                 return 2
 
             return 0
 
-        elif args.command == 'parse-imports':
+        elif args.command == "parse-imports":
             # Import parsing mode - generate imports.graph.json
             if not args.module_map:
-                print("Error: --module-map is required for parse-imports command", file=sys.stderr)
+                print(
+                    "Error: --module-map is required for parse-imports command",
+                    file=sys.stderr,
+                )
                 return 4
 
             if not args.module_map.exists():
-                print(f"Error: Module map file not found: {args.module_map}", file=sys.stderr)
+                print(
+                    f"Error: Module map file not found: {args.module_map}",
+                    file=sys.stderr,
+                )
                 return 4
 
             # Load module map
@@ -672,19 +796,21 @@ def main():
             imports_graph = parser_instance.parse_imports_from_files()
 
             # Save imports graph
-            imports_path = args.cache_dir / 'imports.graph.json'
+            imports_path = args.cache_dir / "imports.graph.json"
             args.cache_dir.mkdir(parents=True, exist_ok=True)
-            with open(imports_path, 'w') as f:
+            with open(imports_path, "w") as f:
                 json.dump(imports_graph, f, indent=2)
 
             print(f"Parsed {len(imports_graph['edges'])} import edges")
             print(f"Found {len(imports_graph['dynamic_imports'])} dynamic imports")
-            print(f"Found {len(imports_graph['unresolved_imports'])} unresolved imports")
+            print(
+                f"Found {len(imports_graph['unresolved_imports'])} unresolved imports"
+            )
             print(f"Saved imports graph to {imports_path}")
 
             return 0
 
-        elif args.command == 'run':
+        elif args.command == "run":
             # Execution mode - run specific nodeids
             if not args.nodeids:
                 print("Error: No nodeids specified for run command", file=sys.stderr)
@@ -709,12 +835,12 @@ def main():
                 coverage_xml=args.coverage_xml,
                 coverage_html=args.coverage_html,
                 coverage_source_dirs=args.coverage_source_dirs,
-                coverage_omit=args.coverage_omit
+                coverage_omit=args.coverage_omit,
             )
 
             return exit_code
 
-        elif args.command == 'pytest-engine':
+        elif args.command == "pytest-engine":
             # pytest engine mode - complete handoff
             executor = VeriExecutor(args.work_dir)
             pytest_args = args.pytest_args + args.paths

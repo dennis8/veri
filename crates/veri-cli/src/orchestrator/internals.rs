@@ -28,7 +28,7 @@ fn detect_project_root_from_paths(paths: &[String]) -> Option<std::path::PathBuf
             .unwrap_or_else(|| Path::new("."))
             .to_path_buf();
     }
-    if cand.file_name().map_or(false, |n| n == "tests") {
+    if cand.file_name().is_some_and(|n| n == "tests") {
         cand = cand.parent()?.to_path_buf();
     }
     if cand.as_os_str().is_empty() {
@@ -1088,16 +1088,15 @@ pub fn execute_tests_parallel(
 
     // Configure worker pool
     let worker_cfg = exec_config.config.worker.clone().unwrap_or_default();
-    let mut pool_config = WorkerPoolConfig::default();
-    pool_config.worker_count = worker_count;
-    pool_config.startup_timeout =
-        std::time::Duration::from_secs(worker_cfg.startup_timeout_sec.unwrap_or(30));
-    pool_config.execution_timeout =
-        std::time::Duration::from_secs(worker_cfg.execution_timeout_sec.unwrap_or(300));
-    pool_config.heartbeat_interval =
-        std::time::Duration::from_secs(worker_cfg.heartbeat_interval_sec.unwrap_or(10));
-    pool_config.work_dir = exec_config.work_dir.to_path_buf();
-    pool_config.cache_dir = exec_config.cache_dir.to_path_buf();
+    let mut pool_config = WorkerPoolConfig {
+        worker_count,
+        startup_timeout: std::time::Duration::from_secs(worker_cfg.startup_timeout_sec.unwrap_or(30)),
+        execution_timeout: std::time::Duration::from_secs(worker_cfg.execution_timeout_sec.unwrap_or(300)),
+        heartbeat_interval: std::time::Duration::from_secs(worker_cfg.heartbeat_interval_sec.unwrap_or(10)),
+        work_dir: exec_config.work_dir.to_path_buf(),
+        cache_dir: exec_config.cache_dir.to_path_buf(),
+        ..Default::default()
+    };
     pool_config.apply_runtime(&exec_config.python_runtime);
 
     // Create and start worker pool

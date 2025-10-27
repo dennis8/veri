@@ -22,7 +22,11 @@ def test_ok():
         env = os.environ.copy()
         # Disable allowlist for the smoke; pool is always enabled
         # Prepend repo .bin to PATH so `veri` resolves to dev binary
-        env["PATH"] = str(Path(__file__).resolve().parents[1] / ".bin") + os.pathsep + env.get("PATH", "")
+        env["PATH"] = (
+            str(Path(__file__).resolve().parents[1] / ".bin")
+            + os.pathsep
+            + env.get("PATH", "")
+        )
 
         result = subprocess.run(
             ["veri", "--disable-allowlist", "--workers", "2", "-v"],

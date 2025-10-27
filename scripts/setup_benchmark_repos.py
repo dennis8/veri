@@ -16,23 +16,27 @@ from pathlib import Path
 def setup_fastapi():
     """Setup FastAPI test suite."""
     print("Setting up FastAPI...")
-    
+
     repo_dir = Path("benchmark_workspace/fastapi")
     if repo_dir.exists():
         print("FastAPI already exists, skipping clone.")
         return repo_dir
-        
-    subprocess.run([
-        'git', 'clone', '--depth', '1',
-        'https://github.com/tiangolo/fastapi.git',
-        str(repo_dir)
-    ], check=True)
-    
+
+    subprocess.run(
+        [
+            "git",
+            "clone",
+            "--depth",
+            "1",
+            "https://github.com/tiangolo/fastapi.git",
+            str(repo_dir),
+        ],
+        check=True,
+    )
+
     # Install dependencies
-    subprocess.run([
-        'uv', 'pip', 'install', '-e', '.'
-    ], cwd=repo_dir, check=True)
-    
+    subprocess.run(["uv", "pip", "install", "-e", "."], cwd=repo_dir, check=True)
+
     print(f"FastAPI setup complete: {repo_dir}")
     return repo_dir
 
@@ -40,12 +44,12 @@ def setup_fastapi():
 def setup_demo_suite():
     """Setup the existing phase3_demo suite for quick testing."""
     print("Setting up demo test suite...")
-    
+
     demo_dir = Path("examples/phase3_demo")
     if not demo_dir.exists():
         print("Demo suite not found, creating minimal test suite...")
         demo_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Create a simple test file
         test_content = '''"""Demo test suite for benchmarking."""
 
@@ -91,9 +95,9 @@ class TestCalculator:
     def test_divide(self):
         assert 10 / 2 == 5
 '''
-        
+
         (demo_dir / "test_demo.py").write_text(test_content)
-        
+
         # Create conftest.py
         conftest_content = '''"""Demo conftest for benchmarking."""
 
@@ -112,9 +116,9 @@ def expensive_setup():
     # Simulate expensive setup
     return "expensive_resource"
 '''
-        
+
         (demo_dir / "conftest.py").write_text(conftest_content)
-        
+
         # Create simple module to import
         module_content = '''"""Simple module for import testing."""
 
@@ -130,9 +134,9 @@ def multiply(a, b):
 
 CONSTANT = 42
 '''
-        
+
         (demo_dir / "calculator.py").write_text(module_content)
-        
+
     print(f"Demo suite ready: {demo_dir}")
     return demo_dir
 
@@ -140,26 +144,26 @@ CONSTANT = 42
 def main():
     """Setup benchmark repositories."""
     print("Setting up benchmark repositories...")
-    
+
     # Create workspace directory
     workspace = Path("benchmark_workspace")
     workspace.mkdir(exist_ok=True)
-    
+
     # Setup repositories
     try:
         # Start with demo suite for quick testing
         setup_demo_suite()
-        
+
         # Only setup external repos if requested
         if "--external" in sys.argv:
             setup_fastapi()
-            
+
     except subprocess.CalledProcessError as e:
         print(f"Setup failed: {e}")
         sys.exit(1)
-        
+
     print("Benchmark repository setup complete!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-set shell := ['pwsh', '-c']
+#!/usr/bin/env just --justfile
 
 # Development build
 dev:
@@ -10,7 +10,8 @@ test:
 
 # Run Python tests
 test-py:
-	cd py_worker && uv run pytest -v
+	cd py_worker
+	uv pytest -v
 
 # Run all tests
 test-all: test test-py
@@ -21,7 +22,8 @@ fmt:
 
 # Format Python code
 fmt-py:
-	cd py_worker && uv run ruff format .
+	cd py_worker
+	uvx ruff format .
 
 # Format all code
 fmt-all: fmt fmt-py
@@ -32,11 +34,13 @@ lint:
 
 # Run Python lints
 lint-py:
-	cd py_worker && uv run ruff check .
+	cd py_worker
+	uvx ruff check .
 
 # Run Python type checking
 typecheck-py:
-	cd py_worker && uv run mypy .
+	cd py_worker
+	uvx mypy .
 
 # Run all lints and type checks
 lint-all: lint lint-py typecheck-py
@@ -50,27 +54,28 @@ clean:
 
 # Install dev tools
 setup:
-	@echo "Installing development tools..."
+	echo "Installing development tools..."
 	cargo install --force cargo-nextest
-	cd py_worker && uv sync --dev
+	cd py_worker
+	uv sync --dev
 
 # Benchmark commands
 benchmark-setup:
-	@echo "Setting up benchmark repositories..."
+	echo "Setting up benchmark repositories..."
 	uv run scripts/setup_benchmark_repos.py
 
 benchmark-quick:
-	@echo "Running quick benchmark test..."
+	echo "Running quick benchmark test..."
 	uv run scripts/quick_benchmark_test.py
 
 benchmark-demo:
-	@echo "Running benchmark on demo suite..."
+	echo "Running benchmark on demo suite..."
 	uv run scripts/bench.py --suite demo --scenarios cold,hot --runs 3
 
 benchmark-all:
-	@echo "Running full benchmark suite..."
+	echo "Running full benchmark suite..."
 	uv run scripts/bench.py --all --scenarios cold,hot --runs 5
 
 benchmark-report:
-	@echo "Generating benchmark summary..."
+	echo "Generating benchmark summary..."
 	uv run scripts/generate_benchmark_summary.py benchmarks/

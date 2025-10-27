@@ -357,7 +357,7 @@ print(json.dumps(result))
         // Use ASCII lowercasing to match Python's behavior
         snapshot
             .pytest_plugins
-            .sort_by(|a, b| a.to_ascii_lowercase().cmp(&b.to_ascii_lowercase()));
+            .sort_by_key(|a| a.to_ascii_lowercase());
         snapshot.pytest_plugins.dedup();
 
         // Deduplicate plugins that appear both with and without versions
