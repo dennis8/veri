@@ -357,7 +357,12 @@ impl SystemPythonBackend {
     }
 
     fn resolve_python(&self) -> Result<String> {
-        if let Some(existing) = self.resolved.lock().unwrap_or_else(|e| e.into_inner()).clone() {
+        if let Some(existing) = self
+            .resolved
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+        {
             return Ok(existing);
         }
 

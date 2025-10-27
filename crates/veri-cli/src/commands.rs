@@ -1,12 +1,34 @@
 use crate::cli::{Cli, Commands, ExitCode};
 use anyhow::{anyhow, Result};
 use std::io::Read;
+use std::path::Path;
 use std::time::Instant;
 use veri_core::config::Config;
 use veri_core::event_stream::{generate_run_id, CIReporter};
 use veri_core::python_launcher::PythonRuntime;
 use veri_core::python_worker::{PythonWorker, TestRunOptions};
 use veri_core::sharder::{SharderConfig, TestSharder};
+
+/// Load test statistics (passed, failed, skipped) from per-test results
+fn load_test_statistics(cache_dir: &Path) -> Result<(u32, u32, u32)> {
+    let path = cache_dir.join("last_per_test.json");
+    if !path.exists() {
+        return Ok((0, 0, 0));
+    }
+
+    let results: Vec<serde_json::Value> = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+
+    let (passed, failed, skipped) = results.iter().fold((0, 0, 0), |(p, f, s), result| {
+        match result.get("exit_code").and_then(|v| v.as_i64()) {
+            Some(0) => (p + 1, f, s), // Passed
+            Some(5) => (p, f, s + 1), // Pytest exit code 5 = skipped
+            Some(_) => (p, f + 1, s), // Any other code = failed
+            None => (p, f, s),
+        }
+    });
+
+    Ok((passed, failed, skipped))
+}
 
 pub fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) -> Result<ExitCode> {
     let work_dir = std::env::current_dir()?;
@@ -141,20 +163,23 @@ pub fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) ->
             let duration = start_time.elapsed().as_secs_f64();
 
             if let Some(stream) = ci_reporter.event_stream() {
-                // TODO: Get actual test statistics from execute_tests_parallel return value
-                // For now, we approximate based on exit code
-                let (passed, failed) = if exit == ExitCode::Success {
-                    (nodeids.len() as u32, 0)
-                } else {
-                    // Some tests failed, but we don't know exact counts without refactoring
-                    (0, nodeids.len() as u32)
-                };
+                // Try to load actual test statistics from per-test results
+                let (passed, failed, skipped) =
+                    load_test_statistics(&cache_dir).unwrap_or_else(|_| {
+                        // Fallback: approximate based on exit code
+                        if exit == ExitCode::Success {
+                            (nodeids.len() as u32, 0, 0)
+                        } else {
+                            (0, nodeids.len() as u32, 0)
+                        }
+                    });
+
                 stream.emit_summary(
                     duration,
                     nodeids.len() as u32,
                     passed,
                     failed,
-                    0,
+                    skipped,
                     0,
                     exit as i32,
                 )?;

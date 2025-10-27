@@ -88,6 +88,7 @@ class VeriASTParser:
         edges = []
         dynamic_imports = []
         unresolved_imports = []
+        parse_errors = []
 
         # Process each module in the module map
         for file_path, module_info in self.module_map["modules"].items():
@@ -101,10 +102,17 @@ class VeriASTParser:
                     dynamic_imports.extend(file_dynamic)
                     unresolved_imports.extend(file_unresolved)
             except Exception as e:
-                print(
-                    f"Warning: Failed to parse imports from {file_path}: {e}",
-                    file=sys.stderr,
-                )
+                error_msg = f"Failed to parse imports from {file_path}: {e}"
+                print(f"Warning: {error_msg}", file=sys.stderr)
+                parse_errors.append(error_msg)
+
+        # Warn if too many parse errors
+        if parse_errors:
+            total_modules = max(1, len(self.module_map.get("modules", {})))
+            error_rate = len(parse_errors) / total_modules
+            if error_rate > 0.1:  # More than 10% failure rate
+                print(f"⚠️  High import parse error rate: {len(parse_errors)} files failed", file=sys.stderr)
+                print("ℹ️  This may result in incomplete import graphs and reduced test impact accuracy", file=sys.stderr)
 
         return {
             "version": "0.1.0",
@@ -132,8 +140,8 @@ class VeriASTParser:
             conditional_stack = []
 
             for node in ast.walk(tree):
-                # Track conditional blocks
-                if isinstance(node, ast.If | ast.Try | ast.ExceptHandler | ast.With):
+                # Track conditional blocks for improved import analysis
+                if isinstance(node, (ast.If, ast.Try, ast.ExceptHandler, ast.With)):
                     conditional_stack.append(node.lineno)
 
                 # Parse import statements
@@ -191,8 +199,10 @@ class VeriASTParser:
 
         except SyntaxError as e:
             print(f"Syntax error in {file_path}: {e}", file=sys.stderr)
+            print(f"  This file's imports will not be included in the import graph", file=sys.stderr)
         except Exception as e:
             print(f"Error parsing {file_path}: {e}", file=sys.stderr)
+            print(f"  This file's imports will not be included in the import graph", file=sys.stderr)
 
         return edges, dynamic_imports, unresolved_imports
 

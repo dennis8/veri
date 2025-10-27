@@ -18,36 +18,41 @@ use veri_core::worker_pool::{WorkerPool, WorkerPoolConfig};
 
 fn detect_project_root_from_paths(paths: &[String]) -> Option<std::path::PathBuf> {
     use std::path::{Path, PathBuf};
-    if paths.is_empty() {
-        return None;
-    }
-    let mut cand = PathBuf::from(&paths[0]);
+
+    let mut cand = PathBuf::from(paths.first()?);
+
+    // Navigate to parent if it's a file or inside a "tests" directory
     if cand.is_file() {
         cand = cand
             .parent()
             .unwrap_or_else(|| Path::new("."))
             .to_path_buf();
     }
-    if cand.file_name().map(|n| n == "tests").unwrap_or(false) {
-        if let Some(parent) = cand.parent() {
-            cand = parent.to_path_buf();
-        }
+    if cand.file_name().map_or(false, |n| n == "tests") {
+        cand = cand.parent()?.to_path_buf();
     }
-    // Normalize empty path to current directory to avoid returning ""
     if cand.as_os_str().is_empty() {
         cand = PathBuf::from(".");
     }
-    for _ in 0..3 {
-        if cand.join("pyproject.toml").exists()
-            || cand.join("pytest.ini").exists()
-            || cand.join("setup.cfg").exists()
-        {
-            return Some(cand.clone());
+
+    // Walk up to 3 levels looking for project config files
+    let config_files = ["pyproject.toml", "pytest.ini", "setup.cfg"];
+    for level in 0..3 {
+        if config_files.iter().any(|f| cand.join(f).exists()) {
+            if level > 0 {
+                println!("ℹ️  Project root detected at: {}", cand.display());
+            }
+            return Some(cand);
         }
         if !cand.pop() {
             break;
         }
     }
+
+    println!(
+        "⚠️  No project config found starting from {}",
+        PathBuf::from(&paths[0]).display()
+    );
     None
 }
 
@@ -79,6 +84,28 @@ fn normalize_paths(paths: &[String], work_dir: &std::path::Path) -> Vec<String> 
         }
     }
     out
+}
+
+/// Load the last failed tests from the cache directory
+fn load_last_failed_tests(cache_dir: &std::path::Path) -> Result<Vec<String>> {
+    let path = cache_dir.join("last_per_test.json");
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let results: Vec<serde_json::Value> = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+
+    Ok(results
+        .iter()
+        .filter_map(|result| {
+            let exit_code = result.get("exit_code")?.as_i64()?;
+            if exit_code != 0 {
+                Some(result.get("nodeid")?.as_str()?.to_string())
+            } else {
+                None
+            }
+        })
+        .collect())
 }
 
 pub(super) fn run_pytest_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
@@ -591,15 +618,29 @@ fn select_tests_to_run(
 
     // Use impact-aware planning if no manual filters
     if changed_files.is_empty() {
-        // No changes detected, run nothing unless --last-failed or other flags
-        if cli.last_failed {
-            // TODO: Implement last-failed logic when we have failure tracking
-            println!("ℹ️  No last-failed tracking yet - running all tests");
-            return Ok(tests_index.tests.iter().map(|t| t.nodeid.clone()).collect());
+        return if cli.last_failed {
+            match load_last_failed_tests(&cache_dir) {
+                Ok(failed_tests) if !failed_tests.is_empty() => {
+                    println!(
+                        "🔄 Running {} tests that failed on last run",
+                        failed_tests.len()
+                    );
+                    Ok(failed_tests)
+                }
+                Ok(_) => {
+                    println!("✅ No failed tests found from last run");
+                    Ok(Vec::new())
+                }
+                Err(e) => {
+                    println!("⚠️  Could not load last-failed tests: {}", e);
+                    println!("ℹ️  Running all tests instead");
+                    Ok(tests_index.tests.iter().map(|t| t.nodeid.clone()).collect())
+                }
+            }
         } else {
             println!("ℹ️  No changed files detected - use --all to run all tests");
-            return Ok(Vec::new());
-        }
+            Ok(Vec::new())
+        };
     }
 
     // Use the planner for impact analysis

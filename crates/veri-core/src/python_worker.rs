@@ -213,8 +213,14 @@ impl PythonWorker {
             .run_python_command(&args)
             .context("Failed to run Python worker for import parsing")?;
 
-        // Clean up temporary file
-        let _ = std::fs::remove_file(module_map_path);
+        // Clean up temporary file - log warning if this fails
+        std::fs::remove_file(&module_map_path).unwrap_or_else(|e| {
+            log::warn!(
+                "Failed to remove temp file {}: {}",
+                module_map_path.display(),
+                e
+            );
+        });
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
