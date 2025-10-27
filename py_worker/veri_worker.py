@@ -5,15 +5,25 @@ Handles test collection/execution via pytest integration and import analysis
 
 import argparse
 import ast
+import io
 import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-import io
 
 import pytest
 from _pytest.nodes import Item
+
+from contracts import (
+    CollectionError,
+    MarkerInfo,
+    MarkersIndex,
+    ParametrizeInfo,
+    TestNode,
+    TestsIndex,
+)
+from contracts.base import SchemaModel
 
 try:
     import coverage
@@ -316,7 +326,9 @@ class VeriCollector:
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def collect_tests(self, paths: list[str] | None = None, ignores: list[str] | None = None) -> dict[str, Any]:
+    def collect_tests(
+        self, paths: list[str] | None = None, ignores: list[str] | None = None
+    ) -> TestsIndex:
         """
         Use pytest to collect tests and extract metadata
         Returns collected test information in tests.index schema format
@@ -335,7 +347,7 @@ class VeriCollector:
 
         # Capture pytest collection output
         collected_items = []
-        collection_errors = []
+        collection_errors: list[CollectionError] = []
 
         class CollectionPlugin:
             def pytest_collection_modifyitems(
@@ -345,19 +357,28 @@ class VeriCollector:
 
             def pytest_collectreport(self, report: Any) -> None:
                 if report.failed:
+                    path = (
+                        str(report.nodeid.split("::")[0])
+                        if "::" in report.nodeid
+                        else str(report.nodeid)
+                    )
+                    error_type = (
+                        type(report.longrepr).__name__
+                        if hasattr(report, "longrepr")
+                        else "CollectionError"
+                    )
+                    message = (
+                        str(report.longrepr)
+                        if hasattr(report, "longrepr")
+                        else "Unknown collection error"
+                    )
                     collection_errors.append(
-                        {
-                            "path": str(report.nodeid.split("::")[0])
-                            if "::" in report.nodeid
-                            else str(report.nodeid),
-                            "line": None,
-                            "error_type": type(report.longrepr).__name__
-                            if hasattr(report, "longrepr")
-                            else "CollectionError",
-                            "message": str(report.longrepr)
-                            if hasattr(report, "longrepr")
-                            else "Unknown collection error",
-                        }
+                        CollectionError(
+                            path=path,
+                            line=None,
+                            error_type=error_type,
+                            message=message,
+                        )
                     )
 
         # Run pytest collection from the correct working directory
@@ -372,25 +393,27 @@ class VeriCollector:
             os.chdir(original_cwd)
 
         # Extract test metadata
-        tests = []
+        tests: list[TestNode] = []
         for item in collected_items:
             test_info = self._extract_test_info(item)
             if test_info:
                 tests.append(test_info)
 
         # Build index structure
-        index_data = {
-            "version": "0.1.0",
-            "generated_at": datetime.now(UTC).isoformat() + "Z",
-            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-            "pytest_version": pytest.__version__,
-            "tests": tests,
-            "collection_errors": collection_errors,
-        }
+        return TestsIndex(
+            version="0.1.0",
+            generated_at=datetime.now(UTC),
+            python_version=(
+                f"{sys.version_info.major}."
+                f"{sys.version_info.minor}."
+                f"{sys.version_info.micro}"
+            ),
+            pytest_version=pytest.__version__,
+            tests=tests,
+            collection_errors=collection_errors,
+        )
 
-        return index_data
-
-    def _extract_test_info(self, item: Item) -> dict[str, Any] | None:
+    def _extract_test_info(self, item: Item) -> TestNode | None:
         """Extract test metadata from pytest Item"""
         try:
             # Get file path relative to work directory - handle both old and new pytest versions
@@ -425,12 +448,13 @@ class VeriCollector:
             # Extract parametrization info if present
             parametrize = None
             if hasattr(item, "callspec"):
-                parametrize = {
-                    "params": list(item.callspec.params.keys())
+                params = (
+                    list(item.callspec.params.keys())
                     if hasattr(item.callspec, "params")
-                    else [],
-                    "ids": [item.callspec.id] if hasattr(item.callspec, "id") else [],
-                }
+                    else []
+                )
+                ids = [str(item.callspec.id)] if hasattr(item.callspec, "id") else []
+                parametrize = ParametrizeInfo(params=params, ids=ids)
 
             # Parse nodeid parts
             nodeid_parts = item.nodeid.split("::")
@@ -445,21 +469,22 @@ class VeriCollector:
             # Normalize path to use forward slashes consistently
             normalized_path = str(rel_path).replace("\\", "/")
 
-            return {
+            kwargs: dict[str, Any] = {
                 "nodeid": item.nodeid,
                 "path": normalized_path,
-                "line": (item.location[1] + 1)
-                if (item.location and item.location[1] is not None)
-                else 1,  # pytest uses 0-based lines
-                "function": function_part.split("[")[
-                    0
-                ],  # Remove parametrization suffix
+                "line": (
+                    (item.location[1] + 1)
+                    if (item.location and item.location[1] is not None)
+                    else 1
+                ),
+                "function": function_part.split("[")[0],
                 "class": class_part,
                 "module": module_path,
                 "markers": markers,
                 "fixtures": fixtures,
                 "parametrize": parametrize,
             }
+            return TestNode(**kwargs)
         except Exception as e:
             print(
                 f"Warning: Failed to extract info for {item.nodeid}: {e}",
@@ -467,46 +492,48 @@ class VeriCollector:
             )
             return None
 
-    def collect_markers(self, tests_data: dict[str, Any]) -> dict[str, Any]:
+    def collect_markers(self, tests_data: TestsIndex) -> MarkersIndex:
         """
         Extract marker information from collected tests
         Returns marker index in markers.index schema format
         """
-        markers_info = {}
-        test_markers = {}
+        marker_accumulator: dict[str, dict[str, Any]] = {}
+        test_markers: dict[str, list[str]] = {}
 
         # Analyze markers from tests
-        for test in tests_data["tests"]:
-            nodeid = test["nodeid"]
-            test_markers[nodeid] = test["markers"]
+        for test in tests_data.tests:
+            test_markers[test.nodeid] = list(test.markers)
 
-            for marker_name in test["markers"]:
-                if marker_name not in markers_info:
-                    markers_info[marker_name] = {
+            for marker_name in test.markers:
+                marker_entry = marker_accumulator.setdefault(
+                    marker_name,
+                    {
                         "name": marker_name,
                         "description": None,
-                        "registered": False,  # Would need pytest config to determine this
+                        "registered": False,
                         "usage_count": 0,
-                        "first_seen": test["path"],
+                        "first_seen": test.path,
                         "common_args": [],
-                    }
-                markers_info[marker_name]["usage_count"] += 1
+                    },
+                )
+                marker_entry["usage_count"] += 1
 
-        # Build markers index
-        markers_data = {
-            "version": "0.1.0",
-            "generated_at": datetime.now(UTC).isoformat() + "Z",
-            "markers": markers_info,
-            "test_markers": test_markers,
+        markers = {
+            name: MarkerInfo(**info) for name, info in marker_accumulator.items()
         }
 
-        return markers_data
+        return MarkersIndex(
+            version="0.1.0",
+            generated_at=datetime.now(UTC),
+            markers=markers,
+            test_markers=test_markers,
+        )
 
-    def save_index(self, data: dict[str, Any], filename: str) -> None:
+    def save_index(self, data: SchemaModel, filename: str) -> None:
         """Save index data to cache directory"""
         index_path = self.cache_dir / filename
-        with open(index_path, "w") as f:
-            json.dump(data, f, indent=2)
+        with open(index_path, "w", encoding="utf-8") as f:
+            f.write(data.to_schema_json())
         print(f"Saved {filename} to {index_path}")
 
 
@@ -569,14 +596,16 @@ class VeriExecutor:
                 self._by_nodeid: dict[str, dict[str, Any]] = {}
                 self._sink = sink
 
-            def pytest_runtest_logreport(self, report: Any) -> None:  # type: ignore[override]
+            def pytest_runtest_logreport(self, report: Any) -> None:
                 nodeid = getattr(report, "nodeid", "")
                 when = getattr(report, "when", "call")
                 outcome = getattr(report, "outcome", "")
                 duration_ms = int(getattr(report, "duration", 0.0) * 1000)
 
                 def rank(o: str) -> int:
-                    return {"failed": 3, "error": 3, "skipped": 2, "passed": 1}.get(o, 0)
+                    return {"failed": 3, "error": 3, "skipped": 2, "passed": 1}.get(
+                        o, 0
+                    )
 
                 new_outcome = outcome
                 if outcome == "failed" and when != "call":
@@ -587,14 +616,18 @@ class VeriExecutor:
                     return
 
                 prev = self._by_nodeid.get(nodeid)
-                entry = {"nodeid": nodeid, "outcome": new_outcome, "duration_ms": duration_ms}
+                entry = {
+                    "nodeid": nodeid,
+                    "outcome": new_outcome,
+                    "duration_ms": duration_ms,
+                }
                 if prev is None or rank(new_outcome) >= rank(prev.get("outcome", "")):
                     self._by_nodeid[nodeid] = entry
 
             def finalize(self) -> None:
                 self._sink.extend(self._by_nodeid.values())
 
-        self.last_per_test = []
+        self.last_per_test: list[dict[str, Any]] = []
         plugin = ExecPlugin(self.last_per_test)
 
         # Run pytest from the correct working directory
@@ -606,8 +639,9 @@ class VeriExecutor:
             # Capture stdout/stderr if requested (for worker mode)
             capture_output = bool(kwargs.get("_capture_output", False))
             if capture_output:
-                from contextlib import redirect_stdout, redirect_stderr
                 import io as _io
+                from contextlib import redirect_stderr, redirect_stdout
+
                 out_buf, err_buf = _io.StringIO(), _io.StringIO()
                 with redirect_stdout(out_buf), redirect_stderr(err_buf):
                     exit_code = pytest.main(args, plugins=[plugin])
@@ -649,6 +683,7 @@ class VeriExecutor:
 
             # Use per-worker coverage data file if VERI_WORKER_ID is provided
             import os as _os
+
             worker_id = _os.environ.get("VERI_WORKER_ID")
             data_file = (
                 self.work_dir
@@ -754,7 +789,7 @@ def run_worker_mode(args: Any) -> int:
 
     Reads JSON commands from stdin and writes JSON responses to stdout.
     """
-    import os
+
     stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", newline="\n")
     stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n")
 
@@ -797,7 +832,10 @@ def run_worker_mode(args: Any) -> int:
 
                 # Map JSON options to executor args
                 start = datetime.now(UTC)
-                print(f"[worker {getattr(args, 'worker_id', 0)}] ExecuteTests {batch_id}: {len(nodeids)} nodeids", file=sys.stderr)
+                print(
+                    f"[worker {getattr(args, 'worker_id', 0)}] ExecuteTests {batch_id}: {len(nodeids)} nodeids",
+                    file=sys.stderr,
+                )
                 exit_code = executor.run_tests(
                     nodeids,
                     verbose=bool(options.get("verbose", False)),
@@ -805,17 +843,24 @@ def run_worker_mode(args: Any) -> int:
                     no_capture=bool(options.get("no_capture", False)),
                     exitfirst=bool(options.get("exitfirst", False)),
                     maxfail=options.get("maxfail"),
-                    junit_xml=Path(options["junit_xml"]) if options.get("junit_xml") else None,
+                    junit_xml=Path(options["junit_xml"])
+                    if options.get("junit_xml")
+                    else None,
                     workers=str(options.get("workers", "1")),
                     coverage=bool(options.get("coverage", False)),
                     coverage_xml=bool(options.get("coverage_xml", False)),
                     coverage_html=bool(options.get("coverage_html", False)),
-                    coverage_source_dirs=list(options.get("coverage_source_dirs", ["src"])),
+                    coverage_source_dirs=list(
+                        options.get("coverage_source_dirs", ["src"])
+                    ),
                     coverage_omit=list(options.get("coverage_omit", [])),
                     _capture_output=True,
                 )
                 dur_ms = int((datetime.now(UTC) - start).total_seconds() * 1000)
-                print(f"[worker {getattr(args, 'worker_id', 0)}] Completed {batch_id} in {dur_ms}ms (exit {exit_code})", file=sys.stderr)
+                print(
+                    f"[worker {getattr(args, 'worker_id', 0)}] Completed {batch_id} in {dur_ms}ms (exit {exit_code})",
+                    file=sys.stderr,
+                )
 
                 # For now stdout/stderr are not captured live; provide empty strings
                 send(
@@ -831,7 +876,13 @@ def run_worker_mode(args: Any) -> int:
                     }
                 )
             else:
-                send({"t": "Error", "kind": "UnknownMessage", "message": f"Unknown t={t}"})
+                send(
+                    {
+                        "t": "Error",
+                        "kind": "UnknownMessage",
+                        "message": f"Unknown t={t}",
+                    }
+                )
         except Exception as e:  # pragma: no cover - defensive
             send({"t": "Error", "kind": "Exception", "message": str(e)})
 
@@ -847,7 +898,9 @@ def main() -> int:
         action="store_true",
         help="Start in long-lived worker mode (JSONL protocol)",
     )
-    parser.add_argument("--worker-id", type=int, default=0, help="Worker id in worker mode")
+    parser.add_argument(
+        "--worker-id", type=int, default=0, help="Worker id in worker mode"
+    )
     parser.add_argument(
         "command",
         nargs="?",
@@ -867,7 +920,9 @@ def main() -> int:
         help="Cache directory for storing indexes",
     )
     parser.add_argument("--paths", nargs="*", default=[], help="Test paths or patterns")
-    parser.add_argument("--ignore", action="append", default=[], help="Ignore test path (repeatable)")
+    parser.add_argument(
+        "--ignore", action="append", default=[], help="Ignore test path (repeatable)"
+    )
     parser.add_argument(
         "--nodeids", nargs="*", default=[], help="Specific test nodeids to run"
     )
@@ -932,17 +987,19 @@ def main() -> int:
                 print(f"Paths: {args.paths}")
 
             # Collect tests
-            tests_data = collector.collect_tests(args.paths if args.paths else None, ignores=args.ignore)
-            collector.save_index(tests_data, "tests.index.json")
+            tests_index = collector.collect_tests(
+                args.paths if args.paths else None, ignores=args.ignore
+            )
+            collector.save_index(tests_index, "tests.index.json")
 
             # Collect markers
-            markers_data = collector.collect_markers(tests_data)
-            collector.save_index(markers_data, "markers.index.json")
+            markers_index = collector.collect_markers(tests_index)
+            collector.save_index(markers_index, "markers.index.json")
 
-            print(f"Collected {len(tests_data['tests'])} tests")
-            if tests_data["collection_errors"]:
+            print(f"Collected {len(tests_index.tests)} tests")
+            if tests_index.collection_errors:
                 print(
-                    f"Warning: {len(tests_data['collection_errors'])} collection errors"
+                    f"Warning: {len(tests_index.collection_errors)} collection errors"
                 )
                 return 2
 
@@ -1024,7 +1081,9 @@ def main() -> int:
                 with open(per_test_path, "w", encoding="utf-8") as f:
                     json.dump(getattr(executor, "last_per_test", []), f)
             except Exception as e:  # best-effort
-                print(f"Warning: could not write per-test results: {e}", file=sys.stderr)
+                print(
+                    f"Warning: could not write per-test results: {e}", file=sys.stderr
+                )
 
             return exit_code
 

@@ -639,7 +639,6 @@ impl Drop for WatchTui {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

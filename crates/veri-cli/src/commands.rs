@@ -145,7 +145,15 @@ pub fn handle_subcommand(command: &Commands, config: &Config, cli_args: &Cli) ->
                     // Some tests failed, but we don't know exact counts without refactoring
                     (0, nodeids.len() as u32)
                 };
-                stream.emit_summary(duration, nodeids.len() as u32, passed, failed, 0, 0, exit as i32)?;
+                stream.emit_summary(
+                    duration,
+                    nodeids.len() as u32,
+                    passed,
+                    failed,
+                    0,
+                    0,
+                    exit as i32,
+                )?;
             }
 
             ci_reporter.finalize()?;

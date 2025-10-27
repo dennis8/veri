@@ -1,3 +1,6 @@
+use super::coverage::CoverageService;
+use super::telemetry::TelemetryService;
+use super::watch::WatchAdapter;
 use crate::cli::{Cli, ExitCode};
 use anyhow::Result;
 use veri_core::cache::{compute_config_digest, CacheKey};
@@ -11,9 +14,6 @@ use veri_core::scheduler::{SchedulerConfig, SchedulingStrategy, TestScheduler};
 use veri_core::security::{SecurityConfig, SecurityScanner};
 use veri_core::telemetry::{ErrorCategory, RunEvent};
 use veri_core::worker_pool::{WorkerPool, WorkerPoolConfig};
-use super::coverage::CoverageService;
-use super::telemetry::TelemetryService;
-use super::watch::WatchAdapter;
 
 fn detect_project_root_from_paths(paths: &[String]) -> Option<std::path::PathBuf> {
     use std::path::{Path, PathBuf};
@@ -289,7 +289,9 @@ pub(super) fn run_veri_engine(
     let mut diagnostics = DiagnosticReporter::new(cli.quiet);
 
     // Check compatibility and handle fallback
-    if let Some(exit_code) = check_compatibility_and_fallback(cli, config, &worker, compatibility_matrix)? {
+    if let Some(exit_code) =
+        check_compatibility_and_fallback(cli, config, &worker, compatibility_matrix)?
+    {
         return Ok(exit_code);
     }
 
@@ -297,7 +299,14 @@ pub(super) fn run_veri_engine(
     worker.check_environment(&mut diagnostics)?;
 
     // Validate plugins and run security checks
-    if let Some(exit_code) = validate_plugins_and_security(cli, config, &worker, security_config, &mut diagnostics, telemetry)? {
+    if let Some(exit_code) = validate_plugins_and_security(
+        cli,
+        config,
+        &worker,
+        security_config,
+        &mut diagnostics,
+        telemetry,
+    )? {
         return Ok(exit_code);
     }
 
@@ -739,7 +748,9 @@ fn setup_scheduler(
     let mut scheduler = TestScheduler::new(scheduler_config);
 
     // Try to load historical timings
-    if let Ok(timings_data) = veri_core::schemas::TimingsData::load_from_cache(exec_config.cache_dir) {
+    if let Ok(timings_data) =
+        veri_core::schemas::TimingsData::load_from_cache(exec_config.cache_dir)
+    {
         if let Err(e) = scheduler.load_timings(&timings_data) {
             if exec_config.verbose {
                 println!("⚠️  Could not load timing data: {}", e);

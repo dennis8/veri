@@ -535,7 +535,9 @@ impl CoverageCollector {
                 .write_event(Event::Start(BytesStart::new("source")))
                 .context("Failed to write source element")?;
             writer
-                .write_event(Event::Text(BytesText::new(&source_dir.display().to_string())))
+                .write_event(Event::Text(BytesText::new(
+                    &source_dir.display().to_string(),
+                )))
                 .context("Failed to write source text")?;
             writer
                 .write_event(Event::End(BytesEnd::new("source")))

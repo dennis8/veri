@@ -4,6 +4,7 @@ import os
 
 import pytest
 
+from contracts import TestsIndex
 from veri_worker import VeriCollector
 
 
@@ -25,10 +26,11 @@ def test_nested():
 """)
 
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
         # All paths should be relative and use forward slashes for consistency
-        for test in result["tests"]:
-            path = test["path"]
+        for test in result.tests:
+            path = test.path
             assert not os.path.isabs(path), f"Path should be relative: {path}"
             # On Windows, ensure paths are normalized
             if os.sep == "\\":
@@ -49,10 +51,11 @@ def test_windows_path():
 """)
 
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
         # Paths should not contain drive letters when made relative
-        for test in result["tests"]:
-            path = test["path"]
+        for test in result.tests:
+            path = test.path
             assert ":" not in path, f"Path should not contain drive letter: {path}"
 
     @pytest.mark.skipif(os.name != "nt", reason="Windows-specific test")
@@ -70,11 +73,12 @@ def test_backslash():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
         # Check that paths are properly normalized
-        for test in result["tests"]:
-            path = test["path"]
-            module = test["module"]
+        for test in result.tests:
+            path = test.path
+            module = test.module
 
             # Module names should use dots, not backslashes
             assert "\\" not in module, f"Module should use dots: {module}"
@@ -95,12 +99,13 @@ def test_deep():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
         # Should find the nested test
-        assert len(result["tests"]) >= 1
+        assert len(result.tests) >= 1
 
-        test = result["tests"][0]
-        path = test["path"]
+        test = result.tests[0]
+        path = test.path
 
         # Path should be relative and point to correct location
         full_path = temp_work_dir / path
@@ -124,9 +129,10 @@ def test_original():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
         # Should handle symlinks gracefully (may collect both or resolve)
-        assert len(result["tests"]) >= 1
+        assert len(result.tests) >= 1
 
     def test_unicode_path_handling(self, temp_work_dir, temp_cache_dir):
         """Test handling of unicode characters in paths."""
@@ -145,13 +151,14 @@ def test_unicode():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
         # Should handle unicode paths
-        assert len(result["tests"]) >= 1
+        assert len(result.tests) >= 1
 
         # Path should be properly encoded
-        test = result["tests"][0]
-        path = test["path"]
+        test = result.tests[0]
+        path = test.path
         assert isinstance(path, str)
 
     def test_long_path_handling(self, temp_work_dir, temp_cache_dir):
@@ -183,9 +190,10 @@ def test_long_path():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
         # Should handle long paths
-        assert len(result["tests"]) >= 1
+        assert len(result.tests) >= 1
 
     def test_case_sensitivity_handling(self, temp_work_dir, temp_cache_dir):
         """Test case sensitivity handling across platforms."""
@@ -198,12 +206,13 @@ def test_case():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
         # Should find the test regardless of case sensitivity
-        assert len(result["tests"]) >= 1
+        assert len(result.tests) >= 1
 
-        test = result["tests"][0]
-        path = test["path"]
+        test = result.tests[0]
+        path = test.path
 
         # Path should preserve original case
         assert "Test_Case.py" in path

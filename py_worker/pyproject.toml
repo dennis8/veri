@@ -7,13 +7,14 @@ dependencies = [
     "pytest>=7.0.0",
     "pytest-xdist>=2.0.0", # For parallel execution support
     "coverage>=7.0.0", # For coverage collection
+    "jsonschema>=4.0.0",
+    "pydantic>=2.7.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
-    "jsonschema>=4.0.0",
 ]
 
 [build-system]
@@ -44,4 +45,5 @@ exclude = ["tests/"]
 [dependency-groups]
 dev = [
     "mypy>=1.17.1",
+    "types-jsonschema>=4.25.1.20251009",
 ]

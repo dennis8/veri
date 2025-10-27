@@ -4,6 +4,15 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub const TESTS_INDEX_SCHEMA_JSON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../schemas/tests.index.json"
+));
+pub const MARKERS_INDEX_SCHEMA_JSON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../schemas/markers.index.json"
+));
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestsIndex {
     pub version: String,
@@ -196,6 +205,21 @@ impl ImportsGraph {
 
     pub fn from_json(json: &str) -> Result<Self> {
         Ok(serde_json::from_str(json)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tests_index_schema_json_is_valid() {
+        serde_json::from_str::<serde_json::Value>(TESTS_INDEX_SCHEMA_JSON).unwrap();
+    }
+
+    #[test]
+    fn markers_index_schema_json_is_valid() {
+        serde_json::from_str::<serde_json::Value>(MARKERS_INDEX_SCHEMA_JSON).unwrap();
     }
 }
 

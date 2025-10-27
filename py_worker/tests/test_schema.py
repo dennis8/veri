@@ -11,6 +11,7 @@ try:
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
 
+from contracts import MarkersIndex, TestsIndex
 from veri_worker import VeriASTParser, VeriCollector
 
 
@@ -74,30 +75,24 @@ class TestClass:
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
+        payload = result.to_schema_dict()
         # Validate basic structure
-        assert "version" in result
-        assert "generated_at" in result
-        assert "tests" in result
-        assert "pytest_version" in result
+        assert "version" in payload
+        assert "generated_at" in payload
+        assert "tests" in payload
+        assert "pytest_version" in payload
 
         # Validate tests structure
-        for test in result["tests"]:
-            assert "nodeid" in test
-            assert "path" in test
-            assert "line" in test
-            assert "function" in test
-            assert "module" in test
-            assert "markers" in test
-            assert "fixtures" in test
-
-            assert isinstance(test["nodeid"], str)
-            assert isinstance(test["path"], str)
-            assert isinstance(test["line"], int)
-            assert isinstance(test["function"], str)
-            assert isinstance(test["module"], str)
-            assert isinstance(test["markers"], list)
-            assert isinstance(test["fixtures"], list)
+        for test in result.tests:
+            assert isinstance(test.nodeid, str)
+            assert isinstance(test.path, str)
+            assert isinstance(test.line, int)
+            assert isinstance(test.function, str)
+            assert isinstance(test.module, str)
+            assert isinstance(test.markers, list)
+            assert isinstance(test.fixtures, list)
 
     def test_markers_index_schema_compliance(self, temp_work_dir, temp_cache_dir):
         """Test that markers index conforms to expected schema."""
@@ -114,25 +109,26 @@ def test_marked():
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         tests_result = collector.collect_tests()
         markers_result = collector.collect_markers(tests_result)
+        assert isinstance(markers_result, MarkersIndex)
+
+        payload = markers_result.to_schema_dict()
 
         # Validate basic structure
-        assert "version" in markers_result
-        assert "generated_at" in markers_result
-        assert "markers" in markers_result
-        assert "test_markers" in markers_result
+        assert "version" in payload
+        assert "generated_at" in payload
+        assert "markers" in payload
+        assert "test_markers" in payload
 
         # Validate marker definitions
-        marker_defs = markers_result["markers"]
+        marker_defs = markers_result.markers
         assert isinstance(marker_defs, dict)
 
         for marker_name, marker_info in marker_defs.items():
             assert isinstance(marker_name, str)
-            assert isinstance(marker_info, dict)
-            assert "usage_count" in marker_info
-            assert isinstance(marker_info["usage_count"], int)
+            assert marker_info.usage_count >= 0
 
         # Validate test markers
-        test_markers = markers_result["test_markers"]
+        test_markers = markers_result.test_markers
         assert isinstance(test_markers, dict)
 
         for nodeid, markers in test_markers.items():
@@ -151,19 +147,20 @@ def test_round_trip():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         original_result = collector.collect_tests()
+        assert isinstance(original_result, TestsIndex)
 
         # Serialize to JSON
-        json_str = json.dumps(original_result, indent=2)
+        json_str = json.dumps(original_result.to_schema_dict(), indent=2)
 
         # Deserialize back
         deserialized_result = json.loads(json_str)
 
         # Compare key fields
-        assert len(deserialized_result["tests"]) == len(original_result["tests"])
+        assert len(deserialized_result["tests"]) == len(original_result.tests)
 
         # Compare first test if any
-        if original_result["tests"]:
-            orig_test = original_result["tests"][0]
+        if original_result.tests:
+            orig_test = original_result.tests[0].to_schema_dict()
             deser_test = deserialized_result["tests"][0]
 
             assert deser_test["nodeid"] == orig_test["nodeid"]
@@ -174,12 +171,14 @@ def test_round_trip():
         """Test schema compliance with empty results."""
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()  # No test files
+        assert isinstance(result, TestsIndex)
 
         # Should still have valid structure
-        assert len(result["tests"]) == 0
-        assert result["tests"] == []
-        assert "version" in result
-        assert "pytest_version" in result
+        assert len(result.tests) == 0
+        assert result.tests == []
+        payload = result.to_schema_dict()
+        assert "version" in payload
+        assert "pytest_version" in payload
 
     def test_malformed_data_handling(self, temp_work_dir):
         """Test handling of malformed or edge-case data."""

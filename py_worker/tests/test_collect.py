@@ -2,6 +2,7 @@
 
 import json
 
+from contracts import MarkersIndex, TestsIndex
 from veri_worker import VeriCollector
 
 
@@ -20,11 +21,10 @@ class TestVeriCollector:
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
 
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
-        assert "tests" in result
-        assert "pytest_version" in result
-        assert len(result["tests"]) == 0
-        assert result["tests"] == []
+        assert result.tests == []
+        assert result.pytest_version
 
     def test_collect_tests_with_simple_test(self, temp_work_dir, temp_cache_dir):
         """Test collection with a simple test file."""
@@ -44,22 +44,19 @@ class TestCalculator:
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
-        assert len(result["tests"]) >= 3
-
-        # Check test info structure
-        tests = result["tests"]
-        assert len(tests) >= 3
+        assert len(result.tests) >= 3
 
         # Verify test info contains required fields
-        for test in tests:
-            assert "nodeid" in test
-            assert "path" in test
-            assert "function" in test
-            assert "line" in test
-            assert "module" in test
-            assert "markers" in test
-            assert "fixtures" in test
+        for test in result.tests:
+            assert test.nodeid
+            assert test.path
+            assert isinstance(test.line, int)
+            assert test.function
+            assert test.module
+            assert isinstance(test.markers, list)
+            assert isinstance(test.fixtures, list)
 
     def test_collect_tests_with_markers(self, temp_work_dir, temp_cache_dir):
         """Test collection with pytest markers."""
@@ -82,13 +79,14 @@ def test_fast():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
-        tests = result["tests"]
+        tests = result.tests
 
         # Find the marked tests
-        slow_tests = [t for t in tests if "slow" in t["markers"]]
-        integration_tests = [t for t in tests if "integration" in t["markers"]]
-        unmarked_tests = [t for t in tests if not t["markers"]]
+        slow_tests = [t for t in tests if "slow" in t.markers]
+        integration_tests = [t for t in tests if "integration" in t.markers]
+        unmarked_tests = [t for t in tests if not t.markers]
 
         assert len(slow_tests) >= 2
         assert len(integration_tests) >= 1
@@ -117,19 +115,20 @@ def test_no_fixture():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
-        tests = result["tests"]
+        tests = result.tests
 
         # Find tests with and without fixtures
-        fixture_tests = [t for t in tests if t["fixtures"]]
-        no_fixture_tests = [t for t in tests if not t["fixtures"]]
+        fixture_tests = [t for t in tests if t.fixtures]
+        no_fixture_tests = [t for t in tests if not t.fixtures]
 
         assert len(fixture_tests) >= 1
         assert len(no_fixture_tests) >= 1
 
         # Check fixture names
         fixture_test = fixture_tests[0]
-        assert "sample_data" in fixture_test["fixtures"]
+        assert "sample_data" in fixture_test.fixtures
 
     def test_collect_tests_with_parametrization(self, temp_work_dir, temp_cache_dir):
         """Test collection with parametrized tests."""
@@ -148,11 +147,12 @@ def test_increment(input, expected):
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
-        tests = result["tests"]
+        tests = result.tests
 
         # Should have 3 parametrized test instances
-        parametrized_tests = [t for t in tests if t.get("parametrize")]
+        parametrized_tests = [t for t in tests if t.parametrize]
         assert len(parametrized_tests) >= 3
 
     def test_collect_markers_index(self, temp_work_dir, temp_cache_dir):
@@ -177,14 +177,12 @@ def test_slow_integration():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         tests_result = collector.collect_tests()
+        assert isinstance(tests_result, TestsIndex)
         markers_result = collector.collect_markers(tests_result)
+        assert isinstance(markers_result, MarkersIndex)
 
-        assert "version" in markers_result
-        assert "markers" in markers_result
-        assert "test_markers" in markers_result
-
-        marker_defs = markers_result["markers"]
-        test_markers = markers_result["test_markers"]
+        marker_defs = markers_result.markers
+        test_markers = markers_result.test_markers
 
         # Should have collected markers
         assert "unit" in marker_defs
@@ -204,6 +202,7 @@ def test_sample():
 
         collector = VeriCollector(temp_work_dir, temp_cache_dir)
         result = collector.collect_tests()
+        assert isinstance(result, TestsIndex)
 
         # Save the index
         collector.save_index(result, "test_index.json")
@@ -216,5 +215,5 @@ def test_sample():
         with open(index_file) as f:
             loaded_data = json.load(f)
 
-        assert len(loaded_data["tests"]) == len(result["tests"])
-        assert len(loaded_data["tests"]) == len(result["tests"])
+        assert len(loaded_data["tests"]) == len(result.tests)
+        assert len(loaded_data["tests"]) == len(result.tests)

@@ -607,11 +607,8 @@ impl WorkerPool {
     fn start_worker_process(&mut self, worker: &mut WorkerProcess) -> Result<()> {
         debug!("Starting worker process {}", worker.id);
 
-        let mut cmd = Self::build_worker_command(
-            worker.id,
-            &self.config.work_dir,
-            &self.config.cache_dir,
-        )?;
+        let mut cmd =
+            Self::build_worker_command(worker.id, &self.config.work_dir, &self.config.cache_dir)?;
 
         let mut process = cmd
             .spawn()
@@ -818,7 +815,6 @@ impl WorkerPool {
             }
         });
     }
-
 
     /// Check worker health and restart failed workers
     fn check_worker_health(&mut self) -> Result<()> {
