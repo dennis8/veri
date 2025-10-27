@@ -1,6 +1,16 @@
+mod collection_service;
 mod coverage;
+mod execution;
+mod execution_orchestrator;
+mod selection;
+mod selection_orchestrator;
+pub mod services;
 mod telemetry;
+mod telemetry_orchestrator;
+mod validation_service;
+mod vcs;
 mod watch;
+mod workspace;
 
 use crate::cli::{Cli, Engine, ExitCode};
 use crate::commands;
