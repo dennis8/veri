@@ -472,13 +472,19 @@ mod tests {
         assert!(failed_score > passed_score);
     }
 
+    fn sample_generated_at() -> chrono::DateTime<chrono::Utc> {
+        chrono::DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc)
+    }
+
     #[test]
     fn test_empty_schedule() {
         let config = SchedulerConfig::default();
         let scheduler = TestScheduler::new(config);
         let tests_index = TestsIndex {
             version: "1.0".to_string(),
-            generated_at: "2023-01-01T00:00:00Z".to_string(),
+            generated_at: sample_generated_at(),
             python_version: "3.12".to_string(),
             pytest_version: "8.0".to_string(),
             tests: Vec::new(),
@@ -499,7 +505,7 @@ mod tests {
 
         let tests_index = TestsIndex {
             version: "1.0.0".to_string(),
-            generated_at: "2023-01-01T00:00:00Z".to_string(),
+            generated_at: sample_generated_at(),
             python_version: "3.9.0".to_string(),
             pytest_version: "7.0.0".to_string(),
             tests: vec![TestNode {

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use globset::{Glob, GlobSetBuilder};
 use log::{debug, info, warn};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
@@ -86,6 +87,7 @@ pub struct WatchSession {
     watcher: Option<RecommendedWatcher>,
     event_receiver: Option<Receiver<notify::Result<Event>>>,
     gitignore: Option<ignore::gitignore::Gitignore>,
+    ignore_globset: Option<globset::GlobSet>,
     tui: Option<WatchTui>,
 }
 
@@ -93,6 +95,21 @@ impl WatchSession {
     pub fn new(work_dir: PathBuf, cache_dir: PathBuf, config: WatchConfig) -> Result<Self> {
         let gitignore = if config.respect_gitignore {
             Self::load_gitignore(&work_dir)?
+        } else {
+            None
+        };
+
+        // Build globset for ignore patterns
+        let ignore_globset = if !config.ignore_patterns.is_empty() {
+            let mut builder = GlobSetBuilder::new();
+            for pattern in &config.ignore_patterns {
+                if let Ok(glob) = Glob::new(pattern) {
+                    builder.add(glob);
+                } else {
+                    warn!("Invalid glob pattern: {}", pattern);
+                }
+            }
+            builder.build().ok()
         } else {
             None
         };
@@ -110,6 +127,7 @@ impl WatchSession {
             watcher: None,
             event_receiver: None,
             gitignore,
+            ignore_globset,
             tui,
         })
     }
@@ -294,10 +312,9 @@ impl WatchSession {
             }
         }
 
-        // Check ignore patterns
-        let path_str = relative_path.to_string_lossy();
-        for pattern in &self.config.ignore_patterns {
-            if glob_match(pattern, &path_str) {
+        // Check ignore patterns using globset
+        if let Some(globset) = &self.ignore_globset {
+            if globset.is_match(relative_path) {
                 return false;
             }
         }
@@ -417,7 +434,7 @@ impl WatchSession {
         }
 
         // Run the selected tests via worker pool (single worker)
-        let pool_cfg = crate::worker_pool::WorkerPoolConfig { 
+        let pool_cfg = crate::worker_pool::WorkerPoolConfig {
             worker_count: 1,
             work_dir: self.work_dir.clone(),
             cache_dir: self.cache_dir.clone(),
@@ -433,7 +450,11 @@ impl WatchSession {
         };
         pool.submit_batch("watch_batch".to_string(), batch, test_run_options.clone())?;
         let results = pool.wait_for_completion(Some(std::time::Duration::from_secs(600)))?;
-        let exit_code = if results.iter().any(|r| r.exit_code != 0) { 1 } else { 0 };
+        let exit_code = if results.iter().any(|r| r.exit_code != 0) {
+            1
+        } else {
+            0
+        };
         pool.shutdown()?;
 
         Ok(TestRunResult {
@@ -618,41 +639,6 @@ impl Drop for WatchTui {
     }
 }
 
-/// Simple glob pattern matching
-fn glob_match(pattern: &str, text: &str) -> bool {
-    // Handle exact match first
-    if pattern == text {
-        return true;
-    }
-
-    // Handle patterns with * wildcard
-    if pattern.contains('*') {
-        if let Some(middle) = pattern
-            .strip_prefix('*')
-            .and_then(|rest| rest.strip_suffix('*'))
-        {
-            // *substring* pattern
-            text.contains(middle)
-        } else if let Some(suffix) = pattern.strip_prefix('*') {
-            // *suffix pattern
-            text.ends_with(suffix)
-        } else if let Some(prefix) = pattern.strip_suffix('*') {
-            // prefix* pattern
-            text.starts_with(prefix)
-        } else {
-            // More complex pattern - for now, just do simple contains check
-            let parts: Vec<&str> = pattern.split('*').collect();
-            if parts.len() == 2 {
-                text.starts_with(parts[0]) && text.ends_with(parts[1])
-            } else {
-                false // More complex patterns not supported yet
-            }
-        }
-    } else {
-        // No wildcards, must be exact match
-        pattern == text
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -687,11 +673,16 @@ mod tests {
     }
 
     #[test]
-    fn test_glob_match() {
-        assert!(glob_match("*.py", "test.py"));
-        assert!(glob_match("*.py", ".py"));
-        assert!(!glob_match("*.py", "test.txt"));
-        assert!(glob_match("test.py", "test.py"));
-        assert!(!glob_match("test.py", "other.py"));
+    fn test_globset_matching() {
+        use globset::{Glob, GlobSetBuilder};
+
+        let mut builder = GlobSetBuilder::new();
+        builder.add(Glob::new("*.py").unwrap());
+        builder.add(Glob::new("test.py").unwrap());
+        let globset = builder.build().unwrap();
+
+        assert!(globset.is_match("test.py"));
+        assert!(globset.is_match("other.py"));
+        assert!(!globset.is_match("test.txt"));
     }
 }

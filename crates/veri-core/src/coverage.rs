@@ -329,11 +329,22 @@ impl CoverageCollector {
                 if !combine_ok {
                     // Fallback to system coverage if uv unavailable
                     let _ = Command::new("python")
-                        .args(["-m", "coverage", "combine", &self.cache_dir.to_string_lossy()])
+                        .args([
+                            "-m",
+                            "coverage",
+                            "combine",
+                            &self.cache_dir.to_string_lossy(),
+                        ])
                         .current_dir(&self.work_dir)
                         .status();
                     let _ = Command::new("python")
-                        .args(["-m", "coverage", "json", "-o", &coverage_json.to_string_lossy()])
+                        .args([
+                            "-m",
+                            "coverage",
+                            "json",
+                            "-o",
+                            &coverage_json.to_string_lossy(),
+                        ])
                         .current_dir(&self.work_dir)
                         .status();
                 }
@@ -351,25 +362,7 @@ impl CoverageCollector {
     }
 
     fn find_py_worker_path(&self) -> Option<PathBuf> {
-        // Try work_dir/py_worker, then ascend
-        let mut cur = self.work_dir.clone();
-        for _ in 0..5 {
-            let cand = cur.join("py_worker");
-            if cand.exists() {
-                return Some(cand);
-            }
-            if !cur.pop() {
-                break;
-            }
-        }
-        // Try crate-relative ../../py_worker
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        if let Some(c) = manifest_dir.parent().and_then(|p| p.parent()).map(|p| p.join("py_worker")) {
-            if c.exists() {
-                return Some(c);
-            }
-        }
-        None
+        crate::paths::find_py_worker_path(&self.work_dir)
     }
 
     fn convert_to_coverage_map(&self, coverage_data: serde_json::Value) -> Result<CoverageMap> {
@@ -508,24 +501,54 @@ impl CoverageCollector {
     }
 
     fn generate_xml_report(&self, coverage_map: &CoverageMap) -> Result<()> {
+        use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
+        use quick_xml::Writer;
+        use std::io::Cursor;
+
         let xml_path = self.config.output_dir.join("coverage.xml");
 
-        // Generate Cobertura XML format for CI tools
-        let mut xml_content = String::new();
-        xml_content.push_str(r#"<?xml version="1.0" ?>"#);
-        xml_content.push('\n');
-        xml_content.push_str(r#"<coverage version="1.0" timestamp=""#);
-        xml_content.push_str(&format!("{}", chrono::Utc::now().timestamp()));
-        xml_content.push_str(r#"">"#);
-        xml_content.push('\n');
+        // Create XML writer
+        let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b' ', 2);
 
-        xml_content.push_str("  <sources>\n");
+        // XML declaration
+        writer
+            .write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))
+            .context("Failed to write XML declaration")?;
+
+        // Coverage root element
+        let mut coverage_elem = BytesStart::new("coverage");
+        coverage_elem.push_attribute(("version", "1.0"));
+        coverage_elem.push_attribute((
+            "timestamp",
+            chrono::Utc::now().timestamp().to_string().as_str(),
+        ));
+        writer
+            .write_event(Event::Start(coverage_elem))
+            .context("Failed to write coverage element")?;
+
+        // Sources
+        writer
+            .write_event(Event::Start(BytesStart::new("sources")))
+            .context("Failed to write sources element")?;
         for source_dir in &self.config.source_dirs {
-            xml_content.push_str(&format!("    <source>{}</source>\n", source_dir.display()));
+            writer
+                .write_event(Event::Start(BytesStart::new("source")))
+                .context("Failed to write source element")?;
+            writer
+                .write_event(Event::Text(BytesText::new(&source_dir.display().to_string())))
+                .context("Failed to write source text")?;
+            writer
+                .write_event(Event::End(BytesEnd::new("source")))
+                .context("Failed to write source end")?;
         }
-        xml_content.push_str("  </sources>\n");
+        writer
+            .write_event(Event::End(BytesEnd::new("sources")))
+            .context("Failed to write sources end")?;
 
-        xml_content.push_str("  <packages>\n");
+        // Packages
+        writer
+            .write_event(Event::Start(BytesStart::new("packages")))
+            .context("Failed to write packages element")?;
 
         // Group files by package (directory)
         let mut packages: HashMap<String, Vec<(&String, &FileCoverage)>> = HashMap::new();
@@ -542,8 +565,15 @@ impl CoverageCollector {
         }
 
         for (package_name, files) in packages {
-            xml_content.push_str(&format!("    <package name=\"{}\">\n", package_name));
-            xml_content.push_str("      <classes>\n");
+            let mut package_elem = BytesStart::new("package");
+            package_elem.push_attribute(("name", package_name.as_str()));
+            writer
+                .write_event(Event::Start(package_elem))
+                .context("Failed to write package element")?;
+
+            writer
+                .write_event(Event::Start(BytesStart::new("classes")))
+                .context("Failed to write classes element")?;
 
             for (file_path, coverage) in files {
                 let class_name = Path::new(file_path)
@@ -551,31 +581,55 @@ impl CoverageCollector {
                     .map(|s| s.to_string_lossy().to_string())
                     .unwrap_or_else(|| "unknown".to_string());
 
-                xml_content.push_str(&format!(
-                    "        <class name=\"{}\" filename=\"{}\" line-rate=\"{:.4}\">\n",
-                    class_name,
-                    file_path,
-                    coverage.coverage_percent / 100.0
+                let mut class_elem = BytesStart::new("class");
+                class_elem.push_attribute(("name", class_name.as_str()));
+                class_elem.push_attribute(("filename", file_path.as_str()));
+                class_elem.push_attribute((
+                    "line-rate",
+                    format!("{:.4}", coverage.coverage_percent / 100.0).as_str(),
                 ));
+                writer
+                    .write_event(Event::Start(class_elem))
+                    .context("Failed to write class element")?;
 
-                xml_content.push_str("          <lines>\n");
+                writer
+                    .write_event(Event::Start(BytesStart::new("lines")))
+                    .context("Failed to write lines element")?;
+
                 for &line_num in &coverage.covered_lines {
-                    xml_content.push_str(&format!(
-                        "            <line number=\"{}\" hits=\"1\"/>\n",
-                        line_num
-                    ));
+                    let mut line_elem = BytesStart::new("line");
+                    line_elem.push_attribute(("number", line_num.to_string().as_str()));
+                    line_elem.push_attribute(("hits", "1"));
+                    writer
+                        .write_event(Event::Empty(line_elem))
+                        .context("Failed to write line element")?;
                 }
-                xml_content.push_str("          </lines>\n");
-                xml_content.push_str("        </class>\n");
+
+                writer
+                    .write_event(Event::End(BytesEnd::new("lines")))
+                    .context("Failed to write lines end")?;
+                writer
+                    .write_event(Event::End(BytesEnd::new("class")))
+                    .context("Failed to write class end")?;
             }
 
-            xml_content.push_str("      </classes>\n");
-            xml_content.push_str("    </package>\n");
+            writer
+                .write_event(Event::End(BytesEnd::new("classes")))
+                .context("Failed to write classes end")?;
+            writer
+                .write_event(Event::End(BytesEnd::new("package")))
+                .context("Failed to write package end")?;
         }
 
-        xml_content.push_str("  </packages>\n");
-        xml_content.push_str("</coverage>\n");
+        writer
+            .write_event(Event::End(BytesEnd::new("packages")))
+            .context("Failed to write packages end")?;
+        writer
+            .write_event(Event::End(BytesEnd::new("coverage")))
+            .context("Failed to write coverage end")?;
 
+        // Write to file
+        let xml_content = writer.into_inner().into_inner();
         std::fs::write(&xml_path, xml_content).context("Failed to write XML coverage report")?;
 
         info!("Generated XML coverage report at {}", xml_path.display());

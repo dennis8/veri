@@ -9,8 +9,8 @@ use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
-use std::path::{Path, PathBuf};
 use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
@@ -47,7 +47,7 @@ impl Default for WorkerPoolConfig {
             startup_timeout: Duration::from_secs(30),
             execution_timeout: Duration::from_secs(300), // 5 minutes
             heartbeat_interval: Duration::from_secs(10),
-            max_idle_time: Duration::from_secs(600),     // 10 minutes
+            max_idle_time: Duration::from_secs(600), // 10 minutes
             enable_recycling: true,
             work_dir: std::env::current_dir().unwrap_or_default(),
             cache_dir: std::env::current_dir()
@@ -186,9 +186,16 @@ pub struct BatchResult {
 
 #[derive(Debug)]
 enum WorkerEvent {
-    HelloOk { worker_id: usize },
-    HealthOk { worker_id: usize },
-    TestResults { worker_id: usize, response: WorkerResponse },
+    HelloOk {
+        worker_id: usize,
+    },
+    HealthOk {
+        worker_id: usize,
+    },
+    TestResults {
+        worker_id: usize,
+        response: WorkerResponse,
+    },
 }
 
 impl WorkerPool {
@@ -375,7 +382,10 @@ impl WorkerPool {
         // Drain worker events
         for evt in self.evt_rx.try_iter() {
             match evt {
-                WorkerEvent::TestResults { worker_id, response } => {
+                WorkerEvent::TestResults {
+                    worker_id,
+                    response,
+                } => {
                     if let WorkerResponse::TestResults {
                         batch_id,
                         exit_code,
@@ -394,7 +404,13 @@ impl WorkerPool {
                                 stderr: stderr.to_string(),
                                 duration: Duration::from_millis(*duration_ms),
                                 nodeids: ctx.batch.nodeids.clone(),
-                                per_test: if let WorkerResponse::TestResults { per_test, .. } = response { per_test.unwrap_or_default() } else { Vec::new() },
+                                per_test: if let WorkerResponse::TestResults { per_test, .. } =
+                                    response
+                                {
+                                    per_test.unwrap_or_default()
+                                } else {
+                                    Vec::new()
+                                },
                             };
                             out.push(br);
                             if let Some(w) = self.workers.get_mut(worker_id) {
@@ -534,46 +550,68 @@ impl WorkerPool {
         Ok(())
     }
 
-    /// Start an individual worker process
-    fn start_worker_process(&mut self, worker: &mut WorkerProcess) -> Result<()> {
-        debug!("Starting worker process {}", worker.id);
-
-        // Prefer launching via `uv run --project <py_worker>` to ensure pytest deps are available
+    /// Build command for starting a worker process
+    fn build_worker_command(
+        worker_id: usize,
+        work_dir: &Path,
+        cache_dir: &Path,
+    ) -> Result<Command> {
         let mut cmd;
-        if let Some(py_worker_path) = Self::find_py_worker_path(&self.config.work_dir) {
+        if let Some(py_worker_path) = Self::find_py_worker_path(work_dir) {
             cmd = Command::new("uv");
             cmd.arg("run")
                 .arg("--project")
                 .arg(&py_worker_path)
                 .arg("python");
             // Execute the cached worker script to avoid module import issues
-            let script_path = self
-                .config
-                .cache_dir
-                .join("veri_worker.py");
+            let script_path = cache_dir.join("veri_worker.py");
             let script_abs = std::fs::canonicalize(&script_path).unwrap_or(script_path);
             cmd.arg(&script_abs);
             // Run uv from py_worker so it resolves deps into that project
             cmd.current_dir(&py_worker_path);
         } else {
             // Fallback to system python and cached script
-            let python_executable = self.get_python_executable()?;
-            let worker_script = self.config.cache_dir.join("veri_worker.py");
+            let python_candidates = ["python3", "python", "py"];
+            let mut python_executable = None;
+            for candidate in &python_candidates {
+                if let Ok(output) = Command::new(candidate).arg("--version").output() {
+                    if output.status.success() {
+                        python_executable = Some(candidate.to_string());
+                        break;
+                    }
+                }
+            }
+            let python_executable =
+                python_executable.ok_or_else(|| anyhow!("Could not find Python executable"))?;
+            let worker_script = cache_dir.join("veri_worker.py");
             cmd = Command::new(python_executable);
             cmd.arg(&worker_script);
         }
 
-        cmd.env("VERI_WORKER_ID", worker.id.to_string())
+        cmd.env("VERI_WORKER_ID", worker_id.to_string())
             .arg("--worker-mode")
             .arg("--worker-id")
-            .arg(worker.id.to_string())
+            .arg(worker_id.to_string())
             .arg("--cache-dir")
-            .arg(&self.config.cache_dir)
+            .arg(cache_dir)
             .arg("--work-dir")
-            .arg(&self.config.work_dir)
+            .arg(work_dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+
+        Ok(cmd)
+    }
+
+    /// Start an individual worker process
+    fn start_worker_process(&mut self, worker: &mut WorkerProcess) -> Result<()> {
+        debug!("Starting worker process {}", worker.id);
+
+        let mut cmd = Self::build_worker_command(
+            worker.id,
+            &self.config.work_dir,
+            &self.config.cache_dir,
+        )?;
 
         let mut process = cmd
             .spawn()
@@ -632,34 +670,18 @@ impl WorkerPool {
     }
 
     fn find_py_worker_path(start: &Path) -> Option<PathBuf> {
-        // Try start/py_worker and ascend a few levels
-        let mut cur = start.to_path_buf();
-        for _ in 0..5 {
-            let cand = cur.join("py_worker");
-            if cand.exists() {
-                return Some(cand);
-            }
-            if !cur.pop() {
-                break;
-            }
-        }
-
-        // Try repo relative to this crate (../../py_worker)
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let cand = manifest_dir.parent().and_then(|p| p.parent()).map(|p| p.join("py_worker"));
-        if let Some(c) = cand {
-            if c.exists() {
-                return Some(c);
-            }
-        }
-        None
+        crate::paths::find_py_worker_path(start)
     }
 
     fn spawn_writer_thread(mut stdin: std::process::ChildStdin, rx: Receiver<WorkerMessage>) {
         thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
                 let json = match msg {
-                    WorkerMessage::ExecuteTests { batch_id, nodeids, options } => {
+                    WorkerMessage::ExecuteTests {
+                        batch_id,
+                        nodeids,
+                        options,
+                    } => {
                         let junit = options
                             .junit_xml
                             .as_ref()
@@ -702,7 +724,7 @@ impl WorkerPool {
     ) {
         thread::spawn(move || {
             let reader = BufReader::new(stdout);
-            for line in reader.lines().flatten() {
+            for line in reader.lines().map_while(Result::ok) {
                 if let Ok(val) = serde_json::from_str::<Value>(&line) {
                     let t = val.get("t").and_then(|v| v.as_str()).unwrap_or("");
                     match t {
@@ -715,21 +737,64 @@ impl WorkerPool {
                             let _ = evt_tx.send(WorkerEvent::HealthOk { worker_id });
                         }
                         "TestResults" => {
-                            let batch_id = val.get("batch_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                            let exit_code = val.get("exit_code").and_then(|v| v.as_i64()).unwrap_or(3) as i32;
-                            let stdout_s = val.get("stdout").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                            let stderr_s = val.get("stderr").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                            let duration_ms = val.get("duration_ms").and_then(|v| v.as_i64()).unwrap_or(0) as u64;
-                            let per_test = val.get("per_test").and_then(|arr| arr.as_array()).map(|arr| {
-                                arr.iter().filter_map(|x| {
-                                    let nodeid = x.get("nodeid").and_then(|v| v.as_str())?.to_string();
-                                    let outcome = x.get("outcome").and_then(|v| v.as_str())?.to_string();
-                                    let duration_ms = x.get("duration_ms").and_then(|v| v.as_i64()).unwrap_or(0) as u64;
-                                    Some(PerTestResult { nodeid, outcome, duration_ms })
-                                }).collect::<Vec<PerTestResult>>()
+                            let batch_id = val
+                                .get("batch_id")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let exit_code =
+                                val.get("exit_code").and_then(|v| v.as_i64()).unwrap_or(3) as i32;
+                            let stdout_s = val
+                                .get("stdout")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let stderr_s = val
+                                .get("stderr")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let duration_ms =
+                                val.get("duration_ms").and_then(|v| v.as_i64()).unwrap_or(0) as u64;
+                            let per_test =
+                                val.get("per_test")
+                                    .and_then(|arr| arr.as_array())
+                                    .map(|arr| {
+                                        arr.iter()
+                                            .filter_map(|x| {
+                                                let nodeid = x
+                                                    .get("nodeid")
+                                                    .and_then(|v| v.as_str())?
+                                                    .to_string();
+                                                let outcome = x
+                                                    .get("outcome")
+                                                    .and_then(|v| v.as_str())?
+                                                    .to_string();
+                                                let duration_ms = x
+                                                    .get("duration_ms")
+                                                    .and_then(|v| v.as_i64())
+                                                    .unwrap_or(0)
+                                                    as u64;
+                                                Some(PerTestResult {
+                                                    nodeid,
+                                                    outcome,
+                                                    duration_ms,
+                                                })
+                                            })
+                                            .collect::<Vec<PerTestResult>>()
+                                    });
+                            let resp = WorkerResponse::TestResults {
+                                batch_id,
+                                exit_code,
+                                stdout: stdout_s,
+                                stderr: stderr_s,
+                                duration_ms,
+                                per_test,
+                            };
+                            let _ = evt_tx.send(WorkerEvent::TestResults {
+                                worker_id,
+                                response: resp,
                             });
-                            let resp = WorkerResponse::TestResults { batch_id, exit_code, stdout: stdout_s, stderr: stderr_s, duration_ms, per_test };
-                            let _ = evt_tx.send(WorkerEvent::TestResults { worker_id, response: resp });
                         }
                         "Error" => warn!("Worker {} error: {}", worker_id, line),
                         _ => debug!("Worker {} msg: {}", worker_id, line),
@@ -748,27 +813,12 @@ impl WorkerPool {
     ) {
         thread::spawn(move || {
             let reader = BufReader::new(stderr);
-            for line in reader.lines().flatten() {
+            for line in reader.lines().map_while(Result::ok) {
                 warn!("Worker {} stderr: {}", worker_id, line);
             }
         });
     }
 
-    /// Get the Python executable path
-    fn get_python_executable(&self) -> Result<String> {
-        // Try common Python executable names
-        let candidates = ["python3", "python", "py"];
-
-        for candidate in &candidates {
-            if let Ok(output) = Command::new(candidate).arg("--version").output() {
-                if output.status.success() {
-                    return Ok(candidate.to_string());
-                }
-            }
-        }
-
-        Err(anyhow!("Could not find Python executable"))
-    }
 
     /// Check worker health and restart failed workers
     fn check_worker_health(&mut self) -> Result<()> {
@@ -802,41 +852,24 @@ impl WorkerPool {
 
         // Second pass: restart failed workers
         for worker_idx in failed_workers {
-            info!("Restarting failed worker {}", self.workers[worker_idx].id);
+            let worker_id = self.workers[worker_idx].id;
+            info!("Restarting failed worker {}", worker_id);
 
-            // Get python executable before borrowing worker
-            let python_executable = self.get_python_executable()?;
-            let worker_script = self.config.cache_dir.join("veri_worker.py");
-            let work_dir = self.config.work_dir.clone();
-            let cache_dir = self.config.cache_dir.clone();
+            // Kill old process if it exists
+            if let Some(process) = &mut self.workers[worker_idx].process {
+                let _ = process.kill();
+                let _ = process.wait();
+            }
+            self.workers[worker_idx].process = None;
 
-            // Restart worker in-place without calling separate method
-            let worker = &mut self.workers[worker_idx];
+            // Use the centralized worker startup logic by temporarily taking ownership
+            // We need to work around the borrow checker here
+            let mut temp_worker = WorkerProcess::new(worker_id);
+            std::mem::swap(&mut temp_worker, &mut self.workers[worker_idx]);
 
-            debug!("Starting worker process {}", worker.id);
+            self.start_worker_process(&mut temp_worker)?;
 
-            let mut cmd = Command::new(python_executable);
-            cmd.arg(&worker_script)
-                .arg("--worker-mode")
-                .arg("--worker-id")
-                .arg(worker.id.to_string())
-                .arg("--cache-dir")
-                .arg(&cache_dir)
-                .current_dir(&work_dir)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped());
-
-            let process = cmd
-                .spawn()
-                .map_err(|e| anyhow!("Failed to start worker process {}: {}", worker.id, e))?;
-
-            worker.process = Some(process);
-            worker.state = WorkerState::Idle;
-            worker.started_at = Instant::now();
-            worker.last_activity = Instant::now();
-
-            debug!("Worker process {} started successfully", worker.id);
+            std::mem::swap(&mut temp_worker, &mut self.workers[worker_idx]);
         }
 
         Ok(())
@@ -856,48 +889,23 @@ impl WorkerPool {
         }
 
         for worker_idx in workers_to_recycle {
-            debug!("Recycling idle worker {}", self.workers[worker_idx].id);
-
-            // Get python executable before borrowing worker
-            let python_executable = self.get_python_executable()?;
-            let worker_script = self.config.cache_dir.join("veri_worker.py");
-            let work_dir = self.config.work_dir.clone();
-            let cache_dir = self.config.cache_dir.clone();
-
-            let worker = &mut self.workers[worker_idx];
+            let worker_id = self.workers[worker_idx].id;
+            debug!("Recycling idle worker {}", worker_id);
 
             // Shutdown old process
-            if let Some(process) = &mut worker.process {
+            if let Some(process) = &mut self.workers[worker_idx].process {
                 let _ = process.kill();
                 let _ = process.wait();
-                worker.process = None;
             }
+            self.workers[worker_idx].process = None;
 
-            // Start new process inline
-            debug!("Starting worker process {}", worker.id);
+            // Use the centralized worker startup logic by temporarily taking ownership
+            let mut temp_worker = WorkerProcess::new(worker_id);
+            std::mem::swap(&mut temp_worker, &mut self.workers[worker_idx]);
 
-            let mut cmd = Command::new(python_executable);
-            cmd.arg(&worker_script)
-                .arg("--worker-mode")
-                .arg("--worker-id")
-                .arg(worker.id.to_string())
-                .arg("--cache-dir")
-                .arg(&cache_dir)
-                .current_dir(&work_dir)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped());
+            self.start_worker_process(&mut temp_worker)?;
 
-            let process = cmd
-                .spawn()
-                .map_err(|e| anyhow!("Failed to start worker process {}: {}", worker.id, e))?;
-
-            worker.process = Some(process);
-            worker.state = WorkerState::Idle;
-            worker.started_at = Instant::now();
-            worker.last_activity = Instant::now();
-
-            debug!("Worker process {} started successfully", worker.id);
+            std::mem::swap(&mut temp_worker, &mut self.workers[worker_idx]);
         }
 
         Ok(())
