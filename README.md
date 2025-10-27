@@ -114,6 +114,89 @@ coverage = true
 shards = 4
 ```
 
+### Python Runtime Configuration
+
+veri supports flexible Python environment configuration through the `[python]` section:
+
+```toml
+[python]
+# Optional: explicitly specify py_worker path
+py_worker_path = "./py_worker"
+
+# Optional: add additional PYTHONPATH entries
+extra_pythonpath = ["./lib", "./vendor"]
+
+# Optional: set environment variables for Python processes
+[python.env]
+PYTHONUNBUFFERED = "1"
+CUSTOM_VAR = "value"
+
+# Configure Python backends (tried in order)
+[[python.backends]]
+kind = "uv"
+binary = "uv"      # Optional: custom uv binary
+project = "."      # Optional: override project path
+enabled = true
+
+[[python.backends]]
+kind = "python"
+executable = "python3.11"  # Optional: specific Python version
+# candidates = ["python3.11", "python3"]  # Alternative: try multiple
+enabled = true
+```
+
+**Backend Types:**
+
+- **`uv` backend**: Runs tests via `uv run` (recommended for dependency isolation)
+  - Automatically uses project's virtual environment
+  - Respects `pyproject.toml` and `uv.lock`
+
+- **`python` backend**: Uses system Python interpreter
+  - Falls back to system Python when uv is unavailable
+  - Tries `python3` → `python` → `py` by default
+  - Can specify exact executable or candidate list
+
+**Default behavior** (if `[python]` is not specified):
+```toml
+# Equivalent to:
+[[python.backends]]
+kind = "uv"
+enabled = true
+
+[[python.backends]]
+kind = "python"
+enabled = true
+```
+
+**Example: Force system Python only**
+```toml
+[[python.backends]]
+kind = "python"
+executable = "python3.11"
+```
+
+**Example: Use Poetry**
+```toml
+[[python.backends]]
+kind = "python"
+executable = "poetry"
+candidates = ["poetry run python", "python3"]
+```
+
+**Troubleshooting:**
+
+If veri can't find your Python environment:
+```bash
+# Check which backend is being used
+veri --explain
+
+# Force specific backend in config
+# veri.toml:
+[[python.backends]]
+kind = "python"
+executable = "/path/to/venv/bin/python"
+```
+
 ## 🚀 CI Integration
 
 ### GitHub Actions

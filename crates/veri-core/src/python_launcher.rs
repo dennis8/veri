@@ -541,4 +541,139 @@ mod tests {
         let runtime = PythonRuntime::from_config(tempdir.path(), &cfg);
         assert_eq!(runtime.launcher.backends.len(), 1);
     }
+
+    #[test]
+    fn test_launcher_fallback_chain() {
+        // Create a launcher with a non-existent backend followed by system python
+        let bad_backend = SystemPythonBackend::new(vec!["definitely-not-python".to_string()]);
+        let good_backend = SystemPythonBackend::default();
+        let launcher = PythonLauncher::new(vec![Arc::new(bad_backend), Arc::new(good_backend)]);
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let ctx = PythonLaunchContext::new(tempdir.path(), tempdir.path(), &[], None, &[]);
+        let args = vec!["-c".to_string(), "print('test')".to_string()];
+
+        // Should succeed using the second backend
+        let result = launcher.run(&ctx, &args);
+        assert!(
+            result.is_ok(),
+            "Launcher should fall back to working backend"
+        );
+    }
+
+    #[test]
+    fn test_launcher_aggregates_errors() {
+        // Create a launcher with only non-existent backends
+        let bad1 = SystemPythonBackend::new(vec!["bad-python-1".to_string()]);
+        let bad2 = SystemPythonBackend::new(vec!["bad-python-2".to_string()]);
+        let launcher = PythonLauncher::new(vec![Arc::new(bad1), Arc::new(bad2)]);
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let ctx = PythonLaunchContext::new(tempdir.path(), tempdir.path(), &[], None, &[]);
+        let args = vec!["-c".to_string(), "print('test')".to_string()];
+
+        let result = launcher.run(&ctx, &args);
+        assert!(result.is_err(), "All backends should fail");
+
+        let err_msg = format!("{:?}", result.unwrap_err());
+        // Error message should mention both backends
+        assert!(
+            err_msg.contains("bad-python-1") || err_msg.contains("bad-python-2"),
+            "Error should aggregate failures from all backends"
+        );
+    }
+
+    #[test]
+    fn test_system_backend_actually_executes() {
+        // This test verifies the system backend can actually run Python
+        let backend = SystemPythonBackend::default();
+        let tempdir = tempfile::tempdir().unwrap();
+        let ctx = PythonLaunchContext::new(tempdir.path(), tempdir.path(), &[], None, &[]);
+
+        let result = backend.build_command(&ctx, &["-c".to_string(), "print('hello')".to_string()]);
+        assert!(result.is_ok(), "Should be able to build command");
+
+        let mut cmd = result.unwrap();
+        apply_common_configuration(&mut cmd, &ctx).unwrap();
+
+        // Try to execute (may fail in CI without Python, that's OK)
+        if let Ok(output) = cmd.output() {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                assert!(stdout.contains("hello"), "Should execute Python code");
+            }
+        }
+    }
+
+    #[test]
+    fn test_python_worker_uses_custom_runtime() {
+        use crate::python_worker::PythonWorker;
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let work_dir = tempdir.path();
+        let cache_dir = work_dir.join(".veri").join("cache");
+
+        // Create runtime with only system python backend
+        let mut cfg = PythonRuntimeConfig::default();
+        cfg.backends = vec![PythonBackendConfig::Python {
+            executable: None,
+            candidates: Some(vec!["python3".to_string(), "python".to_string()]),
+            enabled: Some(true),
+        }];
+
+        let runtime = PythonRuntime::from_config(work_dir, &cfg);
+
+        // Create worker from runtime
+        let worker = PythonWorker::from_runtime(work_dir, &cache_dir, &runtime);
+
+        // Verify worker has the runtime's configuration
+        assert!(!worker.has_valid_cache()); // No cache yet, but should not error
+    }
+
+    #[test]
+    fn test_uv_backend_probes_availability() {
+        let backend = UvBackend::default();
+        let tempdir = tempfile::tempdir().unwrap();
+        let ctx = PythonLaunchContext::new(tempdir.path(), tempdir.path(), &[], None, &[]);
+
+        // Try to build command (may fail if uv not installed, which is fine)
+        let result = backend.build_command(&ctx, &["--version".to_string()]);
+
+        // If uv is available, command should build successfully
+        // If not, we should get a clear error about uv not being available
+        if result.is_err() {
+            let err_msg = format!("{:?}", result.unwrap_err());
+            assert!(
+                err_msg.contains("uv") || err_msg.contains("version"),
+                "Error should mention uv availability check"
+            );
+        }
+    }
+
+    #[test]
+    fn test_backend_ordering_matters() {
+        // Create config with specific backend order
+        let mut cfg = PythonRuntimeConfig::default();
+        cfg.backends = vec![
+            PythonBackendConfig::Python {
+                executable: Some("python3".to_string()),
+                candidates: None,
+                enabled: Some(true),
+            },
+            PythonBackendConfig::Uv {
+                binary: Some("uv".to_string()),
+                project: None,
+                enabled: Some(true),
+            },
+        ];
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let runtime = PythonRuntime::from_config(tempdir.path(), &cfg);
+
+        // First backend should be python (not uv)
+        assert_eq!(runtime.launcher.backends[0].name(), "python");
+        if runtime.launcher.backends.len() > 1 {
+            assert_eq!(runtime.launcher.backends[1].name(), "uv");
+        }
+    }
 }

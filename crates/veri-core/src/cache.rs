@@ -4,10 +4,11 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 
 use serde::Deserialize;
+
+use crate::python_launcher::PythonLauncher;
 
 /// Cache key components for deterministic caching
 #[derive(Debug, Clone)]
@@ -38,15 +39,21 @@ static PYTHON_ENV_SNAPSHOT: OnceLock<Mutex<Option<PythonEnvironmentSnapshot>>> =
 
 impl CacheKey {
     /// Create a cache key from the current environment
-    pub fn from_environment(config_digest: String) -> Result<Self> {
+    ///
+    /// If `launcher` is provided, uses it to probe the Python environment.
+    /// Otherwise falls back to system python discovery.
+    pub fn from_environment(
+        config_digest: String,
+        launcher: Option<&PythonLauncher>,
+    ) -> Result<Self> {
         Ok(CacheKey {
-            python_version: Self::get_python_version()?,
+            python_version: Self::get_python_version(launcher)?,
             platform: Self::get_platform(),
             veri_version: env!("CARGO_PKG_VERSION").to_string(),
             uv_lock_digest: Self::get_uv_lock_digest()?,
-            site_packages_digest: Self::get_site_packages_digest()?,
-            pytest_version: Self::get_pytest_version()?,
-            plugins: Self::get_pytest_plugins()?,
+            site_packages_digest: Self::get_site_packages_digest(launcher)?,
+            pytest_version: Self::get_pytest_version(launcher)?,
+            plugins: Self::get_pytest_plugins(launcher)?,
             conftest_digests: Self::get_conftest_digests()?,
             veri_config_digest: config_digest,
         })
@@ -110,8 +117,8 @@ impl CacheKey {
     }
 
     /// Get Python version from current interpreter
-    fn get_python_version() -> Result<String> {
-        let python_env = Self::python_env_snapshot()?;
+    fn get_python_version(launcher: Option<&PythonLauncher>) -> Result<String> {
+        let python_env = Self::python_env_snapshot(launcher)?;
         Ok(python_env.python_version)
     }
 
@@ -133,22 +140,22 @@ impl CacheKey {
     }
 
     /// Get site-packages digest
-    fn get_site_packages_digest() -> Result<Option<String>> {
-        let python_env = Self::python_env_snapshot()?;
+    fn get_site_packages_digest(launcher: Option<&PythonLauncher>) -> Result<Option<String>> {
+        let python_env = Self::python_env_snapshot(launcher)?;
         Ok(python_env.site_packages_digest)
     }
 
     /// Get pytest version from current environment
-    fn get_pytest_version() -> Result<String> {
-        let python_env = Self::python_env_snapshot()?;
+    fn get_pytest_version(launcher: Option<&PythonLauncher>) -> Result<String> {
+        let python_env = Self::python_env_snapshot(launcher)?;
         Ok(python_env
             .pytest_version
             .unwrap_or_else(|| "pytest-not-found".to_string()))
     }
 
     /// Get list of installed pytest plugins
-    fn get_pytest_plugins() -> Result<Vec<String>> {
-        let python_env = Self::python_env_snapshot()?;
+    fn get_pytest_plugins(launcher: Option<&PythonLauncher>) -> Result<Vec<String>> {
+        let python_env = Self::python_env_snapshot(launcher)?;
         Ok(python_env.pytest_plugins)
     }
 
@@ -170,7 +177,7 @@ impl CacheKey {
         Ok(digests)
     }
 
-    fn python_env_snapshot() -> Result<PythonEnvironmentSnapshot> {
+    fn python_env_snapshot(launcher: Option<&PythonLauncher>) -> Result<PythonEnvironmentSnapshot> {
         let storage = PYTHON_ENV_SNAPSHOT.get_or_init(|| Mutex::new(None));
 
         {
@@ -182,7 +189,7 @@ impl CacheKey {
             }
         }
 
-        let snapshot = Self::collect_python_environment_snapshot()?;
+        let snapshot = Self::collect_python_environment_snapshot(launcher)?;
 
         let mut guard = storage
             .lock()
@@ -192,8 +199,9 @@ impl CacheKey {
         Ok(snapshot)
     }
 
-    fn collect_python_environment_snapshot() -> Result<PythonEnvironmentSnapshot> {
-        let python = Self::find_python_executable()?;
+    fn collect_python_environment_snapshot(
+        launcher: Option<&PythonLauncher>,
+    ) -> Result<PythonEnvironmentSnapshot> {
         let script = r#"
 import json
 import hashlib
@@ -312,10 +320,25 @@ result["pytest_plugins"] = plugin_list
 print(json.dumps(result))
 "#;
 
-        let output = Command::new(&python)
-            .args(["-c", script])
-            .output()
-            .with_context(|| format!("Failed to run Python interpreter '{}'", python))?;
+        let output = if let Some(launcher) = launcher {
+            // Use the provided launcher (matches worker environment)
+            use crate::python_launcher::PythonLaunchContext;
+            let work_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            let cache_dir = work_dir.join(".veri").join("cache");
+            let ctx = PythonLaunchContext::new(&work_dir, &cache_dir, &[], None, &[]);
+            let args = vec!["-c".to_string(), script.to_string()];
+            launcher
+                .run(&ctx, &args)
+                .context("Failed to run Python environment probe via launcher")?
+        } else {
+            // Fallback to system python discovery
+            use std::process::Command;
+            let python = Self::find_python_executable()?;
+            Command::new(&python)
+                .args(["-c", script])
+                .output()
+                .with_context(|| format!("Failed to run Python interpreter '{}'", python))?
+        };
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -364,6 +387,7 @@ print(json.dumps(result))
     }
 
     fn find_python_executable() -> Result<String> {
+        use std::process::Command;
         let candidates = ["python3", "python", "py"];
         for candidate in candidates {
             let result = Command::new(candidate).arg("--version").output();

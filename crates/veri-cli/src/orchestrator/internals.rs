@@ -1092,9 +1092,15 @@ pub(super) fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
     println!("=== veri Execution Plan ===");
     println!();
 
-    // Cache key components - now with real implementation
+    // Import graph status
+    let work_dir = std::env::current_dir()?;
+    let cache_dir = work_dir.join(".veri").join("cache");
+    let python_runtime_cfg = config.python();
+    let python_runtime = PythonRuntime::from_config(&work_dir, &python_runtime_cfg);
+
+    // Cache key components - now with real implementation using the launcher
     let config_digest = compute_config_digest(config)?;
-    let cache_key = CacheKey::from_environment(config_digest)?;
+    let cache_key = CacheKey::from_environment(config_digest, Some(&python_runtime.launcher))?;
     cache_key.print_explanation();
     println!();
 
@@ -1106,11 +1112,6 @@ pub(super) fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
     println!("  Log level: {}", config.log_level());
     println!();
 
-    // Import graph status
-    let work_dir = std::env::current_dir()?;
-    let cache_dir = work_dir.join(".veri").join("cache");
-    let python_runtime_cfg = config.python();
-    let python_runtime = PythonRuntime::from_config(&work_dir, &python_runtime_cfg);
     let graph_builder = ImportGraphBuilder::with_runtime(&work_dir, &cache_dir, &python_runtime);
 
     println!("Import Graph Status:");

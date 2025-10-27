@@ -125,7 +125,8 @@ fn main() -> Result<()> {
     println!("\n5. Cache Key Computation:");
     let config = veri_core::config::Config::default();
     let config_digest = veri_core::cache::compute_config_digest(&config)?;
-    let cache_key = CacheKey::from_environment(config_digest)?;
+    // Pass None to use system python fallback (demo doesn't need full runtime)
+    let cache_key = CacheKey::from_environment(config_digest, None)?;
 
     println!("   ✓ Cache key components:");
     println!("      - Python: {}", cache_key.python_version);
