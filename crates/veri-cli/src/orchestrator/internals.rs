@@ -1,6 +1,14 @@
-use super::coverage::CoverageService;
+use super::execution::ExecutionService;
+use super::services::OrchestratorServices;
 use super::telemetry::TelemetryService;
 use super::watch::WatchAdapter;
+use super::workspace::WorkspaceService;
+use super::vcs::VcsService;
+use super::validation_service::{ValidationOrchestrationService, DefaultValidationService};
+use super::collection_service::{CollectionOrchestrationService, DefaultCollectionService};
+use super::selection_orchestrator::{SelectionOrchestrationService, DefaultSelectionOrchestrator};
+use super::execution_orchestrator::{ExecutionOrchestrationService, DefaultExecutionOrchestrator};
+use super::telemetry_orchestrator::{TelemetryOrchestrationService, DefaultTelemetryOrchestrator};
 use crate::cli::{Cli, ExitCode};
 use anyhow::Result;
 use veri_core::cache::{compute_config_digest, CacheKey};
@@ -8,111 +16,20 @@ use veri_core::compatibility::CompatibilityMatrix;
 use veri_core::config::Config;
 use veri_core::diagnostics::{DiagnosticReporter, VeriDiagnostic};
 use veri_core::import_graph::ImportGraphBuilder;
-use veri_core::planner::{PlannerConfig, TestPlanner};
+use veri_core::planner::TestPlanner;
 use veri_core::python_launcher::PythonRuntime;
 use veri_core::python_worker::{PythonWorker, TestRunOptions};
-use veri_core::scheduler::{SchedulerConfig, SchedulingStrategy, TestScheduler};
 use veri_core::security::{SecurityConfig, SecurityScanner};
-use veri_core::telemetry::{ErrorCategory, RunEvent};
-use veri_core::worker_pool::{WorkerPool, WorkerPoolConfig};
-
-fn detect_project_root_from_paths(paths: &[String]) -> Option<std::path::PathBuf> {
-    use std::path::{Path, PathBuf};
-
-    let mut cand = PathBuf::from(paths.first()?);
-
-    // Navigate to parent if it's a file or inside a "tests" directory
-    if cand.is_file() {
-        cand = cand
-            .parent()
-            .unwrap_or_else(|| Path::new("."))
-            .to_path_buf();
-    }
-    if cand.file_name().is_some_and(|n| n == "tests") {
-        cand = cand.parent()?.to_path_buf();
-    }
-    if cand.as_os_str().is_empty() {
-        cand = PathBuf::from(".");
-    }
-
-    // Walk up to 3 levels looking for project config files
-    let config_files = ["pyproject.toml", "pytest.ini", "setup.cfg"];
-    for level in 0..3 {
-        if config_files.iter().any(|f| cand.join(f).exists()) {
-            if level > 0 {
-                println!("ℹ️  Project root detected at: {}", cand.display());
-            }
-            return Some(cand);
-        }
-        if !cand.pop() {
-            break;
-        }
-    }
-
-    println!(
-        "⚠️  No project config found starting from {}",
-        PathBuf::from(&paths[0]).display()
-    );
-    None
-}
-
-fn normalize_paths(paths: &[String], work_dir: &std::path::Path) -> Vec<String> {
-    use std::path::Path;
-    let mut out = Vec::new();
-    for p in paths {
-        let pb = Path::new(p);
-        if let Ok(rel) = pb.strip_prefix(work_dir) {
-            out.push(rel.to_string_lossy().to_string());
-        } else if pb.is_absolute() {
-            // Keep absolute paths as-is
-            out.push(p.clone());
-        } else {
-            // Try to normalize common case: <work_dir>/tests → tests
-            if p.starts_with(&format!("{}/", work_dir.display())) {
-                out.push(p[work_dir.display().to_string().len() + 1..].to_string());
-            } else if let Some(name) = work_dir.file_name() {
-                let name = name.to_string_lossy();
-                let prefix = format!("{}/", name);
-                if p.starts_with(&prefix) {
-                    out.push(p[prefix.len()..].to_string());
-                } else {
-                    out.push(p.clone());
-                }
-            } else {
-                out.push(p.clone());
-            }
-        }
-    }
-    out
-}
-
-/// Load the last failed tests from the cache directory
-fn load_last_failed_tests(cache_dir: &std::path::Path) -> Result<Vec<String>> {
-    let path = cache_dir.join("last_per_test.json");
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-
-    let results: Vec<serde_json::Value> = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
-
-    Ok(results
-        .iter()
-        .filter_map(|result| {
-            let exit_code = result.get("exit_code")?.as_i64()?;
-            if exit_code != 0 {
-                Some(result.get("nodeid")?.as_str()?.to_string())
-            } else {
-                None
-            }
-        })
-        .collect())
-}
+use veri_core::telemetry::ErrorCategory;
 
 pub(super) fn run_pytest_engine(cli: &Cli, config: &Config) -> Result<ExitCode> {
     println!("🔄 Using pytest engine for compatibility");
 
     // Create Python worker
-    let work_dir = detect_project_root_from_paths(&cli.paths).unwrap_or(std::env::current_dir()?);
+    // Initialize workspace service to detect project root
+    let initial_work_dir = std::env::current_dir()?;
+    let workspace = super::workspace::FilesystemWorkspaceService::new(&initial_work_dir, &initial_work_dir);
+    let work_dir = workspace.detect_project_root(&cli.paths).unwrap_or(initial_work_dir);
     let work_dir = std::fs::canonicalize(&work_dir).unwrap_or(work_dir);
     let cache_dir = work_dir.join(".veri").join("cache");
     let python_runtime_cfg = config.python();
@@ -173,7 +90,7 @@ pub(super) fn run_pytest_engine(cli: &Cli, config: &Config) -> Result<ExitCode> 
     }
 
     // Add paths (normalized to selected work_dir)
-    let norm_paths = normalize_paths(&cli.paths, &work_dir);
+    let norm_paths = workspace.normalize_paths(&cli.paths);
     pytest_args.extend(norm_paths);
 
     // If no paths and not --all, run current directory
@@ -305,11 +222,9 @@ pub(super) fn run_veri_engine(
 ) -> Result<ExitCode> {
     println!("🚀 Using veri engine for maximum speed");
 
-    let work_dir = detect_project_root_from_paths(&cli.paths).unwrap_or(std::env::current_dir()?);
-    let work_dir = std::fs::canonicalize(&work_dir).unwrap_or(work_dir);
-    let cache_dir = work_dir.join(".veri").join("cache");
-    let python_runtime_cfg = config.python();
-    let python_runtime = PythonRuntime::from_config(&work_dir, &python_runtime_cfg);
+    // ===== SETUP PHASE =====
+    let (work_dir, cache_dir, services, python_runtime, needs_collection) =
+        setup_orchestration(cli, config)?;
 
     // Handle watch mode
     if cli.watch {
@@ -317,241 +232,129 @@ pub(super) fn run_veri_engine(
     }
 
     let worker = PythonWorker::from_runtime(&work_dir, &cache_dir, &python_runtime);
-
-    // Initialize diagnostics reporter
     let mut diagnostics = DiagnosticReporter::new(cli.quiet);
 
-    // Check compatibility and handle fallback
-    if let Some(exit_code) =
-        check_compatibility_and_fallback(cli, config, &worker, compatibility_matrix)?
-    {
-        return Ok(exit_code);
-    }
-
-    // Check Python environment
-    worker.check_environment(&mut diagnostics)?;
-
-    // Validate plugins and run security checks
-    if let Some(exit_code) = validate_plugins_and_security(
+    // ===== STAGE 1: VALIDATION =====
+    let validation_svc = DefaultValidationService::new();
+    let validation = validation_svc.validate_environment(
         cli,
         config,
         &worker,
+        compatibility_matrix,
         security_config,
-        &mut diagnostics,
         telemetry,
-    )? {
-        return Ok(exit_code);
+        &mut diagnostics,
+    )?;
+    if let Some(exit) = validation.fallback_exit {
+        return Ok(exit);
     }
 
-    // Check if we need to collect tests (first run or --all)
-    let needs_collection = cli.all || !worker.has_valid_cache();
-
-    // Determine paths to collect (normalized to work_dir)
+    // ===== STAGE 2: COLLECTION =====
     let collection_paths = if !cli.paths.is_empty() {
-        normalize_paths(&cli.paths, &work_dir)
+        services.workspace.normalize_paths(&cli.paths)
     } else {
-        vec![] // Empty means collect all
+        vec![]
     };
 
-    // Collect tests (only once!)
-    let (tests_index, collection_time_ms) = if needs_collection {
-        let collection_start = std::time::Instant::now();
-        println!("📋 Collecting tests...");
+    let collection_svc = DefaultCollectionService::new(&work_dir, &cache_dir, python_runtime.clone());
+    let collection = collection_svc.collect_or_load(
+        cli.all,
+        &collection_paths,
+        &cli.ignore,
+        &mut diagnostics,
+    )?;
 
-        // Collect tests
-        let tests_index = worker.collect_tests(&collection_paths, &cli.ignore)?;
-
-        // Check for collection errors
-        worker.check_collection_errors(&tests_index, &mut diagnostics);
-
-        println!("✅ Collected {} tests", tests_index.tests.len());
-
-        if !tests_index.collection_errors.is_empty() {
-            println!(
-                "⚠️  {} collection errors encountered",
-                tests_index.collection_errors.len()
-            );
-            for error in &tests_index.collection_errors {
-                eprintln!("  {}: {}", error.path, error.message);
-            }
-        }
-
-        // Build import graph only when impact analysis is needed
-        if !cli.all {
-            println!("🔍 Building import graph...");
-            let mut graph_builder =
-                ImportGraphBuilder::with_runtime(&work_dir, &cache_dir, &python_runtime);
-            let (imports_graph, _revdeps_graph, _module_map) = graph_builder.build_graphs()?;
-
-            println!(
-                "✅ Built import graph with {} edges",
-                imports_graph.edges.len()
-            );
-            if !imports_graph.dynamic_imports.is_empty() {
-                println!(
-                    "⚠️  {} dynamic imports detected",
-                    imports_graph.dynamic_imports.len()
-                );
-            }
-        }
-
-        // If this was just collection (--all with no other action), we're done
-        if cli.all && cli.paths.is_empty() && !should_run_tests(cli) {
-            return Ok(ExitCode::Success);
-        }
-
-        let collection_time_ms = collection_start.elapsed().as_millis() as u64;
-        (tests_index, collection_time_ms)
-    } else {
-        // Load cached tests (no collection time measured)
-        let tests_index = worker.collect_tests(&collection_paths, &cli.ignore)?;
-        (tests_index, 0)
-    };
+    // If this was just collection (--all with no other action), we're done
+    if cli.all && cli.paths.is_empty() && !should_run_tests(cli) {
+        return Ok(ExitCode::Success);
+    }
 
     // Report any diagnostics from collection phase
     diagnostics.report_all()?;
-
-    // If there were critical errors, exit early
     if diagnostics.has_errors() {
         return Ok(ExitCode::InternalError);
     }
 
-    // Determine which tests to run
-    let mut nodeids_to_run = if cli.all {
-        tests_index.tests.iter().map(|t| t.nodeid.clone()).collect()
-    } else {
-        // Load or build graphs for impact analysis
-        let mut graph_builder =
-            ImportGraphBuilder::with_runtime(&work_dir, &cache_dir, &python_runtime);
-        let (imports_graph, revdeps_graph, module_map) = match graph_builder.load_cached_graphs()? {
-            Some(graphs) => graphs,
-            None => {
-                println!("🔍 Building import graph...");
-                let graphs = graph_builder.build_graphs()?;
-                println!("✅ Built import graph with {} edges", graphs.0.edges.len());
-                graphs
-            }
-        };
+    let tests_index = collection.tests_index;
+    let collection_time_ms = collection.collection_time_ms;
+    let graphs = collection.graphs;
 
-        select_tests_to_run(
-            &tests_index,
-            &imports_graph,
-            &revdeps_graph,
-            &module_map,
-            cli,
-        )?
-    };
+    // ===== STAGE 3: SELECTION =====
+    let selection_svc = DefaultSelectionOrchestrator::new(&work_dir, &cache_dir, python_runtime.clone());
+    let selection = selection_svc.determine_tests_to_run(
+        &tests_index,
+        cli,
+        &services,
+        graphs.as_ref().map(|(ig, rg, mm)| (ig, rg, mm)),
+    )?;
 
-    // Fallback: if nothing selected but tests exist, run all tests
-    if nodeids_to_run.is_empty() && !tests_index.tests.is_empty() {
-        println!("ℹ️  No impacted tests detected; defaulting to run all tests");
-        nodeids_to_run = tests_index.tests.iter().map(|t| t.nodeid.clone()).collect();
+    if let Some(exit) = selection.early_exit {
+        if exit == ExitCode::UsageError {
+            // Print diagnostic for no tests found
+            let mut diag = DiagnosticReporter::new(cli.quiet);
+            diag.add(VeriDiagnostic::no_tests_found(
+                cli.keyword.as_deref(),
+                cli.marker.as_deref(),
+                &cli.paths,
+            ));
+            diag.report_all()?;
+        }
+        return Ok(exit);
     }
 
-    if nodeids_to_run.is_empty() {
-        let mut diagnostics = DiagnosticReporter::new(cli.quiet);
-        diagnostics.add(VeriDiagnostic::no_tests_found(
-            cli.keyword.as_deref(),
-            cli.marker.as_deref(),
-            &cli.paths,
-        ));
-        diagnostics.report_all()?;
-        return Ok(ExitCode::UsageError);
-    }
-
+    let nodeids_to_run = selection.nodeids;
     println!("🎯 Running {} selected tests", nodeids_to_run.len());
 
-    // Always use the worker pool (worker_count may be 1)
-    let worker_count = parse_worker_count(&cli.workers)?;
+    // ===== STAGE 4: EXECUTION =====
+    let execution_svc = DefaultExecutionOrchestrator::new(&work_dir, &cache_dir);
+    let execution = execution_svc.execute_with_coverage(&nodeids_to_run, &tests_index, cli, &services)?;
 
-    // Configure test run options
-    let run_options = TestRunOptions {
-        verbose: cli.verbose > 0,
-        quiet: cli.quiet,
-        no_capture: cli.no_capture,
-        exitfirst: cli.exitfirst,
-        maxfail: cli.maxfail,
-        junit_xml: cli.junit_xml.clone(),
-        workers: Some(worker_count.to_string()),
-        ignore: cli.ignore.clone(),
-        coverage: cli.cov,
-        coverage_xml: cli.cov || cli.cov_merge_full,
-        coverage_html: false,                          // Can be configured later
-        coverage_source_dirs: vec!["src".to_string()], // Default, can be made configurable
-        coverage_omit: vec![
-            "*/tests/*".to_string(),
-            "*/test_*".to_string(),
-            "*/__pycache__/*".to_string(),
-            "*/venv/*".to_string(),
-            "*/.venv/*".to_string(),
-        ],
-    };
-
-    let coverage_service = CoverageService::new(cli, &work_dir, &cache_dir);
-    coverage_service.initialize(&nodeids_to_run)?;
-
-    // Execute tests using the scheduler and worker pool
-    let start_time = std::time::Instant::now();
-    let exec_config = ParallelExecutionConfig {
-        work_dir: &work_dir,
-        cache_dir: &cache_dir,
-        verbose: cli.verbose > 0,
+    // ===== STAGE 5: TELEMETRY =====
+    let telemetry_svc = DefaultTelemetryOrchestrator::new(python_runtime);
+    telemetry_svc.record_execution_metrics(
+        &execution.result,
+        collection_time_ms,
+        cli,
         config,
-        python_runtime: python_runtime.clone(),
-    };
-    let test_result = execute_tests_parallel(
-        &nodeids_to_run,
-        &tests_index,
-        worker_count,
-        &run_options,
-        &exec_config,
+        telemetry,
+        needs_collection,
+    )?;
+
+    Ok(execution.result.exit_code)
+}
+
+/// Helper function to set up orchestration environment
+fn setup_orchestration(
+    cli: &Cli,
+    config: &Config,
+) -> Result<(
+    std::path::PathBuf,
+    std::path::PathBuf,
+    OrchestratorServices,
+    PythonRuntime,
+    bool,
+)> {
+    let initial_work_dir = std::env::current_dir()?;
+    let temp_workspace = super::workspace::FilesystemWorkspaceService::new(&initial_work_dir, &initial_work_dir);
+    let work_dir = temp_workspace.detect_project_root(&cli.paths).unwrap_or(initial_work_dir);
+    let work_dir = std::fs::canonicalize(&work_dir).unwrap_or(work_dir);
+    let cache_dir = work_dir.join(".veri").join("cache");
+    let python_runtime_cfg = config.python();
+    let python_runtime = PythonRuntime::from_config(&work_dir, &python_runtime_cfg);
+
+    let services = OrchestratorServices::new_default(
+        &work_dir,
+        &cache_dir,
+        cli.verbose > 0,
+        config,
+        &python_runtime,
     );
 
-    let execution_duration = start_time.elapsed();
+    // Check if we need to collect tests (first run or --all)
+    let temp_worker = PythonWorker::from_runtime(&work_dir, &cache_dir, &python_runtime);
+    let needs_collection = cli.all || !temp_worker.has_valid_cache();
 
-    // Get actual Python version from cache key
-    let config_digest = compute_config_digest(config)?;
-    let cache_key = CacheKey::from_environment(config_digest, Some(&python_runtime.launcher))?;
-    let python_version = Some(cache_key.python_version);
-
-    // Record telemetry for this run
-    let run_event = RunEvent {
-        test_count: nodeids_to_run.len() as u32,
-        worker_count: worker_count as u32,
-        collection_time_ms,
-        execution_time_ms: execution_duration.as_millis() as u64,
-        coverage_enabled: cli.cov || cli.cov_merge_full,
-        watch_mode: cli.watch,
-        ci_mode: cli.ci,
-        python_version,
-        features_used: {
-            let mut features = Vec::new();
-            if cli.cov || cli.cov_merge_full {
-                features.push("coverage".to_string());
-            }
-            if cli.watch {
-                features.push("watch".to_string());
-            }
-            if worker_count > 1 {
-                features.push("parallel".to_string());
-            }
-            if !needs_collection {
-                features.push("impact_analysis".to_string());
-            }
-            features
-        },
-    };
-
-    telemetry.record_run(run_event);
-
-    // Record telemetry based on test result
-    if test_result.is_err() {
-        telemetry.record_error(ErrorCategory::ExecutionError);
-    }
-
-    coverage_service.finalize(cli, &nodeids_to_run)?;
-
-    test_result
+    Ok((work_dir, cache_dir, services, python_runtime, needs_collection))
 }
 
 fn should_run_tests(cli: &Cli) -> bool {
@@ -561,191 +364,6 @@ fn should_run_tests(cli: &Cli) -> bool {
         || cli.last_failed
         || !cli.paths.is_empty()
         || cli.watch
-}
-
-fn select_tests_to_run(
-    tests_index: &veri_core::python_worker::TestsIndex,
-    imports_graph: &veri_core::import_graph::ImportsGraph,
-    revdeps_graph: &veri_core::import_graph::ReverseDepsGraph,
-    module_map: &veri_core::import_graph::ModuleMap,
-    cli: &Cli,
-) -> Result<Vec<String>> {
-    // If --all is specified, run all tests
-    if cli.all {
-        return Ok(tests_index.tests.iter().map(|t| t.nodeid.clone()).collect());
-    }
-
-    // Create planner
-    let work_dir = std::env::current_dir()?;
-    let cache_dir = work_dir.join(".veri").join("cache");
-    let planner = TestPlanner::new(&work_dir, &cache_dir);
-
-    // Determine changed files (for now, use a simple git diff approach)
-    let changed_files = get_changed_files()?;
-
-    // If we have manual filters (keyword, marker, paths), apply them first
-    let mut selected = Vec::new();
-    for test in &tests_index.tests {
-        let mut include = true;
-
-        // Apply keyword filter
-        if let Some(keyword) = &cli.keyword {
-            include &= test.nodeid.contains(keyword) || test.function.contains(keyword);
-        }
-
-        // Apply marker filter
-        if let Some(marker) = &cli.marker {
-            include &= test.markers.contains(marker);
-        }
-
-        // Apply path filter
-        if !cli.paths.is_empty() {
-            include &= cli
-                .paths
-                .iter()
-                .any(|path| test.path.starts_with(path) || test.nodeid.contains(path));
-        }
-
-        if include {
-            selected.push(test.nodeid.clone());
-        }
-    }
-
-    // If we have manual filters, use those selections and skip impact analysis
-    if cli.keyword.is_some() || cli.marker.is_some() || !cli.paths.is_empty() {
-        return Ok(selected);
-    }
-
-    // Use impact-aware planning if no manual filters
-    if changed_files.is_empty() {
-        return if cli.last_failed {
-            match load_last_failed_tests(&cache_dir) {
-                Ok(failed_tests) if !failed_tests.is_empty() => {
-                    println!(
-                        "🔄 Running {} tests that failed on last run",
-                        failed_tests.len()
-                    );
-                    Ok(failed_tests)
-                }
-                Ok(_) => {
-                    println!("✅ No failed tests found from last run");
-                    Ok(Vec::new())
-                }
-                Err(e) => {
-                    println!("⚠️  Could not load last-failed tests: {}", e);
-                    println!("ℹ️  Running all tests instead");
-                    Ok(tests_index.tests.iter().map(|t| t.nodeid.clone()).collect())
-                }
-            }
-        } else {
-            println!("ℹ️  No changed files detected - use --all to run all tests");
-            Ok(Vec::new())
-        };
-    }
-
-    // Use the planner for impact analysis
-    let selection = planner.plan_test_selection(
-        &changed_files,
-        tests_index,
-        revdeps_graph,
-        module_map,
-        imports_graph,
-    )?;
-
-    // Print selection summary and diagnostics
-    let mut diagnostics = DiagnosticReporter::new(cli.quiet);
-
-    if selection.should_broaden {
-        let _original_percentage =
-            (selection.selected_nodeids.len() as f64 / selection.total_tests as f64) * 100.0;
-        let planner_config = PlannerConfig::default();
-
-        diagnostics.add(VeriDiagnostic::selection_broadened(
-            selection.selected_nodeids.len(),
-            selection.total_tests,
-            planner_config.broaden_threshold,
-            selection
-                .broaden_reason
-                .clone()
-                .unwrap_or_else(|| "Unknown".to_string()),
-        ));
-    }
-
-    // Check for dynamic imports and add diagnostics
-    for dynamic_import in &imports_graph.dynamic_imports {
-        diagnostics.add(VeriDiagnostic::dynamic_import_detected(
-            &dynamic_import.from_module,
-            &dynamic_import.reason,
-            selection.should_broaden,
-        ));
-    }
-
-    // Report diagnostics (warnings only unless there are errors)
-    diagnostics.report_all()?;
-
-    // Print explanation if verbose
-    if cli.verbose > 0 || cli.explain {
-        println!("{}", planner.format_explain(&selection));
-    }
-
-    Ok(selection.selected_nodeids)
-}
-
-/// Get changed files using git (simple implementation for Phase 4)
-fn get_changed_files() -> Result<Vec<String>> {
-    use std::process::Command;
-
-    let work_dir = std::env::current_dir()?;
-
-    // Get git root
-    let git_root_output = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(&work_dir)
-        .output();
-
-    let git_root = match git_root_output {
-        Ok(output) if output.status.success() => {
-            std::path::PathBuf::from(String::from_utf8_lossy(&output.stdout).trim())
-        }
-        _ => return Ok(Vec::new()), // No git repo
-    };
-
-    // Get changed files from git root
-    let output = Command::new("git")
-        .args(["diff", "--name-only", "HEAD"])
-        .current_dir(&git_root)
-        .output();
-
-    match output {
-        Ok(output) if output.status.success() => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let files: Vec<String> = stdout
-                .lines()
-                .filter(|line| !line.is_empty())
-                .filter(|line| line.ends_with(".py") || line.ends_with("conftest.py"))
-                .filter_map(|line| {
-                    let full_path = git_root.join(line);
-
-                    // Check if this file is under our current working directory
-                    if let Ok(relative_path) = full_path.strip_prefix(&work_dir) {
-                        Some(relative_path.to_string_lossy().replace('\\', "/"))
-                    } else if full_path == work_dir.join(std::path::Path::new(line).file_name()?) {
-                        // File is directly in working directory
-                        std::path::Path::new(line)
-                            .file_name()
-                            .map(|name| name.to_string_lossy().to_string())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            Ok(files)
-        }
-        _ => {
-            // Git not available or no repository - return empty
-            Ok(Vec::new())
-        }
-    }
 }
 
 /// Parse worker count from string
@@ -778,6 +396,7 @@ fn should_use_pool(_worker_count: usize, _selected_len: usize) -> bool {
 }
 
 /// Configuration for parallel test execution
+/// DEPRECATED: Use ExecutionService instead
 pub struct ParallelExecutionConfig<'a> {
     pub work_dir: &'a std::path::Path,
     pub cache_dir: &'a std::path::Path,
@@ -786,354 +405,25 @@ pub struct ParallelExecutionConfig<'a> {
     pub python_runtime: PythonRuntime,
 }
 
-/// Setup test scheduler with historical timing data
-fn setup_scheduler(
-    worker_count: usize,
-    nodeids: &[String],
-    tests_index: &veri_core::python_worker::TestsIndex,
-    exec_config: &ParallelExecutionConfig,
-) -> Result<(TestScheduler, Vec<veri_core::scheduler::TestBatch>)> {
-    // Configure scheduler
-    let scheduler_config = SchedulerConfig {
-        strategy: SchedulingStrategy::Balanced,
-        worker_count,
-        enable_long_pole_detection: true,
-        long_pole_threshold_ms: 5000,
-        enable_fail_first: true,
-        max_batch_duration_ms: 30000,
-    };
-
-    // Create scheduler and load timing data
-    let mut scheduler = TestScheduler::new(scheduler_config);
-
-    // Try to load historical timings
-    if let Ok(timings_data) =
-        veri_core::schemas::TimingsData::load_from_cache(exec_config.cache_dir)
-    {
-        if let Err(e) = scheduler.load_timings(&timings_data) {
-            if exec_config.verbose {
-                println!("⚠️  Could not load timing data: {}", e);
-            }
-        } else if exec_config.verbose {
-            println!("📊 Loaded historical timing data");
-        }
-    }
-
-    // Schedule tests into batches
-    let batches = scheduler.schedule_tests(nodeids, tests_index)?;
-
-    Ok((scheduler, batches))
-}
-
-/// Persist test timing data for future scheduling optimization
-fn persist_timing_data(
-    results: &[veri_core::worker_pool::BatchResult],
-    worker_count: usize,
-    cache_dir: &std::path::Path,
-) -> Result<()> {
-    if results.is_empty() {
-        return Ok(());
-    }
-
-    use chrono::Utc;
-    use std::collections::HashMap;
-
-    // Build this run timings
-    let mut test_timings: HashMap<String, veri_core::schemas::TestTiming> = HashMap::new();
-    for r in results {
-        for t in &r.per_test {
-            let outcome = match t.outcome.as_str() {
-                "passed" => veri_core::schemas::TestOutcome::Passed,
-                "failed" => veri_core::schemas::TestOutcome::Failed,
-                "skipped" => veri_core::schemas::TestOutcome::Skipped,
-                _ => veri_core::schemas::TestOutcome::Error,
-            };
-            test_timings.insert(
-                t.nodeid.clone(),
-                veri_core::schemas::TestTiming {
-                    nodeid: t.nodeid.clone(),
-                    setup_duration: 0.0,
-                    call_duration: (t.duration_ms as f64) / 1000.0,
-                    teardown_duration: 0.0,
-                    total_duration: (t.duration_ms as f64) / 1000.0,
-                    outcome,
-                    worker_id: None,
-                },
-            );
-        }
-    }
-
-    let run = veri_core::schemas::TimingRun {
-        run_id: format!("parallel-{}", Utc::now().timestamp()),
-        started_at: Utc::now(),
-        finished_at: Utc::now(),
-        workers: worker_count as u32,
-        test_timings,
-    };
-
-    // Load existing timings if present
-    let mut timings = match veri_core::schemas::TimingsData::load_from_cache(cache_dir) {
-        Ok(t) => t,
-        Err(_) => veri_core::schemas::TestTimings::new(),
-    };
-
-    // Append run
-    timings.runs.push(run);
-
-    // Update aggregated_timings incrementally
-    for r in results {
-        for t in &r.per_test {
-            let entry = timings
-                .aggregated_timings
-                .entry(t.nodeid.clone())
-                .or_insert(veri_core::schemas::AggregatedTiming {
-                    nodeid: t.nodeid.clone(),
-                    run_count: 0,
-                    avg_duration: 0.0,
-                    min_duration: f64::MAX,
-                    max_duration: 0.0,
-                    p50_duration: 0.0,
-                    p95_duration: 0.0,
-                    last_duration: 0.0,
-                    stability: 1.0,
-                });
-            let d = (t.duration_ms as f64) / 1000.0;
-            entry.run_count += 1;
-            // Incremental average
-            entry.avg_duration += (d - entry.avg_duration) / (entry.run_count as f64);
-            if d < entry.min_duration {
-                entry.min_duration = d;
-            }
-            if d > entry.max_duration {
-                entry.max_duration = d;
-            }
-            entry.last_duration = d;
-            // Simple approximations for percentiles
-            entry.p50_duration = entry.avg_duration;
-            entry.p95_duration = entry.max_duration;
-            // Stability heuristic: decay towards 0 on failures, towards 1 on passes
-            if t.outcome == "failed" || t.outcome == "error" {
-                entry.stability = (entry.stability * 0.8).max(0.0);
-            } else {
-                entry.stability = (entry.stability * 0.8 + 0.2).min(1.0);
-            }
-        }
-    }
-
-    if let Ok(json) = timings.to_json() {
-        let path = cache_dir.join("timings.json");
-        let _ = std::fs::write(&path, json);
-    }
-
-    Ok(())
-}
-
-/// Print batch failure details with stdout/stderr tails
-fn print_batch_failure(result: &veri_core::worker_pool::BatchResult) {
-    println!(
-        "\n--- Batch failure: worker {} ({} tests, {:.1}s, exit {}) ---",
-        result.worker_id,
-        result.nodeids.len(),
-        result.duration.as_secs_f64(),
-        result.exit_code
-    );
-
-    if !result.stdout.is_empty() {
-        println!("[stdout tail]");
-        for line in result
-            .stdout
-            .lines()
-            .rev()
-            .take(80)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-        {
-            println!("{}", line);
-        }
-    }
-
-    if !result.stderr.is_empty() {
-        eprintln!("[stderr tail]");
-        for line in result
-            .stderr
-            .lines()
-            .rev()
-            .take(80)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-        {
-            eprintln!("{}", line);
-        }
-    }
-}
-
-/// Process results and print summary
-fn process_and_summarize_results(
-    results: &[veri_core::worker_pool::BatchResult],
-    total_duration: std::time::Duration,
-    worker_count: usize,
-    verbose: bool,
-) -> (i32, usize, usize) {
-    let mut total_exit_code = 0;
-    let mut failed_batches = 0;
-    let mut total_tests_run = 0;
-
-    // Process individual batch results
-    for result in results {
-        total_tests_run += result.nodeids.len();
-
-        if result.exit_code != 0 {
-            failed_batches += 1;
-            if total_exit_code == 0 {
-                total_exit_code = result.exit_code;
-            }
-            print_batch_failure(result);
-        }
-
-        if verbose {
-            println!(
-                "Worker {} completed {} tests in {:.1}s (exit: {})",
-                result.worker_id,
-                result.nodeids.len(),
-                result.duration.as_secs_f64(),
-                result.exit_code
-            );
-        }
-    }
-
-    // Print summary
-    println!(
-        "✅ Completed {} tests in {:.1}s using {} workers",
-        total_tests_run,
-        total_duration.as_secs_f64(),
-        worker_count
-    );
-
-    if failed_batches > 0 {
-        println!(
-            "❌ {} of {} worker batches reported failures",
-            failed_batches,
-            results.len()
-        );
-    }
-
-    // Outcome rollup
-    let mut passed = 0u32;
-    let mut skipped = 0u32;
-    let mut failed = 0u32;
-    let mut error = 0u32;
-
-    for r in results {
-        for t in &r.per_test {
-            match t.outcome.as_str() {
-                "passed" => passed += 1,
-                "skipped" => skipped += 1,
-                "failed" => failed += 1,
-                "error" => error += 1,
-                _ => {}
-            }
-        }
-    }
-
-    if passed + skipped + failed + error > 0 {
-        println!(
-            "Summary: {} passed, {} skipped, {} failed, {} error ({} total)",
-            passed,
-            skipped,
-            failed,
-            error,
-            passed + skipped + failed + error
-        );
-    }
-
-    (total_exit_code, failed_batches, total_tests_run)
-}
-
-/// Execute tests in parallel using scheduler and worker pool
+/// DEPRECATED: Use ExecutionService::execute_tests instead
+/// Kept for backward compatibility during beta
 pub fn execute_tests_parallel(
     nodeids: &[String],
     tests_index: &veri_core::python_worker::TestsIndex,
-    worker_count: usize,
+    _worker_count: usize,
     run_options: &TestRunOptions,
     exec_config: &ParallelExecutionConfig,
 ) -> Result<ExitCode> {
-    use std::time::Instant;
-
-    println!("⚡ Scheduling tests across {} workers", worker_count);
-
-    // Setup scheduler and create test batches
-    let (scheduler, batches) = setup_scheduler(worker_count, nodeids, tests_index, exec_config)?;
-
-    if batches.is_empty() {
-        return Ok(ExitCode::Success);
-    }
-
-    // Show scheduling information
-    let stats = scheduler.get_scheduling_stats(&batches);
-    if exec_config.verbose {
-        println!("{}", scheduler.format_explain(&batches, &stats));
-    } else {
-        println!(
-            "📋 Scheduled {} tests across {} workers",
-            stats.total_tests, stats.total_workers
-        );
-        println!(
-            "⏱️  Estimated duration: {:.1}s (load balance: {:.1}%)",
-            stats.total_estimated_duration_ms as f64 / 1000.0,
-            stats.load_balance_ratio * 100.0
-        );
-    }
-
-    // Configure worker pool
-    let worker_cfg = exec_config.config.worker.clone().unwrap_or_default();
-    let mut pool_config = WorkerPoolConfig {
-        worker_count,
-        startup_timeout: std::time::Duration::from_secs(worker_cfg.startup_timeout_sec.unwrap_or(30)),
-        execution_timeout: std::time::Duration::from_secs(worker_cfg.execution_timeout_sec.unwrap_or(300)),
-        heartbeat_interval: std::time::Duration::from_secs(worker_cfg.heartbeat_interval_sec.unwrap_or(10)),
-        work_dir: exec_config.work_dir.to_path_buf(),
-        cache_dir: exec_config.cache_dir.to_path_buf(),
-        ..Default::default()
-    };
-    pool_config.apply_runtime(&exec_config.python_runtime);
-
-    // Create and start worker pool
-    let mut worker_pool = WorkerPool::new(pool_config);
-    worker_pool.start()?;
-
-    // Submit batches to worker pool
-    let start_time = Instant::now();
-    for (i, batch) in batches.iter().enumerate() {
-        let batch_id = format!("batch_{}", i);
-        worker_pool.submit_batch(batch_id, batch.clone(), run_options.clone())?;
-    }
-
-    println!("🚀 Executing tests...");
-
-    // Wait for completion
-    let results = worker_pool.wait_for_completion(Some(std::time::Duration::from_secs(600)))?;
-    let total_duration = start_time.elapsed();
-
-    // Persist timing data for future scheduling optimization
-    persist_timing_data(&results, worker_count, exec_config.cache_dir)?;
-
-    // Process results and print summary
-    let (total_exit_code, _failed_batches, _total_tests_run) =
-        process_and_summarize_results(&results, total_duration, worker_count, exec_config.verbose);
-
-    // Shutdown worker pool
-    worker_pool.shutdown()?;
-
-    // Return appropriate exit code
-    match total_exit_code {
-        0 => Ok(ExitCode::Success),
-        1 => Ok(ExitCode::TestFailure),
-        2 => Ok(ExitCode::Interrupted),
-        4 => Ok(ExitCode::UsageError),
-        _ => Ok(ExitCode::InternalError),
-    }
+    // Delegate to the new ExecutionService
+    let service = super::execution::ParallelExecutionService::new(
+        exec_config.work_dir,
+        exec_config.cache_dir,
+        exec_config.verbose,
+        exec_config.config,
+        exec_config.python_runtime.clone(),
+    );
+    let result = service.execute_tests(nodeids, tests_index, run_options)?;
+    Ok(result.exit_code)
 }
 
 pub(super) fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
@@ -1145,6 +435,9 @@ pub(super) fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
     let cache_dir = work_dir.join(".veri").join("cache");
     let python_runtime_cfg = config.python();
     let python_runtime = PythonRuntime::from_config(&work_dir, &python_runtime_cfg);
+
+    // Initialize VCS service for getting changed files
+    let vcs_service = super::vcs::GitVcsService::new(&work_dir);
 
     // Cache key components - now with real implementation using the launcher
     let config_digest = compute_config_digest(config)?;
@@ -1203,7 +496,7 @@ pub(super) fn print_explanation(cli: &Cli, config: &Config) -> Result<()> {
         println!("Selection: Impact-aware (based on changed files)");
 
         // Show changed files
-        match get_changed_files() {
+        match vcs_service.get_changed_files() {
             Ok(changed_files) => {
                 if changed_files.is_empty() {
                     println!("  Changed files: None detected");

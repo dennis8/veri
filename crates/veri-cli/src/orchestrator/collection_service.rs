@@ -131,9 +131,8 @@ impl CollectionOrchestrationService for DefaultCollectionService {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use veri_core::python_worker::{TestInfo, CollectionError};
-    use std::sync::Arc;
-    use std::sync::Mutex;
+    use chrono::Utc;
+    use veri_core::schemas::{TestsIndex, TestNode};
 
     /// Mock collection service for testing
     pub struct MockCollectionService {
@@ -163,15 +162,24 @@ mod testing {
             _diagnostics: &mut DiagnosticReporter,
         ) -> Result<CollectionOutcome> {
             let tests_index = TestsIndex {
+                version: "1.0".to_string(),
+                generated_at: Utc::now(),
+                python_version: "3.11".to_string(),
+                pytest_version: "7.0".to_string(),
                 tests: (0..self.test_count)
-                    .map(|i| TestInfo {
+                    .map(|i| TestNode {
                         nodeid: format!("test_{}", i),
-                        ..Default::default()
+                        path: format!("test_{}.py", i),
+                        line: i as u32,
+                        function: format!("test_{}", i),
+                        class: None,
+                        module: "tests".to_string(),
+                        markers: vec![],
+                        fixtures: vec![],
+                        parametrize: None,
                     })
                     .collect(),
                 collection_errors: vec![],
-                import_graph_available: false,
-                duration_ms: 100,
             };
 
             Ok(CollectionOutcome {
